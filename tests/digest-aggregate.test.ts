@@ -230,6 +230,20 @@ describe('aggregateWeek', () => {
     expect(metrics.top_learning_tags).toEqual(['react', 'javascript', 'typescript'])
   })
 
+  it('reads double-encoded learning tags (legacy materialize bug) as real tags, not characters', async () => {
+    const legacy = makeFakeDb({
+      money_entries: [], tasks: [], categories: [], note_entries: [],
+      learning_entries: [{
+        id: 'l1', user_id: userId, text: 'Rust lifetimes',
+        tags: JSON.stringify(JSON.stringify(['rust', 'memory'])),
+        attribution: null, source: 'voice', occurred_at: '2026-06-25T14:00:00.000Z',
+        field_hlcs: '{}', deleted_at: null, created_at: '2026-06-25T14:00:00.000Z', updated_at: '2026-06-25T14:00:00.000Z',
+      }],
+    })
+    const metrics = await aggregateWeek(legacy, userId, bounds, primaryCurrency)
+    expect(metrics.top_learning_tags).toEqual(['rust', 'memory'])
+  })
+
   it('excludes deleted learning/note entries from count', async () => {
     const dbWithDeleted = makeFakeDb({
       money_entries: [],

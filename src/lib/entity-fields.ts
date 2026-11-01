@@ -35,7 +35,7 @@ export const INSIGHT_FIELDS = [
 ] as const
 
 export const ACCOUNT_FIELDS = [
-  'name', 'type', 'opening_balance', 'currency', 'icon', 'is_archived', 'match_hints',
+  'name', 'type', 'opening_balance', 'currency', 'icon', 'is_archived', 'match_hints', 'is_default',
 ] as const
 
 export const GOAL_FIELDS = [

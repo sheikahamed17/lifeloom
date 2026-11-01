@@ -9,6 +9,7 @@ export const AccountPayloadSchema = z.object({
   icon: z.string().max(8).nullable().optional(),
   is_archived: z.literal(0).or(z.literal(1)).optional(),
   match_hints: z.string().max(200).nullable().optional(),
+  is_default: z.literal(0).or(z.literal(1)).optional(),   // never null: NOT NULL DEFAULT 0 column
 })
 
 export type AccountPayload = z.infer<typeof AccountPayloadSchema>

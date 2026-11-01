@@ -231,6 +231,7 @@ export interface AccountsTable {
   icon: string | null
   is_archived: number
   match_hints: string | null
+  is_default: number
   field_hlcs: string          // JSON Record<string,string>
   deleted_at: string | null
   created_at: string

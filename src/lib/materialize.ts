@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely'
 import type { DB } from '@/lib/db'
 import type { Op } from '@/types/ops'
 import { applyOp } from '@/lib/op-log'
+import { decodeStoredTags } from '@/lib/stored-tags'
 import {
   MONEY_FIELDS,
   RECURRING_FIELDS,
@@ -19,6 +20,9 @@ import {
   HABIT_LOG_FIELDS,
   JOURNAL_FIELDS,
 } from '@/lib/entity-fields'
+
+// Tables whose `tags` column holds a string[] as JSON text.
+const TAG_TABLES: ReadonlySet<string> = new Set(['money_entries', 'learning_entries', 'note_entries', 'tasks'])
 
 // Materialize a single op into its derived D1 table via a per-field LWW upsert.
 // Shared by the /api/sync push loop and the one-time /api/admin/backfill replay
@@ -77,9 +81,16 @@ async function materializeRow_LWW(
     .selectAll()
     .executeTakeFirst()
 
+  const hasTags = TAG_TABLES.has(tableName)
+  // Decode the stored tags column back to string[] before merging: it's written
+  // as JSON text, so feeding the raw string through applyOp made every partial
+  // update (one that doesn't touch tags) re-stringify it — `["a"]` → `"[\"a\"]"`
+  // → … decodeStoredTags also unwraps rows already damaged that way, so they
+  // heal on their next write.
   const existingRow = existing
     ? {
         ...existing,
+        ...(hasTags && 'tags' in existing ? { tags: decodeStoredTags(existing.tags) } : {}),
         field_hlcs: JSON.parse(existing.field_hlcs as string) as Record<string, string>,
       } as never
     : undefined
@@ -105,12 +116,8 @@ async function materializeRow_LWW(
   // an op that never touched a field must not clobber it.
   for (const f of fields) {
     if (merged[f] !== undefined) {
-      // For learning_entries, note_entries, tasks, and money_entries, tags are stored as JSON strings in the DB
-      if ((tableName === 'money_entries' || tableName === 'learning_entries' || tableName === 'note_entries' || tableName === 'tasks') && f === 'tags') {
-        row[f] = JSON.stringify(merged[f])
-      } else {
-        row[f] = merged[f]
-      }
+      // tags are stored as JSON text (merged.tags is always a string[] here — see existingRow)
+      row[f] = hasTags && f === 'tags' ? JSON.stringify(merged[f]) : merged[f]
     }
   }
 
@@ -120,14 +127,7 @@ async function materializeRow_LWW(
     updated_at: row.updated_at,
   }
   for (const f of fields) {
-    if (merged[f] !== undefined) {
-      // For learning_entries, note_entries, tasks, and money_entries, tags are stored as JSON strings in the DB
-      if ((tableName === 'money_entries' || tableName === 'learning_entries' || tableName === 'note_entries' || tableName === 'tasks') && f === 'tags') {
-        updates[f] = JSON.stringify(merged[f])
-      } else {
-        updates[f] = merged[f]
-      }
-    }
+    if (row[f] !== undefined) updates[f] = row[f]
   }
 
   await db

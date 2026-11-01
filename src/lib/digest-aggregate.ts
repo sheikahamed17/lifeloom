@@ -1,6 +1,7 @@
 import type { Kysely } from 'kysely'
 import type { DB } from '@/lib/db'
 import { convertToPrimary } from '@/lib/fx'
+import { decodeStoredTags } from '@/lib/stored-tags'
 
 export type DigestMetrics = {
   currency: string
@@ -126,11 +127,11 @@ export async function aggregateWeek(
     .selectAll()
     .execute()
 
-  // Top learning tags (tags is a string[] column, stored as JSON)
+  // Top learning tags (tags is a string[] column, stored as JSON — possibly
+  // multiply-encoded on rows written before the materialize fix)
   const tagCounts = new Map<string, number>()
   for (const l of learnings) {
-    const tags = l.tags ? (typeof l.tags === 'string' ? JSON.parse(l.tags) : l.tags) : []
-    for (const t of (tags as string[])) {
+    for (const t of decodeStoredTags(l.tags)) {
       tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1)
     }
   }

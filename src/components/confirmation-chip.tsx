@@ -14,6 +14,7 @@ import { currencySymbol } from '@/lib/currency'
 import { formatLocalDateTime } from '@/lib/format'
 import { parseAmountInput } from '@/lib/parse-amount'
 import { type Allocation, isSplitValid, splitRemaining } from '@/lib/split-transaction'
+import { pickDefaultAccountId, resolveDraftAccountId } from '@/lib/default-account'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useCategories } from '@/hooks/use-categories'
@@ -83,6 +84,12 @@ function ConfirmationChipMoney({
   const [splitRows, setSplitRows] = useState<{ key: number; category_id: string | null; amountText: string }[]>([])
   const splitKey = useRef(0)
   const isEdit = mode === 'edit'
+  // A new entry with no account starts on the ★ default (Settings → Accounts);
+  // any pick in the dropdown — including "No account" — overrides it.
+  const [accountTouched, setAccountTouched] = useState(false)
+  const accountId = resolveDraftAccountId({
+    draftAccountId: d.account_id, touched: accountTouched, isEdit, defaultId: pickDefaultAccountId(accounts),
+  })
 
   const major = (d.amount / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
   const symbol = currencySymbol(d.currency)
@@ -104,8 +111,9 @@ function ConfirmationChipMoney({
   async function handleConfirm() {
     setBusy(true)
     try {
-      if (splitMode) await onConfirm(d, { enabled: false, period, intervalCount }, allocations)
-      else await onConfirm(d, { enabled: makeRecurring, period, intervalCount })
+      const final = { ...d, account_id: accountId }
+      if (splitMode) await onConfirm(final, { enabled: false, period, intervalCount }, allocations)
+      else await onConfirm(final, { enabled: makeRecurring, period, intervalCount })
     } finally { setBusy(false) }
   }
 
@@ -303,8 +311,8 @@ function ConfirmationChipMoney({
 
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
         <select
-          value={d.account_id ?? ''}
-          onChange={(e) => { const v = e.target.value; setD(s => ({ ...s, account_id: v || null })) }}
+          value={accountId ?? ''}
+          onChange={(e) => { const v = e.target.value; setAccountTouched(true); setD(s => ({ ...s, account_id: v || null })) }}
           className="rounded-md border bg-muted px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
           aria-label="Account"
         >

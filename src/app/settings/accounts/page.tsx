@@ -1,17 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Star } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useArchivedAccounts } from '@/hooks/use-archived-accounts'
+import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
+import { planAccountBackfill } from '@/lib/account-match'
+import { tagEntries } from '@/lib/account-autotag'
+import { defaultToggleUpdates, pickDefaultAccountId } from '@/lib/default-account'
 import { parseAmountInput } from '@/lib/parse-amount'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AuroraBackground } from '@/components/aurora-background'
-import type { AccountRow } from '@/lib/dexie'
+import { db, type AccountRow } from '@/lib/dexie'
 
 export default function AccountsPage() {
   const router = useRouter()
@@ -32,6 +37,34 @@ export default function AccountsPage() {
 
   const accounts = useAccounts(userId ?? undefined)
   const archived = useArchivedAccounts(userId ?? undefined)
+  const entries = useMoneyEntries(userId ?? undefined)
+  const defaultId = useMemo(() => pickDefaultAccountId(accounts), [accounts])
+  const backfill = useMemo(() => planAccountBackfill(entries, accounts), [entries, accounts])
+  const [tagged, setTagged] = useState<number | null>(null)
+  const [tagging, setTagging] = useState(false)
+
+  async function toggleDefault(id: string) {
+    if (!userId) return
+    for (const u of defaultToggleUpdates([...accounts, ...archived], id)) {
+      await applyLocalOp(await generateOp({
+        entity_kind: 'account', entity_id: u.id, op_type: 'update',
+        payload: { is_default: u.is_default }, user_id: userId,
+      }))
+    }
+    pushPullOnce({ userId }).catch(err => console.error('sync', err))
+  }
+
+  async function runBackfill() {
+    if (!userId || tagging) return
+    setTagging(true)
+    try {
+      // Pull first and re-plan from a fresh read: this page doesn't sync on its
+      // own, and a tag op on an entry deleted/re-tagged elsewhere would undo that.
+      await pushPullOnce({ userId }).catch(err => console.error('sync', err))
+      const fresh = await db.money_entries.where('user_id').equals(userId).toArray()
+      setTagged(await tagEntries(userId, planAccountBackfill(fresh, accounts)))
+    } finally { setTagging(false) }
+  }
 
   async function addAccount() {
     if (!userId || !newName.trim() || !newOpeningBalance.trim()) return
@@ -141,6 +174,9 @@ export default function AccountsPage() {
               maxLength={200}
               aria-label="Auto-match hints"
             />
+            <p className="text-xs text-muted-foreground">
+              A card/account last-4 in the name (e.g. “Tata Neo 5872”) is matched automatically — hints are only needed for extra numbers, like a debit card’s last-4 on a bank account.
+            </p>
             <div className="flex gap-2">
               <Input
                 value={newOpeningBalance}
@@ -163,11 +199,35 @@ export default function AccountsPage() {
               <AccountRow
                 key={a.id}
                 account={a}
+                isDefault={a.id === defaultId}
+                onToggleDefault={toggleDefault}
                 onArchive={archiveAccount}
                 onUpdate={updateAccount}
               />
             ))}
           </ul>
+          {accounts.length > 0 && (
+            <p className="text-xs text-muted-foreground">★ marks the default account, pre-selected when you add an entry by hand, voice or receipt.</p>
+          )}
+        </section>
+
+        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+          <h2 className="text-sm font-semibold uppercase text-muted-foreground">Past alerts</h2>
+          {backfill.length > 0 ? (
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-w-0 text-sm">
+                {backfill.length} past SMS/email {backfill.length === 1 ? 'entry matches' : 'entries match'} your accounts but {backfill.length === 1 ? 'has' : 'have'} no account yet.
+              </p>
+              <Button size="sm" onClick={runBackfill} disabled={tagging} style={{ minHeight: '44px' }}>
+                {tagging ? 'Tagging…' : `Tag ${backfill.length}`}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No untagged past alerts match your accounts.</p>
+          )}
+          <p role="status" className="text-sm text-muted-foreground empty:hidden">
+            {tagged ? `Tagged ${tagged} past ${tagged === 1 ? 'entry' : 'entries'}.` : ''}
+          </p>
         </section>
 
         {archived.length > 0 && (
@@ -180,10 +240,14 @@ export default function AccountsPage() {
 
 function AccountRow({
   account,
+  isDefault,
+  onToggleDefault,
   onArchive,
   onUpdate,
 }: {
   account: AccountRow
+  isDefault: boolean
+  onToggleDefault: (id: string) => void
   onArchive: (id: string) => void
   onUpdate: (id: string, payload: Record<string, string | number | null>) => void
 }) {
@@ -279,12 +343,23 @@ function AccountRow({
 
   return (
     <li className="flex flex-col gap-1 p-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <span className="min-w-0 flex-1 break-words text-sm">
           {account.icon && <span className="mr-1">{account.icon}</span>}
           {account.name} ({account.type}) · {account.currency} {(account.opening_balance / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </span>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-1 sm:gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onToggleDefault(account.id)}
+            style={{ height: '44px', minWidth: '44px' }}
+            aria-pressed={isDefault}
+            aria-label={`Default account: ${account.name}`}
+            title={isDefault ? 'Default account' : 'Make default'}
+          >
+            <Star className={isDefault ? 'h-4 w-4 fill-accent-2 text-accent-2' : 'h-4 w-4 text-muted-foreground'} />
+          </Button>
           <Button
             size="sm"
             variant="ghost"

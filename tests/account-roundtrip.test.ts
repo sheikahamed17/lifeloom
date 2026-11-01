@@ -105,3 +105,24 @@ describe('account round-trip — match_hints field', () => {
     expect(account?.match_hints ?? null).toBeNull()
   })
 })
+
+describe('account round-trip — is_default field', () => {
+  beforeEach(async () => { await resetDb() })
+
+  it('stars an account via an update op, preserving every other field (per-field LWW)', async () => {
+    await applyLocalOp(await generateOp({
+      entity_kind: 'account', entity_id: 'd1', op_type: 'create',
+      payload: { name: 'Tata Neo 5872', type: 'liability', opening_balance: 0, currency: 'INR', match_hints: 'neo' },
+      user_id: U,
+    }))
+    expect((await db.accounts.get('d1'))?.is_default ?? 0).toBe(0)
+
+    await applyLocalOp(await generateOp({
+      entity_kind: 'account', entity_id: 'd1', op_type: 'update', payload: { is_default: 1 }, user_id: U,
+    }))
+    const account = await db.accounts.get('d1')
+    expect(account?.is_default).toBe(1)
+    expect(account?.name).toBe('Tata Neo 5872')
+    expect(account?.match_hints).toBe('neo')
+  })
+})

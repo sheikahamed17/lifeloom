@@ -9,7 +9,22 @@ Each release is also published with notes on
 
 ## [Unreleased]
 
+Account auto-pick v2 — imported bank/card alerts now land on the right account
+with no setup beyond naming it — plus a fix for tags being re-encoded in the
+server database. One additive migration (`0027`), applied automatically on deploy.
+
+### Added
+- **Account last-4 in the name is auto-matched.** An account named like *"Rewards Card 7392"* now catches alerts for that card with no hints configured; hints remain for extra numbers or keywords (e.g. a bank account's debit-card digits). ([3a0f018](https://github.com/sheikahamed17/pulse/commit/3a0f018))
+- **"Which account?" for unknown cards.** An imported alert from a card number no account knows shows a `•1188 — which account?` pill; one tap tags it, saves the number as that account's hint, retags the card's other untagged alerts, and offers undo. ([f364d06](https://github.com/sheikahamed17/pulse/commit/f364d06))
+- **Past-alerts backfill.** Settings → Accounts → *Past alerts* tags earlier SMS/email entries that now match an account; it re-syncs first, never overwrites a chosen account or touches deleted entries, and writes in batches of 50. ([f364d06](https://github.com/sheikahamed17/pulse/commit/f364d06), [101c602](https://github.com/sheikahamed17/pulse/commit/101c602))
+- **Default account.** Star an account in Settings → Accounts; new manual, voice, and receipt entries start on it (an explicit pick — including "No account" — wins; edits and imported alerts never use it). New `accounts.is_default` column, migration `0027`. ([7c76039](https://github.com/sheikahamed17/pulse/commit/7c76039))
+- The live demo now showcases all of the above: accounts named with their last-4, a starred default, auto-tagged email/SMS alerts, one unknown card, and one untagged past alert.
+
+### Changed
+- **Stricter, safer account matching.** A card/account number only matches where an alert uses it as one (`ending 7392`, `A/c XX4821`, `**6604`, `Card no. XX…`) — never an amount, date, or UPI reference. A number match beats a keyword match, and an alert that still matches more than one account is now left untagged instead of going to the oldest account. ([3a0f018](https://github.com/sheikahamed17/pulse/commit/3a0f018))
+
 ### Fixed
+- **Tags were re-JSON-encoded on every partial update in the server database.** Any update that didn't touch an entry's tags (setting a category or account, completing a task) wrapped the stored tags in another JSON layer, doubling their size each time; the weekly digest then reported characters like `"` and `[` as top learning tags. Writes now encode exactly once, damaged rows heal on their next write (or all at once via Settings → Rebuild server data), and the digest reads any depth correctly. Server projection only — on-device data was never affected. ([e3a02f8](https://github.com/sheikahamed17/pulse/commit/e3a02f8))
 - **Responsive layout across all devices and screen sizes.** Two bugs made the app render poorly off phone-width: (1) on `/app`, the grid/flex content column defaulted to `min-width: auto`, so the header (logo + nav icons + Sign out) and capture bar refused to shrink and forced a ~120px horizontal scroll on narrow phones (and pushed the sidebar off-screen at tablet width) — fixed with `min-w-0` + `flex-wrap` so they reflow, plus a global `overflow-x-clip` safety net; (2) every page except `/app` (dashboard, analytics, all of settings, habits, journal, insights) was hardcoded to a fixed 448px column with no responsive breakpoints, stranding content in empty space on tablets/laptops — they now widen to a comfortable centered column on larger screens (`md:max-w-3xl`). On `/app`, the two-column layout (content + sidebar) now starts at `lg` instead of `md`, so tablet-portrait widths get a clean single-column view with the bottom tab bar instead of a cramped, overlapping two-column grid. No behavior or data changes.
 - **SPENT · month breakdown no longer truncates category names.** Each row capped the category label to a fixed 48px column with an ellipsis ("Gro…", "Sub…", "Sna…"); labels now render in full (no shrink, no ellipsis) and the progress bar flexes to fit the remaining space. Applies everywhere the card appears (money sidebar, mobile card, dashboard widget).
 

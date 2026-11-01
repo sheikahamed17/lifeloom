@@ -25,6 +25,13 @@ describe('pickDefaultAccountId', () => {
       a({ id: 'new', is_default: 1, updated_at: '2026-03-01T00:00:00Z' }),
     ])).toBe('new')
   })
+
+  it('prefers the later STAR (is_default HLC) over a later unrelated edit', () => {
+    expect(pickDefaultAccountId([
+      a({ id: 'starred-last', is_default: 1, updated_at: '2026-01-01T00:00:00Z', field_hlcs: { is_default: '0001761000000000-0000' } }),
+      a({ id: 'edited-last', is_default: 1, updated_at: '2026-09-01T00:00:00Z', field_hlcs: { is_default: '0001750000000000-0000' } }),
+    ])).toBe('starred-last')
+  })
 })
 
 describe('resolveDraftAccountId', () => {
@@ -62,5 +69,21 @@ describe('defaultToggleUpdates', () => {
 
   it('un-stars the account when it is already the default', () => {
     expect(defaultToggleUpdates([a({ id: 'x', is_default: 1 }), a({ id: 'y' })], 'x')).toEqual([{ id: 'x', is_default: 0 }])
+  })
+
+  it('after a two-device double-star, tapping the HIDDEN star makes it the default in one tap', () => {
+    const accounts = [
+      a({ id: 'old', is_default: 1, updated_at: '2026-01-01T00:00:00Z' }),
+      a({ id: 'new', is_default: 1, updated_at: '2026-03-01T00:00:00Z' }),   // shown as default
+    ]
+    expect(defaultToggleUpdates(accounts, 'old')).toEqual([{ id: 'old', is_default: 1 }, { id: 'new', is_default: 0 }])
+  })
+
+  it('after a double-star, tapping the SHOWN default clears every star', () => {
+    const accounts = [
+      a({ id: 'old', is_default: 1, updated_at: '2026-01-01T00:00:00Z' }),
+      a({ id: 'new', is_default: 1, updated_at: '2026-03-01T00:00:00Z' }),
+    ]
+    expect(defaultToggleUpdates(accounts, 'new')).toEqual([{ id: 'new', is_default: 0 }, { id: 'old', is_default: 0 }])
   })
 })

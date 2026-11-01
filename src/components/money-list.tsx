@@ -13,7 +13,7 @@ import { useAllCategories } from '@/hooks/use-all-categories'
 import { useAllAccounts } from '@/hooks/use-all-accounts'
 import { useAccounts } from '@/hooks/use-accounts'
 import { accountTokens, addHintDigits, extractAlertIdentifiers, planAccountBackfill } from '@/lib/account-match'
-import { applyAccountTags } from '@/lib/account-autotag'
+import { tagEntries, untagEntries } from '@/lib/account-autotag'
 import { useUndo } from '@/components/undo-provider'
 import { resurrectPayload } from '@/lib/undo-delete'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
@@ -26,7 +26,7 @@ import { filterSortMoney } from '@/lib/money-filter-sort'
 import { makeCategoryResolver } from '@/lib/category-resolve'
 import { groupBySplit } from '@/lib/split-group'
 import { cn } from '@/lib/utils'
-import type { AccountRow, MoneyEntryRow } from '@/lib/dexie'
+import { db, type AccountRow, type MoneyEntryRow } from '@/lib/dexie'
 import type { MoneyFilter, MoneySort } from '@/lib/money-filter-sort'
 
 type Props = { userId: string; onEdit?: (row: MoneyEntryRow) => void; categorizeId?: string | null; filter?: MoneyFilter; sort?: MoneySort }
@@ -139,23 +139,48 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
   // Tag this entry to `acc`, remember `last4` as one of acc's hints (unless its
   // name/hints already carry it), then retag every other untagged alert that the
   // learned hint now matches — so the next email from this card is automatic.
+  // The toast says what actually happened and undoes all of it.
   async function linkCard(e: MoneyEntryRow, last4: string, acc: AccountRow) {
     setLinkingId(null)
-    let learned = acc
-    const nextHints = accountTokens(acc).digits.includes(last4) ? null : addHintDigits(acc.match_hints, last4)
-    if (nextHints) {
-      await applyLocalOp(await generateOp({
-        entity_kind: 'account', entity_id: acc.id,
-        op_type: 'update', payload: { match_hints: nextHints },
-        user_id: userId,
-      }))
-      learned = { ...acc, match_hints: nextHints }
+    try {
+      const alreadyKnown = accountTokens(acc).digits.includes(last4)
+      const nextHints = alreadyKnown ? null : addHintDigits(acc.match_hints, last4)
+      let learned = acc
+      if (nextHints) {
+        await applyLocalOp(await generateOp({
+          entity_kind: 'account', entity_id: acc.id,
+          op_type: 'update', payload: { match_hints: nextHints },
+          user_id: userId,
+        }))
+        learned = { ...acc, match_hints: nextHints }
+      }
+      const others = planAccountBackfill(entries, activeAccounts.map(a => (a.id === acc.id ? learned : a)))
+        .filter(t => t.id !== e.id && t.account_id === acc.id)
+      const tags = [{ id: e.id, account_id: acc.id }, ...others]
+      const more = Math.max(0, (await tagEntries(userId, tags)) - 1)
+
+      // Future alerts auto-tag only if the digits were saved AND no other account claims them (a tie → untagged).
+      const claimedElsewhere = activeAccounts.some(a => a.id !== acc.id && accountTokens(a).digits.includes(last4))
+      const auto = (alreadyKnown || nextHints !== null) && !claimedElsewhere
+      undo.push(
+        auto
+          ? `•${last4} → ${acc.name}${more ? ` (+${more} more)` : ''}`
+          : `Tagged to ${acc.name} — future •${last4} alerts won't auto-tag`,
+        async () => {
+          // Restore the hints only if nothing else has changed them since.
+          if (nextHints && (await db.accounts.get(acc.id))?.match_hints === nextHints) {
+            await applyLocalOp(await generateOp({
+              entity_kind: 'account', entity_id: acc.id,
+              op_type: 'update', payload: { match_hints: acc.match_hints },
+              user_id: userId,
+            }))
+          }
+          await untagEntries(userId, tags)
+        },
+      )
+    } catch (err) {
+      console.error('link card', err)
     }
-    const others = planAccountBackfill(entries, activeAccounts.map(a => (a.id === acc.id ? learned : a)))
-    await applyAccountTags(userId, [
-      { id: e.id, account_id: acc.id },
-      ...others.filter(t => t.id !== e.id && t.account_id === acc.id),
-    ])
   }
 
   async function deleteGroup(parts: MoneyEntryRow[]) {
@@ -260,7 +285,7 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
               <SwipeRow
                 isOpen={openId === e.id}
                 onOpenChange={o => setOpenId(o ? e.id : null)}
-                onLongPress={() => { setPickingId(null); setMenuFor(e.id) }}
+                onLongPress={() => { setPickingId(null); setLinkingId(null); setMenuFor(e.id) }}
                 onDelete={() => deleteEntry(e)}
                 deleteLabel={`Delete entry: ${e.description || formatAmount(e)}`}
                 className="glass-soft flex items-start justify-between gap-3 rounded-2xl p-3 text-sm transition-colors hover:bg-white/8"
@@ -346,9 +371,9 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                     {!e.category_id && (e.source === 'email' || e.source === 'sms') && (
                       <button
                         type="button"
-                        onClick={(ev) => { ev.stopPropagation(); setMenuFor(null); setPickingId(pickingId === e.id ? null : e.id) }}
+                        onClick={(ev) => { ev.stopPropagation(); setMenuFor(null); setLinkingId(null); setPickingId(pickingId === e.id ? null : e.id) }}
                         aria-label={`Set category for ${e.description || formatAmount(e)}`}
-                        className="text-[10px] border border-amber-400/40 text-amber-400 rounded-full px-1.5 py-0.5 hover:bg-amber-400/10 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+                        className="relative text-[10px] border border-amber-400/40 text-amber-400 rounded-full px-1.5 py-0.5 hover:bg-amber-400/10 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none before:absolute before:-inset-x-1 before:-inset-y-3"
                       >
                         ⚠ Set category
                       </button>
@@ -358,8 +383,8 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                         type="button"
                         onClick={(ev) => { ev.stopPropagation(); setMenuFor(null); setPickingId(null); setLinkingId(linkingId === e.id ? null : e.id) }}
                         aria-expanded={linkingId === e.id}
-                        aria-label={`Card ending ${cardLast4}: choose its account`}
-                        className="text-[10px] border border-sky-400/40 text-sky-400 rounded-full px-1.5 py-0.5 hover:bg-sky-400/10 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+                        aria-label={`Card •${cardLast4}: which account?`}
+                        className="relative text-[10px] border border-accent-2/40 text-accent-2 rounded-full px-1.5 py-0.5 hover:bg-accent-2/10 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none before:absolute before:-inset-x-1 before:-inset-y-3"
                       >
                         💳 •{cardLast4} — which account?
                       </button>
@@ -406,7 +431,7 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
               {linkingId === e.id && cardLast4 && (
                 <div className="glass-soft mt-1 rounded-2xl p-2" role="group" aria-label={`Account for card ending ${cardLast4}`}>
                   <p className="px-2 pb-1 text-xs text-muted-foreground">
-                    Which account is •{cardLast4}? Future alerts from it will be tagged automatically.
+                    Which account is •{cardLast4}? Pulse will remember it for this card’s future alerts.
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {activeAccounts.map(acc => (

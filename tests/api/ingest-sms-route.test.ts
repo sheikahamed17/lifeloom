@@ -286,4 +286,25 @@ describe('POST /api/ingest/sms', () => {
     const body = await res.json() as { payload?: { account_id?: string } }
     expect(body.payload?.account_id).toBe('acc-1')
   })
+
+  it('matches by the last-4 in the account NAME when no hints are set', async () => {
+    accountsRows = [
+      { id: 'acc-debit', user_id: U, name: 'HDFC Debit 1234', match_hints: null, is_archived: 0, deleted_at: null, created_at: '2026-01-01T00:00:00Z' },
+      { id: 'acc-neo', user_id: U, name: 'Tata Neo 5872', match_hints: null, is_archived: 0, deleted_at: null, created_at: '2026-01-02T00:00:00Z' },
+    ]
+    parseSmsMock.mockResolvedValue({ is_transaction: true, amount: 47500, currency: 'INR', direction: 'out', merchant: 'CRUNCHYROLL' })
+    await POST(reqS(goodToken, 'Rs.475.00 spent on your HDFC Bank Credit Card ending 5872 at CRUNCHYROLL'))
+    const payload = JSON.parse(String(opLog[0].payload)) as { account_id?: string }
+    expect(payload.account_id).toBe('acc-neo')
+  })
+
+  it('does not tag an account whose last-4 only appears as the amount', async () => {
+    accountsRows = [
+      { id: 'acc-neo', user_id: U, name: 'Tata Neo 5872', match_hints: null, is_archived: 0, deleted_at: null, created_at: '2026-01-02T00:00:00Z' },
+    ]
+    parseSmsMock.mockResolvedValue({ is_transaction: true, amount: 587200, currency: 'INR', direction: 'out', merchant: 'SHOP' })
+    await POST(reqS(goodToken, 'Rs 5872.00 debited at SHOP'))
+    const payload = JSON.parse(String(opLog[0].payload)) as { account_id?: unknown }
+    expect(payload.account_id).toBeNull()
+  })
 })

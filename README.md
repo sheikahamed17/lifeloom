@@ -61,7 +61,7 @@ Most life-trackers make you fill in forms. Pulse flips it: you **say or type one
 - 📴 **Local-first & offline** — every entry is written to on-device storage first, then synced. No spinner waiting on the network.
 - 🔐 **Passkey (Face ID) sign-in** — plus a local PIN lock and a durable session; magic-link fallback.
 - 📈 **Weekly AI digests** — a browsable history of auto-generated summaries of your week.
-- 🏦 **Bank-transaction auto-import** — forward your bank's alert emails and they land as categorized entries, hands-free.
+- 🏦 **Bank-transaction auto-import** — forward your bank's alert emails and they land as categorized entries on the right card or account, hands-free.
 - 📊 **Spending trends** — a dedicated analytics view: spend / income / net over time, top movers, and per-category small multiples.
 - 🧩 **Split transactions** — allocate one payment across several categories, so budgets and analytics stay accurate.
 - 📲 **Installable PWA** — add to home screen; push notifications for budget alerts and follow-ups.
@@ -81,6 +81,7 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 
 ### Money, in depth
 - **Accounts & net worth.** Track balances across accounts (assets and liabilities); Pulse derives your **net worth** and reconstructs how it's moved over time.
+- **Default account.** Star one account in Settings → Accounts and every entry you add by hand, voice, or receipt starts on it — change it in the chip when it's a different card.
 - **Cash-flow forecast.** Upcoming recurring income and bills projected forward, with a month-end net estimate on your dashboard.
 - **Bill reminders.** A push notification before a recurring bill falls due.
 - **Savings goals.** Target amounts — linked to an account or tracked manually — with progress bars on your dashboard.
@@ -102,7 +103,9 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 - **Manual add** on any tab, with back-dating for money entries.
 - **Categorize-on-ingest.** Auto-imported transactions arrive with a one-tap category picker and a push notification.
 - **Email auto-ingest.** A Gmail filter + a tiny Google Apps Script forwards bank alerts to your instance — the only truly hands-off path on iOS.
-- **Auto-detect the account.** An imported bank or card alert is matched to the right account from the card/merchant it mentions (via per-account patterns you set), so balances stay correct with no manual picking.
+- **Auto-detect the account.** An imported alert is tagged to the right account from the card or account number it mentions — name an account with its last 4 digits (*"Rewards Card 7392"*) and it just works, or add extra numbers/keywords as hints (e.g. a bank account's debit-card digits). Only a real card/account reference counts (`ending 7392`, `A/c XX4821`, `**6604`), never an amount or a UPI ref, and an ambiguous alert is left for you rather than guessed.
+- **New cards in one tap.** An alert from a card Pulse doesn't know yet shows **"•1188 — which account?"** — pick the account once and Pulse remembers the number, tags that card's other past alerts, and handles every future one automatically.
+- **Backfill past alerts.** Settings → Accounts → *Past alerts* tags earlier imported entries that now match an account (it never overwrites an account you chose). Balances count every tagged entry, so if your opening balance already reflects that history, skip it.
 - **SMS auto-ingest (iOS).** For the alerts your bank sends by text instead of email, an Apple Shortcut forwards them to your instance (Settings → Auto-import from SMS).
 
 ### Organize & analyze
@@ -199,7 +202,7 @@ src/
   app/            # Next App Router — routes, API handlers, pages (/app, /analytics, /insights, /settings/*)
   lib/            # sync engine, agents, ingest, auth/email, pure helpers (unit-tested)
   components/     # UI: capture chips, domain lists, answer cards, charts
-migrations/       # D1 schema, applied in order 0001 → 0026
+migrations/       # D1 schema, applied in order 0001 → 0027
 scripts/          # icon generation, service-worker build, router eval, VAPID keygen
 tests/            # vitest suites (agents, api routes, sync, lib)
 docs/superpowers/ # design specs and implementation plans

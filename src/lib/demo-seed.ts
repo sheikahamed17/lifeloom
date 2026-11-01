@@ -34,7 +34,7 @@ function dayStr(n: number): string {
 
 type Seed = { kind: Op['entity_kind']; id: string; at: string; payload: Record<string, unknown> }
 
-function buildSeeds(): Seed[] {
+export function buildSeeds(): Seed[] {
   const seeds: Seed[] = []
   const add = (kind: Op['entity_kind'], id: string, at: string, payload: Record<string, unknown>) =>
     seeds.push({ kind, id, at, payload })
@@ -51,8 +51,11 @@ function buildSeeds(): Seed[] {
   cats.forEach((c, i) => add('category', c.id, daysAgo(30), { name: c.name, kind: c.kind, icon: c.icon, sort_order: i }))
 
   // --- Accounts (minor units) ---
-  add('account', 'demo-acct-bank', daysAgo(30), { name: 'Everyday Bank', type: 'asset', opening_balance: 4200000, currency: 'INR', icon: '🏦' })
-  add('account', 'demo-acct-card', daysAgo(30), { name: 'Rewards Card', type: 'liability', opening_balance: -850000, currency: 'INR', icon: '💳' })
+  // The last-4 in a name is auto-matched against bank/card alerts; the bank's
+  // debit-card number (different from the account number) rides as a hint.
+  // Everyday Bank is the ★ default for manual/voice/receipt entries.
+  add('account', 'demo-acct-bank', daysAgo(30), { name: 'Everyday Bank 4821', type: 'asset', opening_balance: 4200000, currency: 'INR', icon: '🏦', match_hints: '6604', is_default: 1 })
+  add('account', 'demo-acct-card', daysAgo(30), { name: 'Rewards Card 7392', type: 'liability', opening_balance: -850000, currency: 'INR', icon: '💳' })
   add('account', 'demo-acct-savings', daysAgo(30), { name: 'Savings', type: 'asset', opening_balance: 12000000, currency: 'INR', icon: '🐷' })
 
   // --- Money (minor units, mixed categories/accounts/dates) ---
@@ -81,6 +84,23 @@ function buildSeeds(): Seed[] {
   money.forEach(([desc, amount, direction, category_id, account_id, ago], i) => {
     const at = daysAgo(ago)
     add('money', `demo-money-${i}`, at, { amount, currency: 'INR', direction, category_id, account_id, description: desc, occurred_at: at, source: 'manual', tags: [] })
+  })
+
+  // --- Auto-imported bank/card alerts (what email/SMS ingest produces) ---
+  // account_id is what the real matcher picks from the alert text (asserted in
+  // tests/demo-seed.test.ts). Two are left untagged on purpose: an unknown card
+  // (•1188 → the "which account?" pill) and an older Rewards Card alert that
+  // still has no account (→ Settings › Accounts › Past alerts "Tag 1").
+  const alerts = [
+    ['Rs.1,240.00 spent on your Rewards Card ending 7392 at SAMPLE CAFE', 124000, 'demo-cat-dining', 'demo-acct-card', 'email', 'SAMPLE CAFE', 7],
+    ['Sent Rs.600.00 from Everyday Bank A/c XX4821 to METROTRANSIT. UPI Ref 401234567890', 60000, 'demo-cat-transport', 'demo-acct-bank', 'sms', 'METROTRANSIT', 5],
+    ['Thank you for using your Everyday Bank Debit Card ending 6604 for Rs.450.00 at FRESH BASKET', 45000, 'demo-cat-groceries', 'demo-acct-bank', 'email', 'FRESH BASKET', 3],
+    ['Rs.899.00 spent on Credit Card ending 1188 at BOOKNOOK', 89900, null, null, 'email', 'BOOKNOOK', 1],
+    ['Rs.320.00 spent on your Rewards Card ending 7392 at BEAN & BREW', 32000, 'demo-cat-dining', null, 'email', 'BEAN & BREW', 27],
+  ] as const
+  alerts.forEach(([raw_input, amount, category_id, account_id, source, merchant, ago], i) => {
+    const at = daysAgo(ago)
+    add('money', `demo-alert-${i}`, at, { amount, currency: 'INR', direction: 'out', category_id, account_id, description: merchant, merchant, occurred_at: at, source, raw_input, tags: [] })
   })
 
   // --- Budgets (near / over / under) ---

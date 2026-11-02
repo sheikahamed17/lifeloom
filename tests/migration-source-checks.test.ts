@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import type { DatabaseSync } from 'node:sqlite'
 import { migratedSqlite } from './helpers/migrated-sqlite'
 import { OP_TYPES } from '@/types/ops'
@@ -13,7 +13,7 @@ import { JournalPayloadSchema } from '@/lib/op-schemas/journal'
 
 // Every value an op-schema enum accepts must be storable in its D1 column.
 // A CHECK that lags its schema makes each such op fail to materialize
-// (SQLITE_CONSTRAINT_CHECK) â€” silently on /api/sync, as a 500 on email/SMS
+// (SQLITE_CONSTRAINT_CHECK) — silently on /api/sync, as a 500 on email/SMS
 // ingest, and it broke the demo reset (fixed by migration 0028). This test
 // INSERTS into the real migrated schema, so it catches any CHECK form.
 const T = '2026-01-01T00:00:00.000Z'

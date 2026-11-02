@@ -36,10 +36,15 @@ overrides:
   qs: '>=6.16.1'                    # 2026-11: raised from >=6.16.0 (med) — only 6.x live
   # 2026-11 sweep — new transitive floors (single-major in the tree unless scoped):
   proxy-addr: '>=2.0.8'             # 1 alert (critical) — IPv4-mapped IPv6 spoofing; child of express
-  vite: '>=8.1.6 <9'                # 5 alerts (high/med/low) — child of vitest
   source-map-js: '>=1.2.2'          # 1 alert (high) — child of postcss / next
-  zod: '^4.6.6'                     # 1 alert (high) — transitive 4.4.x copies (direct dep is already 4.6.7)
+  'zod@<4.6.6': '^4.6.7'            # 1 alert (high) — @serwist/build's 4.4.x copy. Version-scoped on purpose:
+                                    #   a bare `zod:` override rewrites the DIRECT dep's specifier too, so
+                                    #   pnpm-lock.yaml no longer matches package.json and CI's
+                                    #   --frozen-lockfile install fails (it did: 1078dcf).
   'glob@10': '>=10.5.0 <11'         # 1 alert (high) — 10.x line only (via @node-minify/core)
+  # vite (5 alerts) is fixed by declaring it as a direct devDependency (^8.3.5): it is
+  # only a PEER of vitest, and overrides don't reach auto-installed peers. Don't add
+  # a bare `vite:` override back — same specifier-rewrite trap as zod above.
   # Not fixable by override (no patched release on the line in use) — build/lint
   # tooling only, never shipped in the Worker: glob@13 (OpenNext/Serwist; fix is
   # 14.x), minimatch 3/9/10 (ESLint/glob; fix is 11.x), deepmerge (fix 4.3.2 is

@@ -6,37 +6,45 @@ import { Button } from '@/components/ui/button'
 import { AuroraBackground } from '@/components/aurora-background'
 import { runBackfill, BackfillHttpError, type BackfillResult } from '@/lib/backfill-driver'
 
-// Small pages + a pause keep each request inside the Workers Free plan's 10 ms
-// CPU budget (20-op pages were killed with "exceeded CPU time limit" → 503);
-// a killed page is retried from the same cursor, which is safe because the
-// replay is an idempotent per-field LWW upsert.
-const PAGE_SIZE = 5
-const PAUSE_MS = 300
-const RETRIES = 5
-const MAX_PAGES = 2000   // 10,000 ops — far above a single user's op_log
+// Workers Free plan: 10 ms CPU per request, tolerated only "infrequently" —
+// once a Worker overruns consistently, Cloudflare kills its requests (503).
+// Every request pays a fixed framework cost above 10 ms, so the rebuild uses
+// few, large pages (the server caps at 50) spaced apart, and on a 503 it cools
+// down for a long while and retries a smaller page from the same cursor (safe:
+// the replay is an idempotent per-field LWW upsert). 5-op pages made it worse —
+// 10× the requests, each over budget.
+const MAX_PAGE = 50
+const MIN_PAGE = 10
+const PAUSE_MS = 2000
+const COOLDOWN_MS = [15_000, 30_000, 60_000, 60_000, 60_000, 60_000]
+const MAX_PAGES = 2000   // far above a single user's op_log
 
 export default function RebuildPage() {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [processed, setProcessed] = useState(0)
+  const [waitingSec, setWaitingSec] = useState<number | null>(null)
   const [result, setResult] = useState<BackfillResult | null>(null)
 
   async function rebuild(startAfter?: string) {
     const base = startAfter ? (result?.totalProcessed ?? 0) : 0
     const baseErrors = startAfter ? (result?.totalErrors ?? 0) : 0
-    setBusy(true); setResult(null); setProcessed(base)
-    const res = await runBackfill(async (after) => {
+    setBusy(true); setResult(null); setProcessed(base); setWaitingSec(null)
+    const res = await runBackfill(async (after, limit) => {
       const response = await fetch('/api/admin/backfill', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ after, limit: PAGE_SIZE }),
+        body: JSON.stringify({ after, limit }),
       })
       if (!response.ok) throw new BackfillHttpError(response.status)
       return response.json()
     }, {
-      startAfter, retries: RETRIES, pauseMs: PAUSE_MS, maxIterations: MAX_PAGES,
-      onProgress: p => setProcessed(base + p.totalProcessed),
+      startAfter, maxPageSize: MAX_PAGE, minPageSize: MIN_PAGE, pauseMs: PAUSE_MS, maxIterations: MAX_PAGES,
+      retries: COOLDOWN_MS.length, retryDelayMs: attempt => COOLDOWN_MS[attempt],
+      onRetry: r => setWaitingSec(Math.round(r.delayMs / 1000)),
+      onProgress: p => { setWaitingSec(null); setProcessed(base + p.totalProcessed) },
     })
+    setWaitingSec(null)
     setResult({ ...res, totalProcessed: base + res.totalProcessed, totalErrors: baseErrors + res.totalErrors })
     setBusy(false)
   }
@@ -52,12 +60,15 @@ export default function RebuildPage() {
 
         <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
           <p>Re-sync your history into the server tables (fixes stale budgets/insights). Safe to run anytime — your on-device data isn&apos;t touched.</p>
-          <p className="text-xs text-muted-foreground">It works in small batches to stay within Cloudflare&apos;s free-plan limits, so a large history can take a few minutes. Keep this page open.</p>
+          <p className="text-xs text-muted-foreground">It works in batches and pauses whenever Cloudflare&apos;s free plan asks it to slow down, so it can take a few minutes. Keep this page open.</p>
         </section>
 
         <section className="glass flex flex-col gap-3 rounded-2xl p-4" aria-live="polite">
           <Button onClick={() => rebuild()} disabled={busy}>{busy ? 'Rebuilding…' : 'Start rebuild'}</Button>
           {busy && <p className="text-sm text-muted-foreground">Rebuilt {processed} ops so far…</p>}
+          {busy && waitingSec !== null && (
+            <p className="text-sm text-muted-foreground">Cloudflare&apos;s free plan asked us to slow down — trying again in {waitingSec} s. Nothing is lost.</p>
+          )}
           {result?.completed && (
             <div className="flex flex-col gap-2 text-sm">
               <p className="text-green-400">Rebuilt {result.totalProcessed} ops ✓</p>

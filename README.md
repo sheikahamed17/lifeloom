@@ -202,7 +202,7 @@ src/
   app/            # Next App Router — routes, API handlers, pages (/app, /analytics, /insights, /settings/*)
   lib/            # sync engine, agents, ingest, auth/email, pure helpers (unit-tested)
   components/     # UI: capture chips, domain lists, answer cards, charts
-migrations/       # D1 schema, applied in order 0001 → 0027
+migrations/       # D1 schema, applied in order 0001 → 0029
 scripts/          # icon generation, service-worker build, router eval, VAPID keygen
 tests/            # vitest suites (agents, api routes, sync, lib)
 docs/superpowers/ # design specs and implementation plans

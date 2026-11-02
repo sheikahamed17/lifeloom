@@ -99,7 +99,15 @@ export async function POST(req: Request) {
     entity_kind: op.entity_kind, entity_id: op.entity_id, op_type: op.op_type,
     payload: JSON.stringify(op.payload), schema_version: op.schema_version, applied_at: Date.now(),
   }).onConflict(oc => oc.column('id').doNothing()).execute()
-  await materializeRow(db, op, userId)
+  // Best-effort, like /api/sync: the op_log row above IS the entry (clients sync
+  // from it; Settings → Rebuild re-projects). A projection failure here used to
+  // 500 the request after recording the op, so the forwarder's retry hit the
+  // dedup check and the categorize push below was never sent.
+  try {
+    await materializeRow(db, op, userId)
+  } catch (err) {
+    console.error('sms-ingest materialize failed', err)
+  }
 
   // Per-entry categorize push (added:true path only — never dedup/non-txn/dryRun).
   // Best-effort: a push failure must not fail the ingest, the entry already exists.

@@ -68,4 +68,42 @@ describe('runBackfill', () => {
     expect(sleeps).toEqual([1000, 2000, 250])   // backoff ×2, then the between-page pause
     expect(progress).toEqual([5, 7])
   })
+
+  it('sends no limit when no page size is configured (server default)', async () => {
+    const limits: Array<number | undefined> = []
+    await runBackfill(async (_after, limit) => { limits.push(limit); return page(1, null, true) })
+    expect(limits).toEqual([undefined])
+  })
+
+  it('halves the page after a platform rejection and grows it back after successes', async () => {
+    const limits: Array<number | undefined> = []
+    let calls = 0
+    const r = await runBackfill(async (_after, limit) => {
+      limits.push(limit)
+      calls++
+      if (calls === 2 || calls === 3) throw new BackfillHttpError(503)
+      return calls === 7 ? page(1, null, true) : page(limit ?? 0, `h${calls}`)
+    }, { maxPageSize: 40, minPageSize: 5, retries: 5, sleep: noSleep })
+    expect(r.completed).toBe(true)
+    //            ok  503 503 ok  ok  ok  done
+    expect(limits).toEqual([40, 40, 20, 10, 20, 40, 40])
+  })
+
+  it('never shrinks the page below the minimum', async () => {
+    const limits: Array<number | undefined> = []
+    await runBackfill(async (_after, limit) => { limits.push(limit); throw new BackfillHttpError(503) },
+      { maxPageSize: 8, minPageSize: 5, retries: 3, sleep: noSleep })
+    expect(limits).toEqual([8, 5, 5, 5])
+  })
+
+  it('reports each cool-down before sleeping, so the UI can say it is waiting rather than stuck', async () => {
+    const events: string[] = []
+    let calls = 0
+    await runBackfill(async () => { if (calls++ < 2) throw new BackfillHttpError(503); return page(1, null, true) }, {
+      retries: 3, retryDelayMs: a => [15000, 30000][a],
+      sleep: async ms => { events.push(`sleep ${ms}`) },
+      onRetry: i => events.push(`retry ${i.attempt} in ${i.delayMs} (${i.error})`),
+    })
+    expect(events).toEqual(['retry 1 in 15000 (HTTP 503)', 'sleep 15000', 'retry 2 in 30000 (HTTP 503)', 'sleep 30000'])
+  })
 })

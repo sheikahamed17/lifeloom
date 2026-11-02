@@ -62,7 +62,8 @@ vi.mock('@opennextjs/cloudflare', () => ({ getCloudflareContext: () => ({ env: {
 vi.mock('@/lib/db', () => ({ createDb: () => currentFakeDb }))
 vi.mock('@/lib/agents/llm-client', () => ({ makeGroqClient: () => ({}) }))
 vi.mock('@/lib/agents/sms-agent', () => ({ parseSms: (...a: unknown[]) => parseSmsMock(...a) }))
-vi.mock('@/lib/materialize', () => ({ materializeRow: vi.fn(async () => {}) }))
+const materializeMock = vi.fn(async (..._a: unknown[]) => {})
+vi.mock('@/lib/materialize', () => ({ materializeRow: (...a: unknown[]) => materializeMock(...a) }))
 
 const sendPushMock = vi.fn(async (..._a: unknown[]) => ({ sent: 1, pruned: 0 }))
 vi.mock('@/lib/web-push', () => ({ sendPushToUser: (...a: unknown[]) => sendPushMock(...a) }))
@@ -225,6 +226,17 @@ describe('POST /api/ingest/sms', () => {
     await POST(dry)
     expect(pushRows).toHaveLength(0)
     expect(sendPushMock).not.toHaveBeenCalled()
+  })
+
+  it('still returns added:true AND sends the push when the server projection fails', async () => {
+    parseSmsMock.mockResolvedValue({ is_transaction: true, amount: 47500, currency: 'INR', direction: 'out', merchant: 'CRUNCHYROLL' })
+    materializeMock.mockRejectedValueOnce(new Error('CHECK constraint failed: source IN (...)'))
+    sendPushMock.mockClear()
+    const res = await POST(reqS(goodToken, 'Rs.475 spent CRUNCHYROLL projection-down', 'email'))
+    expect(res.status).toBe(200)
+    expect((await res.json() as { added: boolean }).added).toBe(true)
+    expect(opLog).toHaveLength(1)
+    expect(sendPushMock).toHaveBeenCalledTimes(1)
   })
 
   it('still returns added:true when the push send throws', async () => {

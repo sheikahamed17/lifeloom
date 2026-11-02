@@ -13,11 +13,20 @@
 -- Display code already merges same-name categories (makeCategoryResolver), and
 -- no server code relies on the name being unique. SQLite can't drop a
 -- table-level constraint, so the table is rebuilt with every column, default
--- and index preserved. categories is a foreign-key PARENT (money_entries,
--- recurring_rules → category_id); defer_foreign_keys lets the drop + rename
--- happen inside the migration's transaction, and the copied rows keep their ids
--- so every reference still resolves at commit. After deploy, Settings → Rebuild
--- server data projects the categories (and the entries) that were rejected.
+-- and index preserved.
+--
+-- categories is a foreign-key PARENT (money_entries.category_id,
+-- recurring_rules.category_id). Dropping it deletes its rows first, and with
+-- defer_foreign_keys on, SQLite counts every child row that pointed at them as a
+-- pending violation; the rename does NOT clear that count. The trailing
+-- `defer_foreign_keys = off` is REQUIRED — it discards the count (without it the
+-- commit fails). That also means nothing re-checks references at commit, so
+-- integrity rests on the copy being complete: explicit column list, no WHERE,
+-- ids unchanged. Verify after applying with `PRAGMA foreign_key_check` (empty).
+-- (0028 didn't need `off`: it rebuilt child tables, which count nothing.)
+--
+-- After deploy, Settings → Rebuild server data projects the categories (and the
+-- entries) that were rejected.
 
 PRAGMA defer_foreign_keys = on;
 

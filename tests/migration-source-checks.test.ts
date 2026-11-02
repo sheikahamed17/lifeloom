@@ -57,7 +57,7 @@ describe('D1 CHECK constraints accept every op-schema enum value', () => {
     expect(values.length).toBeGreaterThan(0)
     for (const value of values) {
       const row: Record<string, unknown> = { ...base[table], id: `row-${++n}`, [column]: value }
-      if (table === 'categories') row.name = `cat-${n}`   // UNIQUE (user_id, name, kind)
+      if (table === 'categories') row.name = `cat-${n}`   // distinct names keep the rows easy to tell apart
       const cols = Object.keys(row)
       const insert = () => db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`)
         .run(...cols.map(c => row[c] as string | number))

@@ -27,7 +27,9 @@ describe(`migration ${FILE}`, () => {
     const db = sqliteBefore(FILE)
     db.prepare(`INSERT INTO user (id, email, name, email_verified, created_at, updated_at) VALUES ('u1', 'a@b.c', 'a', 1, ?, ?)`).run(NOW, NOW)
     cat(db, 'c-old', 'Food', NOW)          // a deleted duplicate that got projected first
-    cat(db, 'c-rent', 'Rent')
+    // every column non-default, so a swapped or dropped column in the copy shows up
+    db.prepare(`INSERT INTO categories (id, user_id, name, kind, icon, color, sort_order, is_archived, field_hlcs, deleted_at, created_at, updated_at)
+                VALUES ('c-rent', 'u1', 'Rent', 'income', '🏠', '#aabbcc', 7, 1, '{"name":"h1"}', NULL, '2026-01-01T00:00:00.000Z', '2026-02-02T00:00:00.000Z')`).run()
     db.prepare(`INSERT INTO money_entries (id, user_id, amount, currency, direction, category_id, occurred_at, source, field_hlcs, created_at, updated_at)
                 VALUES ('m1', 'u1', 100, 'INR', 'out', 'c-old', ?, 'manual', '{}', ?, ?), ('m2', 'u1', 200, 'INR', 'out', 'c-rent', ?, 'manual', '{}', ?, ?)`)
       .run(NOW, NOW, NOW, NOW, NOW, NOW)
@@ -37,13 +39,28 @@ describe(`migration ${FILE}`, () => {
     // the bug: a live category can't share a name with a tombstone
     expect(() => cat(db, 'c-live', 'Food')).toThrow(/UNIQUE/)
 
+    const snapshot = () => ({
+      rows: db.prepare('SELECT * FROM categories ORDER BY id').all(),
+      columns: db.prepare('PRAGMA table_xinfo(categories)').all(),
+      fks: db.prepare('PRAGMA foreign_key_list(categories)').all(),
+      moneyFks: db.prepare('PRAGMA foreign_key_list(money_entries)').all(),
+      recurringFks: db.prepare('PRAGMA foreign_key_list(recurring_rules)').all(),
+      children: db.prepare('SELECT id, category_id FROM money_entries UNION ALL SELECT id, category_id FROM recurring_rules ORDER BY id').all(),
+    })
+    const before = snapshot()
+
     // D1 applies a migration file as one transaction
     db.exec('BEGIN')
     db.exec(readFileSync(join(DIR, FILE), 'utf8'))
     db.exec('COMMIT')
 
-    expect(db.prepare('SELECT id FROM categories ORDER BY id').all().map(r => r.id)).toEqual(['c-old', 'c-rent'])
+    // identical rows, columns (type/NOT NULL/default), FKs on and into categories
+    expect(snapshot()).toEqual(before)
+    expect(before.rows).toHaveLength(2)
+    expect(before.fks).toMatchObject([{ table: 'user', from: 'user_id', on_delete: 'CASCADE' }])
     expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+    expect(() => db.prepare(`INSERT INTO categories (id, user_id, name, kind, field_hlcs, created_at, updated_at) VALUES ('c-bad', 'u1', 'X', 'bogus', '{}', ?, ?)`)
+      .run(NOW, NOW)).toThrow(/CHECK/)
     expect(db.prepare(`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='categories' AND name NOT LIKE 'sqlite_autoindex%'`).all().map(r => r.name))
       .toEqual(['idx_categories_user_kind'])
 

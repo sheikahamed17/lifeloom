@@ -30,6 +30,7 @@ type AuthEnvBindings = {
   BETTER_AUTH_URL?: string
   RESEND_API_KEY?: string
   EMAIL_FROM?: string
+  AUTH_VALIDATE_SCHEMA?: string   // 'true' → Better Auth's per-request schema check (tests only)
 }
 
 function buildAuth() {
@@ -64,6 +65,15 @@ function buildAuth() {
     advanced: {
       ipAddress: {
         ipAddressHeaders: ['cf-connecting-ip'],
+      },
+      // Better Auth ≥1.7 re-validates the DB schema on every request, and
+      // buildAuth() runs per request, so its cache never survives: ~4× the CPU
+      // of a plain get-session (measured), which pushed requests past the
+      // Workers Free plan's 10 ms limit (503 "exceeded CPU time limit"). The
+      // schema is instead verified in CI by tests/lib/auth-real-schema.test.ts,
+      // which opts back in via AUTH_VALIDATE_SCHEMA against the real migrations.
+      database: {
+        validateSchema: cfEnv.AUTH_VALIDATE_SCHEMA === 'true',
       },
     },
     // Better Auth defaults to camelCase column names (expiresAt, userId, etc.)

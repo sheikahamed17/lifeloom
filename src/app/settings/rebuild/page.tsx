@@ -4,32 +4,41 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { AuroraBackground } from '@/components/aurora-background'
-import { runBackfill } from '@/lib/backfill-driver'
+import { runBackfill, BackfillHttpError, type BackfillResult } from '@/lib/backfill-driver'
+
+// Small pages + a pause keep each request inside the Workers Free plan's 10 ms
+// CPU budget (20-op pages were killed with "exceeded CPU time limit" → 503);
+// a killed page is retried from the same cursor, which is safe because the
+// replay is an idempotent per-field LWW upsert.
+const PAGE_SIZE = 5
+const PAUSE_MS = 300
+const RETRIES = 5
+const MAX_PAGES = 2000   // 10,000 ops — far above a single user's op_log
 
 export default function RebuildPage() {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<{ totalProcessed: number; totalErrors: number; completed: boolean } | null>(null)
+  const [processed, setProcessed] = useState(0)
+  const [result, setResult] = useState<BackfillResult | null>(null)
 
-  async function rebuild() {
-    setBusy(true); setError(null); setResult(null)
-    try {
-      const res = await runBackfill(async (after) => {
-        const response = await fetch('/api/admin/backfill', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ after }),
-        })
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        return response.json()
+  async function rebuild(startAfter?: string) {
+    const base = startAfter ? (result?.totalProcessed ?? 0) : 0
+    const baseErrors = startAfter ? (result?.totalErrors ?? 0) : 0
+    setBusy(true); setResult(null); setProcessed(base)
+    const res = await runBackfill(async (after) => {
+      const response = await fetch('/api/admin/backfill', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ after, limit: PAGE_SIZE }),
       })
-      setResult(res)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      setBusy(false)
-    }
+      if (!response.ok) throw new BackfillHttpError(response.status)
+      return response.json()
+    }, {
+      startAfter, retries: RETRIES, pauseMs: PAUSE_MS, maxIterations: MAX_PAGES,
+      onProgress: p => setProcessed(base + p.totalProcessed),
+    })
+    setResult({ ...res, totalProcessed: base + res.totalProcessed, totalErrors: baseErrors + res.totalErrors })
+    setBusy(false)
   }
 
   return (
@@ -42,17 +51,25 @@ export default function RebuildPage() {
         </header>
 
         <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
-          <p>Re-sync your history into the server tables (fixes stale budgets/insights). Safe to run anytime.</p>
+          <p>Re-sync your history into the server tables (fixes stale budgets/insights). Safe to run anytime — your on-device data isn&apos;t touched.</p>
+          <p className="text-xs text-muted-foreground">It works in small batches to stay within Cloudflare&apos;s free-plan limits, so a large history can take a few minutes. Keep this page open.</p>
         </section>
 
-        <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-          <Button onClick={rebuild} disabled={busy}>{busy ? 'Rebuilding…' : 'Start rebuild'}</Button>
-          {error && <p role="alert" className="text-xs text-rose-500">{error}</p>}
-          {result && (
+        <section className="glass flex flex-col gap-3 rounded-2xl p-4" aria-live="polite">
+          <Button onClick={() => rebuild()} disabled={busy}>{busy ? 'Rebuilding…' : 'Start rebuild'}</Button>
+          {busy && <p className="text-sm text-muted-foreground">Rebuilt {processed} ops so far…</p>}
+          {result?.completed && (
             <div className="flex flex-col gap-2 text-sm">
               <p className="text-green-400">Rebuilt {result.totalProcessed} ops ✓</p>
-              {result.totalErrors > 0 && <p className="text-amber-400">…{result.totalErrors} errors</p>}
-              {!result.completed && <p className="text-amber-400">stopped early</p>}
+              {result.totalErrors > 0 && <p className="text-amber-400">…{result.totalErrors} ops could not be projected (they stay safe in your history)</p>}
+            </div>
+          )}
+          {result && !result.completed && (
+            <div role="alert" className="flex flex-col gap-2 text-sm">
+              <p className="text-amber-400">
+                Paused after {result.totalProcessed} ops{result.error ? ` (${result.error})` : ''}. Nothing is lost — continue where it stopped.
+              </p>
+              <Button variant="outline" onClick={() => rebuild(result.after)} disabled={busy}>Continue rebuild</Button>
             </div>
           )}
         </section>

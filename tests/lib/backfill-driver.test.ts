@@ -1,20 +1,71 @@
-import { describe, it, expect } from 'vitest'
-import { runBackfill } from '@/lib/backfill-driver'
+import { describe, it, expect, vi } from 'vitest'
+import { runBackfill, BackfillHttpError, type BackfillPage } from '@/lib/backfill-driver'
+
+const page = (processed: number, next_after: string | null, done = false, errors: unknown[] = []): BackfillPage =>
+  ({ processed, next_after, done, errors })
+const noSleep = async () => {}
 
 describe('runBackfill', () => {
   it('loops pages until done, accumulating totals', async () => {
-    const pages = [
-      { processed: 2, next_after: 'h2', done: false, errors: [] },
-      { processed: 2, next_after: 'h4', done: false, errors: [{}] },
-      { processed: 1, next_after: 'h5', done: true, errors: [] },
-    ]
+    const pages = [page(2, 'h2'), page(2, 'h4', false, [{}]), page(1, 'h5', true)]
     let i = 0
     const r = await runBackfill(async () => pages[i++])
-    expect(r).toEqual({ totalProcessed: 5, totalErrors: 1, completed: true, iterations: 3 })
+    expect(r).toEqual({ totalProcessed: 5, totalErrors: 1, iterations: 3, after: 'h4', completed: true })
   })
+
   it('stops at the iteration cap if never done (runaway guard)', async () => {
-    const r = await runBackfill(async () => ({ processed: 1, next_after: 'h', done: false, errors: [] }), 5)
+    const r = await runBackfill(async () => page(1, 'h'), { maxIterations: 5 })
     expect(r.completed).toBe(false)
     expect(r.iterations).toBe(5)
+  })
+
+  it('retries a page the platform killed (503 = Workers CPU limit) and carries on from the same cursor', async () => {
+    const seen: Array<string | undefined> = []
+    let calls = 0
+    const r = await runBackfill(async (after) => {
+      seen.push(after)
+      calls++
+      if (calls === 2) throw new BackfillHttpError(503)
+      return calls === 1 ? page(5, 'h5') : page(3, 'h8', true)
+    }, { retries: 3, sleep: noSleep })
+    expect(r).toMatchObject({ completed: true, totalProcessed: 8, iterations: 2 })
+    expect(seen).toEqual([undefined, 'h5', 'h5'])   // the failed page is re-POSTed, not skipped
+  })
+
+  it('treats a network failure (no status) as retryable', async () => {
+    let calls = 0
+    const r = await runBackfill(async () => { if (calls++ === 0) throw new TypeError('Failed to fetch'); return page(1, null, true) },
+      { retries: 1, sleep: noSleep })
+    expect(r.completed).toBe(true)
+  })
+
+  it('returns a resume cursor instead of throwing when a page keeps failing', async () => {
+    let calls = 0
+    const r = await runBackfill(async () => { if (calls++ === 0) return page(5, 'h5'); throw new BackfillHttpError(503) },
+      { retries: 2, sleep: noSleep })
+    expect(r).toMatchObject({ completed: false, error: 'HTTP 503', after: 'h5', totalProcessed: 5 })
+    expect(calls).toBe(4)   // 1 good page + 1 try + 2 retries
+  })
+
+  it('does not retry a non-retryable status (401)', async () => {
+    const post = vi.fn(async () => { throw new BackfillHttpError(401) })
+    const r = await runBackfill(post, { retries: 5, sleep: noSleep })
+    expect(r).toMatchObject({ completed: false, error: 'HTTP 401' })
+    expect(post).toHaveBeenCalledTimes(1)
+  })
+
+  it('resumes from startAfter, backs off exponentially, pauses between pages, and reports progress', async () => {
+    const sleeps: number[] = []
+    const progress: number[] = []
+    let calls = 0
+    const r = await runBackfill(async (after) => {
+      calls++
+      if (calls === 1) { expect(after).toBe('resume-here'); throw new BackfillHttpError(503) }
+      if (calls === 2) throw new BackfillHttpError(503)
+      return calls === 3 ? page(5, 'h10') : page(2, 'h12', true)
+    }, { startAfter: 'resume-here', retries: 3, pauseMs: 250, sleep: async (ms) => { sleeps.push(ms) }, onProgress: p => progress.push(p.totalProcessed) })
+    expect(r).toMatchObject({ completed: true, totalProcessed: 7 })
+    expect(sleeps).toEqual([1000, 2000, 250])   // backoff ×2, then the between-page pause
+    expect(progress).toEqual([5, 7])
   })
 })

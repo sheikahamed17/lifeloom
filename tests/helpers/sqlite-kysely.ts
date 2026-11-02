@@ -11,13 +11,17 @@ function bindable(params: ReadonlyArray<unknown>): SQLInputValue[] {
           : p as SQLInputValue)
 }
 
-/** A Kysely over node:sqlite — e.g. over migratedSqlite(), to run real queries against the real schema. */
-export function kyselyOverSqlite(db: DatabaseSync): Kysely<DB> {
+/**
+ * A Kysely over node:sqlite — e.g. over migratedSqlite(), to run real queries
+ * against the real schema. `onSql` sees every statement prepared.
+ */
+export function kyselyOverSqlite(db: DatabaseSync, onSql?: (sql: string) => void): Kysely<DB> {
   return new Kysely<DB>({
     dialect: new SqliteDialect({
       database: {
         close: () => db.close(),
         prepare: (sql: string) => {
+          onSql?.(sql)
           const st = db.prepare(sql)
           return {
             reader: st.columns().length > 0,

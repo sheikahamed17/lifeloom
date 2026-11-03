@@ -94,7 +94,10 @@ Wrangler prints your live URL (e.g. `https://pulse.<you>.workers.dev`). If you h
 
 > **⚠ Use your Resend-account email.** On Resend's free tier without a verified domain, the sandbox sender `onboarding@resend.dev` **only delivers to the email you signed up to Resend with**. So enter *that* email on the login page — the magic link arrives there. That's all a personal single-user instance needs; **no domain required.**
 >
-> (To let *other people* sign in to one shared instance, verify a domain in Resend and change `EMAIL_FROM` to `you@yourdomain.com`. For most people, a separate self-hosted copy each is simpler.)
+> **The first account is the only account.** Whoever signs in first (the setup wizard) becomes the instance's owner. After that, no other address can create an account or even receive a sign-in link. The login page still says "link sent", so it doesn't reveal your address. This holds even if you later verify a domain in Resend: a domain only changes the address the email comes *from*. Anyone else who wants Pulse deploys their own copy.
+>
+> **Changing your email later:** update the owner row, then sign in with the new address (your passkeys keep working):
+> `wrangler d1 execute pulse --remote --command "UPDATE user SET email = 'new@example.com' WHERE email = 'old@example.com'"`
 
 After signing in, add a **passkey** (Settings → Security) for Face ID / one-tap sign-in on your phone. Then "Add to Home Screen" to install it as a PWA.
 

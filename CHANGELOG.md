@@ -35,7 +35,12 @@ entry in your history, and sign-in locked to the instance's owner. Migrations
 - **SPENT · month breakdown no longer truncates category names.** Each row capped the category label to a fixed 48px column with an ellipsis ("Gro…", "Sub…", "Sna…"); labels now render in full (no shrink, no ellipsis) and the progress bar flexes to fit the remaining space. Applies everywhere the card appears (money sidebar, mobile card, dashboard widget).
 
 ### Security
-- **Only the owner can sign in.** Pulse is single-user, but nothing enforced it: anyone who could reach the login page could request a magic link, and the instance stayed private only because Resend's sandbox sender can't email anyone but the Resend account. Verifying a sending domain would have let anyone create an account. Now the first account (the setup wizard) is the only one: sign-in links go only to the owner, the response looks the same for any other address (so it doesn't reveal yours), and creating a second user is refused outright, including from a link issued before the owner existed. SELF-HOSTING explains how to change the owner's email.
+- **Only the owner can sign in.** Pulse is single-user, but nothing enforced it: anyone who could reach the login page could request a magic link, and the instance stayed private only because Resend's sandbox sender can't email anyone but the Resend account. Verifying a sending domain would have let anyone create an account.
+  - The first account (the setup wizard) is now the only one, and sign-in links go only to that account.
+  - For any other address the login page answers the same way, just as fast, so it doesn't reveal yours. To make that hold, the owner's sign-in email is now sent just after the reply: a Resend failure no longer shows on the login page, it's logged as `[magic-link] email send failed` instead. The setup wizard still shows it.
+  - Creating a second user is refused outright, including from a link issued before the owner existed.
+  - If you share one instance with others, which SELF-HOSTING used to suggest, existing accounts keep signing in, but no new ones can be added.
+  - SELF-HOSTING explains how to change the owner's email.
 
 ## [1.3.0] — 2026-09-16
 

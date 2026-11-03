@@ -35,12 +35,17 @@ type AuthEnvBindings = {
 }
 
 // Pulse is single-user: the first account created (the /setup wizard) is the
-// instance's owner, and no other account is ever created after it. Anyone who
-// can reach /login can ask for a link, so there are two guards:
+// instance's owner, and no other account is created after it. Anyone who can
+// reach /login can ask for a link, so there are two guards:
 //  1. sendMagicLink only sends to the owner (or to anyone while no owner exists).
-//     The response is the same either way, so it doesn't reveal the owner's address.
+//     The response is the same either way, and so is its timing: once an owner
+//     exists the email goes out after the response (waitUntil), and both paths
+//     make the same single query. So the response doesn't reveal the owner's address.
 //  2. databaseHooks.user.create refuses a second user. That covers a link issued
-//     before the owner existed, and any sign-up path added later.
+//     before the owner existed, and any sign-up path added later. It's a check
+//     then an insert, not one atomic step: two links verified at the same instant
+//     on a fresh instance could both get through. That needs two valid links
+//     before anyone has signed in, so it isn't worth a schema-level rule.
 // Before these, Pulse stayed single-user only because Resend's sandbox sender
 // can't email anyone but the Resend account itself; verifying a sending domain
 // would have opened sign-ups to anyone. Both checks run only on sign-in-link
@@ -51,11 +56,17 @@ async function ownerExists(db: Db): Promise<boolean> {
   return Boolean(await db.selectFrom('user').select('id').limit(1).executeTakeFirst())
 }
 
-async function maySendSignInLink(db: Db, email: string): Promise<boolean> {
-  const isOwner = await db.selectFrom('user').select('id')
-    .where(eb => eb(eb.fn('lower', ['email']), '=', email.toLowerCase()))
-    .limit(1).executeTakeFirst()
-  return Boolean(isOwner) || !(await ownerExists(db))
+/**
+ * Who a sign-in link may go to. One query whatever the answer, so a refused
+ * address costs the same as the owner's. Matches the way Better Auth's verify
+ * step looks the user up (input lowercased, exact match), so a link is only
+ * sent when its verify step will find the account.
+ */
+async function signInLinkAudience(db: Db, email: string): Promise<'first-account' | 'existing-account' | 'refused'> {
+  const users = await db.selectFrom('user').select('email').execute()
+  if (users.length === 0) return 'first-account'
+  const wanted = email.toLowerCase()
+  return users.some(u => u.email === wanted) ? 'existing-account' : 'refused'
 }
 
 function buildAuth() {
@@ -146,7 +157,7 @@ function buildAuth() {
         updatedAt: 'updated_at',
       },
     },
-    // Single owner, guard 2 (see maySendSignInLink above). Throwing an APIError
+    // Single owner, guard 2 (see the comment above ownerExists). Throwing an APIError
     // makes the magic-link verify redirect to `?error=SIGNUP_CLOSED` instead of
     // failing with a 500.
     databaseHooks: {
@@ -164,7 +175,8 @@ function buildAuth() {
       magicLink({
         sendMagicLink: async ({ email, url }) => {
           // Single owner, guard 1: no link for anyone but the owner once one exists.
-          if (!(await maySendSignInLink(db, email))) {
+          const audience = await signInLinkAudience(db, email)
+          if (audience === 'refused') {
             console.log('[magic-link] not sent: this instance already has an owner, and that address is not it')
             return
           }
@@ -175,7 +187,18 @@ function buildAuth() {
             console.log(`[magic-link] email not configured; link for ${email}: ${url}`)
             return
           }
-          await sendMagicLinkEmail({ apiKey, from, to: email, url })
+          const sending = sendMagicLinkEmail({ apiKey, from, to: email, url })
+          if (audience === 'first-account') {
+            // The /setup wizard: wait, so a Resend problem shows up as an error
+            // there. Nothing to hide yet: /api/setup/status already says no owner exists.
+            await sending
+            return
+          }
+          // Owner exists: send after responding, so the owner's request takes as
+          // long as a refused one. A failed send is logged (wrangler tail), not shown.
+          getCloudflareContext().ctx.waitUntil(
+            sending.catch(err => console.error('[magic-link] email send failed:', err)),
+          )
         },
       }),
       passkey({

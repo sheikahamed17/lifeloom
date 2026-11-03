@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const TEST_PREFS = { primary_currency: 'INR', tz: 'Asia/Kolkata' }
 
+const DEFAULT_CATEGORIES: Record<string, unknown>[] = [{ id: 'cat1', name: 'Dining', kind: 'spend', user_id: 'user123', is_archived: 0, deleted_at: null, created_at: '2026-01-01T00:00:00.000Z' }]
+let categoryRows = DEFAULT_CATEGORIES
+
 // FIX 2: Chainable fake DB that supports multiple .where() calls
 const fakeDb = {
   selectFrom: (table: string) => {
@@ -36,13 +39,13 @@ const fakeDb = {
             return filtered[0] ?? undefined
           },
           execute: async () => {
-            const data = table === 'categories' ? [{ id: 'cat1', name: 'Dining', kind: 'spend', user_id: 'user123', is_archived: 0, deleted_at: null }] : []
+            const data = table === 'categories' ? categoryRows : []
             return applyWheres(data as Record<string, unknown>[])
           },
         }),
         select: (cols: string[]) => ({
           execute: async () => {
-            const data = table === 'categories' ? [{ id: 'cat1', name: 'Dining', kind: 'spend', user_id: 'user123', is_archived: 0, deleted_at: null }] : []
+            const data = table === 'categories' ? categoryRows : []
             const filtered = applyWheres(data as Record<string, unknown>[])
             return filtered.map((row: Record<string, unknown>) => {
               const result: Record<string, unknown> = {}
@@ -151,6 +154,23 @@ describe('/api/receipt', () => {
 
     // Check mocks after consuming response
     expect(fakeR2.put).toHaveBeenCalled()
+  })
+
+  it('picks the same category every time when the server holds same-name duplicates', async () => {
+    const { parseReceiptImage } = await import('@/lib/agents/receipt-agent')
+    // D1 returns rows in no set order; the canonical id (what the client dedupe keeps) must win
+    const row = (id: string, created_at: string) => ({ id, name: 'Dining', kind: 'spend', user_id: 'user123', is_archived: 0, deleted_at: null, created_at })
+    categoryRows = [row('uuid-dup', '2026-01-01T00:00:00.000Z'), row('cat-user123-dining', '2026-06-01T00:00:00.000Z')]
+    try {
+      const fd = new FormData()
+      fd.append('image', new Blob(['jpeg'], { type: 'image/jpeg' }))
+      const text = await (await POST(new Request('http://x/api/receipt', { method: 'POST', body: fd }))).text()
+      expect(text).toContain('"category_id":"cat-user123-dining"')
+      // …and the AI is offered each name once
+      expect(vi.mocked(parseReceiptImage)).toHaveBeenLastCalledWith(expect.objectContaining({ categories: [{ name: 'Dining', kind: 'spend' }] }))
+    } finally {
+      categoryRows = DEFAULT_CATEGORIES
+    }
   })
 
   it('includes receipt_key in error event when vision fails', async () => {

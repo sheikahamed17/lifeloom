@@ -94,10 +94,12 @@ Wrangler prints your live URL (e.g. `https://pulse.<you>.workers.dev`). If you h
 
 > **⚠ Use your Resend-account email.** On Resend's free tier without a verified domain, the sandbox sender `onboarding@resend.dev` **only delivers to the email you signed up to Resend with**. So enter *that* email on the login page — the magic link arrives there. That's all a personal single-user instance needs; **no domain required.**
 >
-> **The first account is the only account.** Whoever signs in first (the setup wizard) becomes the instance's owner. After that, no other address can create an account or even receive a sign-in link. The login page still says "link sent", so it doesn't reveal your address. This holds even if you later verify a domain in Resend: a domain only changes the address the email comes *from*. Anyone else who wants Pulse deploys their own copy.
+> **The first account is the only account.** Whoever signs in first (the setup wizard) becomes the instance's owner, so sign in as soon as you deploy. After that, no other address can create an account or even receive a sign-in link. The login page answers the same way, just as fast, so it doesn't reveal your address. This holds even if you later verify a domain in Resend: a domain only changes the address the email comes *from*. Anyone else who wants Pulse deploys their own copy.
 >
-> **Changing your email later:** update the owner row, then sign in with the new address (your passkeys keep working):
-> `wrangler d1 execute pulse --remote --command "UPDATE user SET email = 'new@example.com' WHERE email = 'old@example.com'"`
+> Once you're the owner, your sign-in emails are sent just *after* the login page replies. So if Resend has a problem (an expired key, or the quota is used up), the page still says "link sent". If no email arrives, check `wrangler tail` for `[magic-link] email send failed`. A passkey sign-in doesn't need email at all.
+>
+> **Changing your email later:** update the owner row (keep the `lower(...)`, because sign-in matches the lowercase address), then sign in with the new address. Your passkeys keep working.
+> `wrangler d1 execute pulse --remote --command "UPDATE user SET email = lower('new@example.com') WHERE email = lower('old@example.com')"`
 
 After signing in, add a **passkey** (Settings → Security) for Face ID / one-tap sign-in on your phone. Then "Add to Home Screen" to install it as a PWA.
 

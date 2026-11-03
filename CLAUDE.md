@@ -49,7 +49,8 @@ Walk them through the steps below. **The canonical, always-up-to-date reference 
 - **ESLint `react-hooks/purity`:** never call `Date.now()` in a render body or inside `useMemo` — use `new Date().getTime()` (in a `useMemo`/handler), or the deploy's Lint step fails.
 - **Charts** are inline SVG (no chart library). Follow the dataviz method: form → **validated** palette → marks → hover → a11y. Categorical color follows the **entity** (hash its name), never its rank; never a dual-axis; series colors must not reuse the categorical hues.
 - **Money amounts are minor units** — divide by 100 for display, except **JPY** (whole). Currency conversion goes through `convertViaRates` (fallback to 0 on a missing rate).
-- **Category name resolution for display must span ALL categories** (including archived/tombstoned) via `makeCategoryResolver` + `useAllCategories`, and breakdowns merge same-name buckets; category **pickers** use active-only `useCategories`.
+- **Category name resolution for display must span ALL categories** (including archived/tombstoned) via `makeCategoryResolver` + `useAllCategories`, and breakdowns merge same-name buckets; category **pickers** use active-only `useCategories`. Server code that maps an AI-picked category *name* to an id goes through `captureCategories` (one per name+kind, canonical id first), since the server can hold live same-name copies.
+- **Single owner.** The first account (the `/setup` wizard) is the instance's only account: `src/lib/auth.ts` sends sign-in links only to the owner and refuses to create a second user (`databaseHooks.user.create`). Don't add a sign-up path that skips Better Auth's `createUser`, and keep `tests/lib/auth-single-owner.test.ts` green.
 - **Client-only (read/display) features need no migration** — only new persisted entity kinds or columns do.
 
 ## Where things are

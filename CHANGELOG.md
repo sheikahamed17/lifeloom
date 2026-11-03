@@ -11,8 +11,9 @@ Each release is also published with notes on
 
 Account auto-pick v2 — imported bank/card alerts now land on the right account
 with no setup beyond naming it — plus a fix for tags being re-encoded in the
-server database, and fixes that let the server projection hold every category and
-entry in your history. Migrations `0027`–`0029`, applied automatically on deploy.
+server database, fixes that let the server projection hold every category and
+entry in your history, and sign-in locked to the instance's owner. Migrations
+`0027`–`0029`, applied automatically on deploy.
 
 ### Added
 - **Account last-4 in the name is auto-matched.** An account named like *"Rewards Card 7392"* now catches alerts for that card with no hints configured; hints remain for extra numbers or keywords (e.g. a bank account's debit-card digits). ([3a0f018](https://github.com/sheikahamed17/pulse/commit/3a0f018))
@@ -29,8 +30,17 @@ entry in your history. Migrations `0027`–`0029`, applied automatically on depl
 - **Most categories — and the entries using them — never reached the server.** The server's categories table required a unique name per kind and counted deleted rows, but the op-log legitimately holds same-name categories (each device seeded the defaults under its own ids; the app then deleted the extras). Whichever copy landed first — often one later deleted — blocked the live category of that name, and every money entry or recurring rule pointing at it then failed its category foreign key: on one real history, 551 of 1,218 ops, leaving 0 of 21 live categories and 41 of 310 entries categorised server-side. Budget alerts and the weekly digest lost categories, and voice/receipt capture (which offers the AI your live categories) saw none. Migration `0029` drops the constraint (display already merges same-name categories); run Settings → Rebuild server data once after updating.
 - **HTTP 503s on the Workers Free plan.** The Better Auth 1.7 upgrade re-checked the database schema on every request (~4× the CPU of a session check), pushing pages, sync and Settings → Rebuild server data past the free plan's 10 ms CPU limit. The check is now off at runtime and runs in CI against the real migrations instead. ([60f825e](https://github.com/sheikahamed17/pulse/commit/60f825e))
 - **Rebuild server data stalled partway on the free plan.** Cloudflare only tolerates *occasional* CPU overruns, and every request carries a fixed framework cost above 10 ms, so a long run of small batches got cut off. The rebuild now sends few, large batches (50 ops) spaced 2 s apart; on a 503 it says it's waiting, cools down (15 s → 60 s), retries a smaller batch from the same spot, and grows back once requests succeed. A batch that still fails leaves a *Continue rebuild* button that resumes where it stopped.
+- **Voice and receipt capture picked a same-name category at random.** When the server held more than one live category with the same name, capture took whichever row the database returned first, so the same receipt could land on different copies. Capture now uses one category per name and kind, chosen the same way every time: the canonical id the client-side cleanup keeps, otherwise the oldest. The AI is also offered each name only once.
 - **Responsive layout across all devices and screen sizes.** Two bugs made the app render poorly off phone-width: (1) on `/app`, the grid/flex content column defaulted to `min-width: auto`, so the header (logo + nav icons + Sign out) and capture bar refused to shrink and forced a ~120px horizontal scroll on narrow phones (and pushed the sidebar off-screen at tablet width) — fixed with `min-w-0` + `flex-wrap` so they reflow, plus a global `overflow-x-clip` safety net; (2) every page except `/app` (dashboard, analytics, all of settings, habits, journal, insights) was hardcoded to a fixed 448px column with no responsive breakpoints, stranding content in empty space on tablets/laptops — they now widen to a comfortable centered column on larger screens (`md:max-w-3xl`). On `/app`, the two-column layout (content + sidebar) now starts at `lg` instead of `md`, so tablet-portrait widths get a clean single-column view with the bottom tab bar instead of a cramped, overlapping two-column grid. No behavior or data changes.
 - **SPENT · month breakdown no longer truncates category names.** Each row capped the category label to a fixed 48px column with an ellipsis ("Gro…", "Sub…", "Sna…"); labels now render in full (no shrink, no ellipsis) and the progress bar flexes to fit the remaining space. Applies everywhere the card appears (money sidebar, mobile card, dashboard widget).
+
+### Security
+- **Only the owner can sign in.** Pulse is single-user, but nothing enforced it: anyone who could reach the login page could request a magic link, and the instance stayed private only because Resend's sandbox sender can't email anyone but the Resend account. Verifying a sending domain would have let anyone create an account.
+  - The first account (the setup wizard) is now the only one, and sign-in links go only to that account.
+  - For any other address the login page answers the same way, just as fast, so it doesn't reveal yours. To make that hold, the owner's sign-in email is now sent just after the reply: a Resend failure no longer shows on the login page, it's logged as `[magic-link] email send failed` instead. The setup wizard still shows it.
+  - Creating a second user is refused outright, including from a link issued before the owner existed.
+  - If you share one instance with others, which SELF-HOSTING used to suggest, existing accounts keep signing in, but no new ones can be added.
+  - SELF-HOSTING explains how to change the owner's email.
 
 ## [1.3.0] — 2026-09-16
 

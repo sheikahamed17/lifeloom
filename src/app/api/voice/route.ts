@@ -3,6 +3,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import type { D1Database } from '@cloudflare/workers-types'
 import { getSession } from '@/lib/auth'
 import { createDb } from '@/lib/db'
+import { captureCategories } from '@/lib/capture-categories'
 import { isDemoMode } from '@/lib/demo'
 import { makeGroqClient } from '@/lib/agents/llm-client'
 import { groqWhisper } from '@/lib/agents/whisper'
@@ -59,13 +60,15 @@ export async function POST(req: Request) {
   const prefs = await loadUserPrefs(db, userId)
 
   // Fetch categories (needed for log_money path; harmless on log_task path)
-  const cats = await db
+  // One live category per name and kind, chosen the same way every time
+  // (see capture-categories.ts), so the AI's pick always maps to the same id.
+  const cats = captureCategories(await db
     .selectFrom('categories')
     .where('user_id', '=', userId)
     .where('is_archived', '=', 0)
     .where('deleted_at', 'is', null)
-    .select(['id', 'name', 'kind'])
-    .execute()
+    .select(['id', 'name', 'kind', 'created_at'])
+    .execute(), userId)
 
   const stream = new ReadableStream({
     async start(controller) {

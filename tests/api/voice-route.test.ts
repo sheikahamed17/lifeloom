@@ -4,6 +4,10 @@ vi.mock('@/lib/auth', () => ({
   getSession: vi.fn().mockResolvedValue({ user: { id: 'u1' } }),
 }))
 
+type CatRow = { id: string; name: string; kind: string; created_at: string }
+const DEFAULT_CATEGORIES: CatRow[] = [{ id: 'cat-food', name: 'Food', kind: 'spend', created_at: '2026-01-01T00:00:00.000Z' }]
+let categoryRows = DEFAULT_CATEGORIES
+
 const fakeDb = {
   selectFrom: (table: string) => {
     if (table === 'user_prefs') {
@@ -21,7 +25,7 @@ const fakeDb = {
         where: () => ({
           where: () => ({
             select: () => ({
-              execute: async () => [{ id: 'cat-food', name: 'Food', kind: 'spend' }],
+              execute: async () => categoryRows,
             }),
           }),
         }),
@@ -115,6 +119,23 @@ describe('/api/voice (SSE)', () => {
     expect(payload.kind).toBe('money')
     expect(payload.amount).toBe(8000)
     expect(payload.category_id).toBe('cat-food')
+  })
+
+  it('picks the same category every time when the server holds same-name duplicates', async () => {
+    const { parseMoneyEntry } = await import('@/lib/agents/money-agent')
+    // D1 returns rows in no set order; the canonical id (what the client dedupe keeps) must win
+    categoryRows = [
+      { id: 'uuid-dup', name: 'Food', kind: 'spend', created_at: '2026-01-01T00:00:00.000Z' },
+      { id: 'cat-u1-food', name: 'Food', kind: 'spend', created_at: '2026-06-01T00:00:00.000Z' },
+    ]
+    try {
+      const events = await consumeSSE(await POST(multipartReq(new Blob(['fake']))))
+      expect((events[3] as { payload: { category_id: string } }).payload.category_id).toBe('cat-u1-food')
+      // …and the AI is offered each name once
+      expect(parseMoneyEntry).toHaveBeenLastCalledWith(expect.objectContaining({ categories: [{ name: 'Food', kind: 'spend' }] }))
+    } finally {
+      categoryRows = DEFAULT_CATEGORIES
+    }
   })
 
   it('routes log_task to task_agent', async () => {

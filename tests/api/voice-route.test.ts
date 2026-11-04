@@ -228,6 +228,22 @@ describe('/api/voice (SSE)', () => {
     expect(parseMoneyEntry).not.toHaveBeenCalled()
   })
 
+  // Issue #13: transcribe-only mode closed the stream, then the `finally` closed it
+  // again. If the client hadn't read the queued events yet, that second close threw
+  // inside start(), which errored the stream and dropped them: the transcript never
+  // arrived. A reader that's already waiting hides it, so wait before reading.
+  it.each([
+    ['transcribe-only', '?mode=transcribe', ['transcribing', 'transcript']],
+    ['full flow', '', ['transcribing', 'transcript', 'parsing', 'payload']],
+  ])('%s: closes the stream once, so a client that starts reading late still gets every event', async (_mode, query, steps) => {
+    const fd = new FormData()
+    fd.append('audio', new Blob(['fake'], { type: 'audio/webm' }), 'voice.webm')
+    const res = await POST(new Request(`http://x/api/voice${query}`, { method: 'POST', body: fd }))
+    await new Promise(r => setTimeout(r, 20))   // start() finishes with every event still queued
+    const events = await consumeSSE(res)
+    expect(events.map(e => e.step)).toEqual(steps)
+  })
+
   it('full flow (no mode param): still streams through to payload event (regression)', async () => {
     vi.clearAllMocks()
     const { routeIntent } = await import('@/lib/agents/router')

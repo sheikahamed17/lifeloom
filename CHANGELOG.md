@@ -42,6 +42,7 @@ entry in your history, and sign-in locked to the instance's owner. Migrations
   - Creating a second user is refused outright, including from a link issued before the owner existed.
   - If you share one instance with others, which SELF-HOSTING used to suggest, existing accounts keep signing in, but no new ones can be added.
   - SELF-HOSTING explains how to change the owner's email.
+- **Build tooling moved onto glob 14** ([GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4), moderate). OpenNext's Cloudflare adapter, its minifier and both Serwist packages pulled glob 10.x and 13.x, which have no patched release; pnpm overrides move them onto the 14.x the project already uses. Build-time only: glob never ships in the Worker.
 
 ## [1.3.0] — 2026-09-16
 

@@ -41,11 +41,20 @@ overrides:
                                     #   a bare `zod:` override rewrites the DIRECT dep's specifier too, so
                                     #   pnpm-lock.yaml no longer matches package.json and CI's
                                     #   --frozen-lockfile install fails (it did: 1078dcf).
-  'glob@10': '>=10.5.0 <11'         # 1 alert (high) — 10.x line only (via @node-minify/core)
+  # 2026-11: GHSA-3g3m-2fjr-6pw4 (med) covers glob 9.0.0–14.0.1 and is fixed only in
+  # 14.0.2, so the 10.x (@node-minify/core) and 13.x (OpenNext, @serwist/build,
+  # @serwist/next) copies move up a major onto the direct dep's 14.x. Safe because all
+  # four only call glob()/globSync() with cwd/ignore/nodir/absolute/follow/
+  # withFileTypes/windowsPathsNoEscape; none use what 14 changed (walk(), isRegExp,
+  # the debug option, ignore patterns starting with `/`). Major-scoped keys, not a
+  # bare `glob:` — the direct dep's ^14.0.3 must not be rewritten (zod trap above).
+  'glob@10': '^14.0.3'
+  'glob@13': '^14.0.3'
   # vite (5 alerts) is fixed by declaring it as a direct devDependency (^8.3.5): it is
   # only a PEER of vitest, and overrides don't reach auto-installed peers. Don't add
   # a bare `vite:` override back — same specifier-rewrite trap as zod above.
   # Not fixable by override (no patched release on the line in use) — build/lint
-  # tooling only, never shipped in the Worker: glob@13 (OpenNext/Serwist; fix is
-  # 14.x), minimatch 3/9/10 (ESLint/glob; fix is 11.x), deepmerge (fix 4.3.2 is
-  # unpublished). Revisit when those parents move up.
+  # tooling only, never shipped in the Worker: minimatch 10.x (GHSA-g3hv-75wg-m249,
+  # via @ts-morph/common and @typescript-eslint; fix is 11.x only, a major that
+  # typescript-eslint doesn't support), deepmerge (fix 4.3.2 is unpublished).
+  # Revisit when those parents move up.

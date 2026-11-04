@@ -81,7 +81,7 @@ export async function POST(req: Request) {
         send({ step: 'transcript', text: transcript })
 
         const mode = new URL(req.url).searchParams.get('mode')
-        if (mode === 'transcribe') { controller.close(); return }
+        if (mode === 'transcribe') return   // the `finally` closes the stream; closing twice errors it (#13)
 
         send({ step: 'parsing' })
         const router = await routeIntent({ client: groq, text: transcript })

@@ -33,9 +33,23 @@ export type QueryPlan = QueryMoneyPlan | QueryTaskPlan | QueryLearningPlan | Que
 
 export const QUERY_KINDS = ['query_money', 'query_task', 'query_learning', 'query_notes'] as const
 
-export function isQueryPlan(payload: unknown): payload is QueryPlan {
+function isPeriod(value: unknown): value is Period {
   return (
-    typeof payload === 'object' && payload !== null &&
-    QUERY_KINDS.includes((payload as { kind?: unknown }).kind as (typeof QUERY_KINDS)[number])
+    typeof value === 'object' && value !== null &&
+    typeof (value as { from?: unknown }).from === 'string' &&
+    typeof (value as { to?: unknown }).to === 'string'
   )
+}
+
+/**
+ * True when `payload` is a query plan the client can execute locally. A money
+ * plan must carry a period: the answer card filters on `period.from`/`to`, so a
+ * plan without one (e.g. from a malformed server response) would crash it.
+ */
+export function isQueryPlan(payload: unknown): payload is QueryPlan {
+  if (typeof payload !== 'object' || payload === null) return false
+  const kind = (payload as { kind?: unknown }).kind
+  if (!QUERY_KINDS.includes(kind as (typeof QUERY_KINDS)[number])) return false
+  if (kind === 'query_money') return isPeriod((payload as { period?: unknown }).period)
+  return true
 }

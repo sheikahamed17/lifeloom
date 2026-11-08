@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { migratedSqlite } from '../helpers/migrated-sqlite'
 import { kyselyOverSqlite } from '../helpers/sqlite-kysely'
 
-// Pulse is single-user: the first account is the owner, and nobody else can
+// Lifeloom is single-user: the first account is the owner, and nobody else can
 // create one (see the "Single owner" comment in src/lib/auth.ts). These drive the
 // REAL auth handler against the REAL migrated schema. With no Resend key set,
 // sendMagicLink logs the link instead of emailing it, so "a link was sent" means
@@ -120,7 +120,7 @@ describe('single owner', () => {
 
   describe('with email configured (Resend)', () => {
     beforeEach(() => {
-      env = { ...SECRET_ENV, RESEND_API_KEY: 're_test', EMAIL_FROM: 'Pulse <onboarding@resend.dev>' }
+      env = { ...SECRET_ENV, RESEND_API_KEY: 're_test', EMAIL_FROM: 'Lifeloom <onboarding@resend.dev>' }
     })
 
     it("answers the owner without waiting for the email, so timing can't tell the owner from anyone else", async () => {

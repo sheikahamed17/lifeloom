@@ -37,5 +37,5 @@ enabled = true
 # DEMO_MODE-gated /api/cron/demo-reset endpoint. (Prod's 5 crons are unaffected.)
 
 [vars]
-EMAIL_FROM = "Pulse Demo <onboarding@resend.dev>"
+EMAIL_FROM = "Lifeloom Demo <onboarding@resend.dev>"
 DEMO_MODE = "true"

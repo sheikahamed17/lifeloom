@@ -33,7 +33,7 @@ export const DEMO_EXAMPLES = [
   'lunch 240',
   'coffee 120',
   'finish the report by friday',
-  'idea: try deploying my own Pulse',
+  'idea: try deploying my own Lifeloom',
   'total spend this month',
   "what's overdue?",
 ] as const
@@ -58,9 +58,9 @@ const CANNED: Record<string, (cats: Cat[], nowIso: string) => AgentResponse> = {
     transcript: 'finish the report by friday', intent: 'log_task', confidence: 0.95,
     payload: { kind: 'task', title: 'Finish the report', due_at: null, priority: 'normal', completed_at: null, source: 'manual', raw_input: 'finish the report by friday' },
   }),
-  'idea: try deploying my own pulse': (_cats, nowIso) => ({
-    transcript: 'idea: try deploying my own Pulse', intent: 'log_note', confidence: 0.95,
-    payload: { kind: 'note', body: 'idea: try deploying my own Pulse', title: 'Deploy my own Pulse', tags: ['ideas'], occurred_at: nowIso, source: 'manual' },
+  'idea: try deploying my own lifeloom': (_cats, nowIso) => ({
+    transcript: 'idea: try deploying my own Lifeloom', intent: 'log_note', confidence: 0.95,
+    payload: { kind: 'note', body: 'idea: try deploying my own Lifeloom', title: 'Deploy my own Lifeloom', tags: ['ideas'], occurred_at: nowIso, source: 'manual' },
   }),
   'total spend this month': (_cats, _nowIso) => ({
     transcript: 'total spend this month', intent: 'query_money', confidence: 0.95,

@@ -10,20 +10,20 @@ describe('buildMagicLinkEmail', () => {
     expect(text).toContain(url)
     // Logo is a hosted PNG whose origin is derived from the magic-link URL.
     expect(html).toContain('https://pulse.sdsheikahamed.workers.dev/icons/icon-192.png')
-    expect(html).toContain('alt="Pulse"')
+    expect(html).toContain('alt="Lifeloom"')
   })
 })
 
 describe('sendMagicLinkEmail', () => {
   it('POSTs to Resend with bearer auth and the from/to/subject payload', async () => {
     const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 })) as unknown as typeof fetch
-    await sendMagicLinkEmail({ apiKey: 'k', from: 'Pulse <a@b.co>', to: 'u@x.co', url: 'https://x/y', fetchImpl })
+    await sendMagicLinkEmail({ apiKey: 'k', from: 'Lifeloom <a@b.co>', to: 'u@x.co', url: 'https://x/y', fetchImpl })
     expect(fetchImpl).toHaveBeenCalledTimes(1)
     const [u, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(u).toBe('https://api.resend.com/emails')
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer k')
     const body = JSON.parse(init.body as string)
-    expect(body).toMatchObject({ from: 'Pulse <a@b.co>', to: 'u@x.co' })
+    expect(body).toMatchObject({ from: 'Lifeloom <a@b.co>', to: 'u@x.co' })
     expect(body.subject).toBeTruthy()
   })
 

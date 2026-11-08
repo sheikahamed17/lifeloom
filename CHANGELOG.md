@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Pulse are recorded here. The format follows
+All notable changes to Lifeloom are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -23,6 +23,7 @@ entry in your history, and sign-in locked to the instance's owner. Migrations
 - The live demo now showcases all of the above: accounts named with their last-4, a starred default, auto-tagged email/SMS alerts, one unknown card, and one untagged past alert.
 
 ### Changed
+- **Renamed to Lifeloom.** The product name shown in the app, PWA manifest, sign-in email, notifications, passkey prompt and docs is now *Lifeloom*. Nothing operational changed: the production and demo URLs, Worker, D1 and R2 names, sign-ins, passkeys, backups (`app: "pulse"`), ingest tokens and the Apps Script/Shortcut names are all untouched. New self-hosted copies are created as `lifeloom` / `lifeloom-receipts` by the template config.
 - **Stricter, safer account matching.** A card/account number only matches where an alert uses it as one (`ending 7392`, `A/c XX4821`, `**6604`, `Card no. XX…`) — never an amount, date, or UPI reference. A number match beats a keyword match, and an alert that still matches more than one account is now left untagged instead of going to the oldest account. ([3a0f018](https://github.com/sheikahamed17/pulse/commit/3a0f018))
 
 ### Fixed

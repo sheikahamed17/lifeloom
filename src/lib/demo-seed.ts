@@ -5,7 +5,7 @@ import { materializeRow } from '@/lib/materialize'
 import { DEMO_USER } from '@/lib/demo'
 
 // Seeds the SHARED demo account with realistic-but-fictional data across every
-// domain. Because Pulse is local-first (the client reads Dexie, populated by
+// domain. Because Lifeloom is local-first (the client reads Dexie, populated by
 // syncing the op-log), the seed writes OP-LOG entries — NOT just projection
 // tables — then materializes each so the server-side projections are populated
 // too. Deterministic entity ids make the reset idempotent; HLCs are unique and
@@ -161,7 +161,7 @@ export function buildSeeds(): Seed[] {
 
   // --- Notes (pre-written titles + tags) ---
   const notes: Array<[string, string, string[], number]> = [
-    ['Deploy my own Pulse', 'idea: spin up my own instance from the template and self-host it', ['ideas'], 14],
+    ['Deploy my own Lifeloom', 'idea: spin up my own instance from the template and self-host it', ['ideas'], 14],
     ['Weekend groceries', 'oats, coffee, fruit, pasta, olive oil', ['shopping'], 10],
     ['Book recommendations', 'a friend suggested two books on systems design', ['reading'], 7],
     ['Trip checklist', 'charger, headphones, sunscreen, charger cable', ['travel'], 4],

@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="public/logo.svg" alt="Pulse logo" width="88" height="88" />
+<img src="public/logo.svg" alt="Lifeloom logo" width="88" height="88" />
 
-# Pulse
+# Lifeloom
 
 **A local-first personal life-OS — money, tasks, learning, and notes in one place, captured by voice or plain language and synced across your devices.**
 
@@ -30,9 +30,9 @@ Or [set it up manually →](./SELF-HOSTING.md)
 
 ---
 
-## Why Pulse
+## Why Lifeloom
 
-Most life-trackers make you fill in forms. Pulse flips it: you **say or type one line** — *"lunch 240"*, *"finish the deck by friday"*, *"idea: batch the FX cron"* — and the AI files it in the right place. Your data lives **in your browser first** (so it's instant and works offline) and syncs to a database **you own**. There's no shared backend, no ads, no data mining — one instance per person, running on free tiers that comfortably fit a single user.
+Most life-trackers make you fill in forms. Lifeloom flips it: you **say or type one line** — *"lunch 240"*, *"finish the deck by friday"*, *"idea: batch the FX cron"* — and the AI files it in the right place. Your data lives **in your browser first** (so it's instant and works offline) and syncs to a database **you own**. There's no shared backend, no ads, no data mining — one instance per person, running on free tiers that comfortably fit a single user.
 
 ## Screenshots
 
@@ -80,7 +80,7 @@ Most life-trackers make you fill in forms. Pulse flips it: you **say or type one
 Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits & streaks** (check off daily or weekday-scheduled habits and build streaks) and 📖 **Journal** (a daily free-text entry with an optional mood) — each on a page of its own.
 
 ### Money, in depth
-- **Accounts & net worth.** Track balances across accounts (assets and liabilities); Pulse derives your **net worth** and reconstructs how it's moved over time.
+- **Accounts & net worth.** Track balances across accounts (assets and liabilities); Lifeloom derives your **net worth** and reconstructs how it's moved over time.
 - **Default account.** Star one account in Settings → Accounts and every entry you add by hand, voice, or receipt starts on it — change it in the chip when it's a different card.
 - **Cash-flow forecast.** Upcoming recurring income and bills projected forward, with a month-end net estimate on your dashboard.
 - **Bill reminders.** A push notification before a recurring bill falls due.
@@ -104,7 +104,7 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 - **Categorize-on-ingest.** Auto-imported transactions arrive with a one-tap category picker and a push notification.
 - **Email auto-ingest.** A Gmail filter + a tiny Google Apps Script forwards bank alerts to your instance — the only truly hands-off path on iOS.
 - **Auto-detect the account.** An imported alert is tagged to the right account from the card or account number it mentions — name an account with its last 4 digits (*"Rewards Card 7392"*) and it just works, or add extra numbers/keywords as hints (e.g. a bank account's debit-card digits). Only a real card/account reference counts (`ending 7392`, `A/c XX4821`, `**6604`), never an amount or a UPI ref, and an ambiguous alert is left for you rather than guessed.
-- **New cards in one tap.** An alert from a card Pulse doesn't know yet shows **"•1188 — which account?"** — pick the account once and Pulse remembers the number, tags that card's other past alerts, and handles every future one automatically.
+- **New cards in one tap.** An alert from a card Lifeloom doesn't know yet shows **"•1188 — which account?"** — pick the account once and Lifeloom remembers the number, tags that card's other past alerts, and handles every future one automatically.
 - **Backfill past alerts.** Settings → Accounts → *Past alerts* tags earlier imported entries that now match an account (it never overwrites an account you chose). Balances count every tagged entry, so if your opening balance already reflects that history, skip it.
 - **SMS auto-ingest (iOS).** For the alerts your bank sends by text instead of email, an Apple Shortcut forwards them to your instance (Settings → Auto-import from SMS).
 
@@ -148,9 +148,9 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 
 ## Getting started
 
-Pulse is **single-user by design** — you deploy your **own** copy (your data, your API keys, your free-tier quota, fully isolated). Everything you need has a free tier.
+Lifeloom is **single-user by design** — you deploy your **own** copy (your data, your API keys, your free-tier quota, fully isolated). Everything you need has a free tier.
 
-**Step 1 — get your own copy.** Click **[Use this template](https://github.com/sheikahamed17/pulse/generate)** at the top of the repo to create an independent copy of Pulse under your own GitHub account.
+**Step 1 — get your own copy.** Click **[Use this template](https://github.com/sheikahamed17/pulse/generate)** at the top of the repo to create an independent copy of Lifeloom under your own GitHub account.
 
 **Step 2 — stand it up.** From your copy, use either the one-click deploy or the manual path below. *(In a hurry? The one-click **Deploy to Cloudflare** button also creates the copy for you as it deploys, so you can skip Step 1.)*
 
@@ -221,6 +221,8 @@ The suite covers the sync engine's convergence invariants, the agent/query pipel
 
 ## Status & license
 
-Pulse is an actively developed **personal project**, deployed to production and used daily. It ships behind a CI + Cloudflare deploy pipeline on every push to `main`; changes are recorded in the [changelog](./CHANGELOG.md) and cut as [tagged releases](https://github.com/sheikahamed17/pulse/releases) (semver from `v1.0.0`).
+Lifeloom is an actively developed **personal project**, deployed to production and used daily. It ships behind a CI + Cloudflare deploy pipeline on every push to `main`; changes are recorded in the [changelog](./CHANGELOG.md) and cut as [tagged releases](https://github.com/sheikahamed17/pulse/releases) (semver from `v1.0.0`).
+
+> **Formerly Pulse.** The project was called Pulse until November 2026. The dated design docs under `docs/superpowers/`, this repo's Cloudflare resource names (`pulse`, `pulse-receipts`, `pulse-demo`) and the GitHub URL still carry the old name; nothing about your data or sign-in changed.
 
 No formal open-source license is attached yet — if you'd like to reuse the code, please ask. You're welcome to self-host your own copy for personal use.

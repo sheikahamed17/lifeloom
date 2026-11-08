@@ -431,7 +431,7 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
               {linkingId === e.id && cardLast4 && (
                 <div className="glass-soft mt-1 rounded-2xl p-2" role="group" aria-label={`Account for card ending ${cardLast4}`}>
                   <p className="px-2 pb-1 text-xs text-muted-foreground">
-                    Which account is •{cardLast4}? Pulse will remember it for this card’s future alerts.
+                    Which account is •{cardLast4}? Lifeloom will remember it for this card’s future alerts.
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {activeAccounts.map(acc => (

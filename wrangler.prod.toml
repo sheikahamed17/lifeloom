@@ -42,4 +42,4 @@ enabled = true
 crons = ["0 2 * * *", "0 3 * * *", "*/15 * * * *", "30 2 * * 1", "30 14 * * 1"]
 
 [vars]
-EMAIL_FROM = "Pulse <onboarding@resend.dev>"
+EMAIL_FROM = "Lifeloom <onboarding@resend.dev>"

@@ -1,11 +1,11 @@
 ---
 name: new-entity
-description: Add a new persisted entity_kind to Pulse's op-log sync (money·tasks·… → a new domain/table). Use whenever adding a synced entity like account/goal/transfer/habit — it wires BOTH the server materializer AND the client Dexie apply so the entity actually persists + syncs. Trigger on "add a new entity", "new entity_kind", "new synced table", "persist a new domain".
+description: Add a new persisted entity_kind to Lifeloom's op-log sync (money·tasks·… → a new domain/table). Use whenever adding a synced entity like account/goal/transfer/habit — it wires BOTH the server materializer AND the client Dexie apply so the entity actually persists + syncs. Trigger on "add a new entity", "new entity_kind", "new synced table", "persist a new domain".
 ---
 
 # Adding a new persisted `entity_kind`
 
-Pulse syncs via an **op-log with per-field HLC last-writer-wins**. A new persisted entity kind only works if it is wired on **BOTH sides** — the client half is the one that's easy to forget, and a miss means ops apply on the server but silently never appear in the client Dexie (or vice-versa). This skill is the exact, complete checklist, mirroring the entities shipped this way: `account` (migration 0017), `goal` (0018), `transfer` (0019), `habit`/`habit_log` (0021).
+Lifeloom syncs via an **op-log with per-field HLC last-writer-wins**. A new persisted entity kind only works if it is wired on **BOTH sides** — the client half is the one that's easy to forget, and a miss means ops apply on the server but silently never appear in the client Dexie (or vice-versa). This skill is the exact, complete checklist, mirroring the entities shipped this way: `account` (migration 0017), `goal` (0018), `transfer` (0019), `habit`/`habit_log` (0021).
 
 ## When NOT to use this
 - Adding a **field to an existing** entity → that's the lighter "column" pattern (e.g. `match_hints` on account @0020, `schedule` on habit @0022): a migration `ALTER … ADD COLUMN`, add the field to the entity's `*_FIELDS` array + op-schema + Dexie Row + `db.ts`. **No** materialize/sync-client case change and **no** Dexie version bump (unindexed field). The generic `materializeRow_LWW(…, FIELDS)` + generic `applyOp` pick it up automatically.

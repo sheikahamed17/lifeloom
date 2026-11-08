@@ -11,7 +11,7 @@
 # the real IDs) via `-c wrangler.prod.toml`; the GitHub Actions deploy
 # workflow already does this. See SELF-HOSTING.md.
 
-name = "pulse"
+name = "lifeloom"
 main = "worker.ts"
 compatibility_date = "2026-06-15"
 compatibility_flags = ["nodejs_compat"]
@@ -25,7 +25,7 @@ binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "pulse"
+database_name = "lifeloom"
 # No `database_id`: provisioned per-deploy by the button. Production's real
 # ID lives in wrangler.prod.toml. `migrations_dir` points `wrangler d1
 # migrations apply DB` at migrations/ (its default, set explicitly for clarity).
@@ -33,7 +33,7 @@ migrations_dir = "migrations"
 
 [[r2_buckets]]
 binding = "RECEIPTS"
-bucket_name = "pulse-receipts"
+bucket_name = "lifeloom-receipts"
 
 [observability]
 enabled = true
@@ -47,7 +47,7 @@ crons = ["0 2 * * *", "0 3 * * *", "*/15 * * * *", "30 2 * * 1", "30 14 * * 1"]
 
 # Local-dev notes:
 # - `pnpm exec wrangler dev` uses --persist by default for D1 (file under .wrangler/)
-# - `pnpm exec wrangler d1 execute pulse --remote ...` writes to the cloud DB
+# - `pnpm exec wrangler d1 execute lifeloom --remote ...` writes to the cloud DB
 
 # VAPID_PUBLIC_KEY is a Worker *secret* (NOT a var), so this file stays byte-identical
 # across self-hosted forks and never conflicts on `git sync`. Set it once per instance:
@@ -60,6 +60,6 @@ crons = ["0 2 * * *", "0 3 * * *", "*/15 * * * *", "30 2 * * 1", "30 14 * * 1"]
 # On the free tier without a verified domain, use Resend's shared sender
 # `onboarding@resend.dev`, which can only deliver to the Resend account's
 # own signup email. To send to any address, verify a domain in Resend and
-# change this to e.g. "Pulse <login@yourdomain.com>". RESEND_API_KEY is a
+# change this to e.g. "Lifeloom <login@yourdomain.com>". RESEND_API_KEY is a
 # secret (wrangler secret put), NOT here.
-EMAIL_FROM = "Pulse <onboarding@resend.dev>"
+EMAIL_FROM = "Lifeloom <onboarding@resend.dev>"

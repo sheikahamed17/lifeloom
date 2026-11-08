@@ -16,7 +16,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[Pulse] global error boundary caught:', error)
+    console.error('[Lifeloom] global error boundary caught:', error)
   }, [error])
 
   return (
@@ -47,7 +47,7 @@ export default function GlobalError({
         >
           <h1 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>Something went wrong</h1>
           <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#9ca3af' }}>
-            Pulse hit an unexpected error. Your data is safe on this device — reloading usually fixes it.
+            Lifeloom hit an unexpected error. Your data is safe on this device — reloading usually fixes it.
           </p>
           <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
             <button

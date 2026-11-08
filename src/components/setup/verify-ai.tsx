@@ -40,7 +40,7 @@ export function VerifyAi({ onNext }: { onNext: () => void }) {
       <div className="flex flex-col gap-2 text-center">
         <h2 className="text-xl font-semibold">Check AI is working</h2>
         <p className="text-sm text-muted-foreground">
-          Pulse uses Groq for voice, natural-language capture, and &ldquo;ask your data&rdquo;. Let&apos;s confirm your key works.
+          Lifeloom uses Groq for voice, natural-language capture, and &ldquo;ask your data&rdquo;. Let&apos;s confirm your key works.
         </p>
       </div>
 

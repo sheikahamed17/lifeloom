@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { AuroraBackground } from '@/components/aurora-background'
 
 const APPS_SCRIPT = `/**
- * Pulse — email transaction auto-ingest.
+ * Lifeloom — email transaction auto-ingest.
  * Setup: Project Settings > Script properties > add ENDPOINT, TOKEN and SENDER.
  *   SENDER = your bank's alert address(es), comma-separated (e.g. alerts@hdfcbank.bank.in).
  * Then Triggers > add a time-driven trigger on ingestPulseEmails() every 10 minutes.
@@ -128,10 +128,10 @@ export default function AutoImportPage() {
         <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
           <span className="text-xs uppercase tracking-wide text-muted-foreground">Method B · SMS (iOS share-sheet Shortcut)</span>
           <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-xs">
-            <li>Open the <strong>Shortcuts</strong> app → <strong>+</strong> to create a Shortcut (not an Automation). Name it <strong>Add to Pulse</strong>.</li>
+            <li>Open the <strong>Shortcuts</strong> app → <strong>+</strong> to create a Shortcut (not an Automation). Name it <strong>Add to Lifeloom</strong>.</li>
             <li>Add action <strong>Get Contents of URL</strong>: URL = the endpoint above; Method = <strong>POST</strong>; Headers = <code>Authorization: Bearer &lt;your token&gt;</code> and <code>Content-Type: application/json</code>; Request Body = <strong>JSON</strong> with <code>text</code> = the <strong>Shortcut Input</strong> variable.</li>
             <li>Open the shortcut&apos;s details (ⓘ) → turn on <strong>Show in Share Sheet</strong>, and accept <strong>Text</strong>.</li>
-            <li>Use it: in Messages, select the bank SMS text → <strong>Share</strong> → <strong>Add to Pulse</strong>. A 💳 SMS entry appears.</li>
+            <li>Use it: in Messages, select the bank SMS text → <strong>Share</strong> → <strong>Add to Lifeloom</strong>. A 💳 SMS entry appears.</li>
           </ol>
         </section>
       </main>

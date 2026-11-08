@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build Service Worker script for Pulse
+ * Build Service Worker script for Lifeloom
  * This script compiles the TypeScript service worker and injects the precache manifest.
  * Required because Turbopack doesn't support @serwist/next webpack plugin.
  */

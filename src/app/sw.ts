@@ -44,7 +44,7 @@ self.addEventListener('push', (event: PushEvent) => {
           )
         } else {
           // iOS requirement: always show at least one notification
-          await self.registration.showNotification('Pulse', {
+          await self.registration.showNotification('Lifeloom', {
             body: 'You have updates.',
             icon: '/icons/icon-192.png',
           })
@@ -52,7 +52,7 @@ self.addEventListener('push', (event: PushEvent) => {
       } catch (err) {
         console.error('push handler error:', err)
         // Fallback: show a generic notification (iOS visible-notification rule)
-        await self.registration.showNotification('Pulse', {
+        await self.registration.showNotification('Lifeloom', {
           body: 'You have updates.',
           icon: '/icons/icon-192.png',
         })

@@ -1,6 +1,6 @@
-# Pulse — instructions for Claude Code
+# Lifeloom — instructions for Claude Code
 
-You are working in **Pulse**, a local-first, **single-user** personal life-OS (money · tasks · learning · notes; voice/natural-language capture; weekly AI digests; analytics). Anyone who uses this template runs their **own isolated instance** — their Cloudflare account, their API keys, their data. This file tells you how to set that up and how to develop the code correctly.
+You are working in **Lifeloom**, a local-first, **single-user** personal life-OS (money · tasks · learning · notes; voice/natural-language capture; weekly AI digests; analytics). Anyone who uses this template runs their **own isolated instance** — their Cloudflare account, their API keys, their data. This file tells you how to set that up and how to develop the code correctly.
 
 **Stack:** Next.js 16 (App Router) · React 19 · Tailwind 4 · Dexie (IndexedDB, client) · Cloudflare D1 + R2 via Kysely (server) · Better Auth (magic link + passkeys) · OpenNext on Cloudflare Workers · Serwist service worker · Groq (`gpt-oss`) for the AI. Sync is an **op-log with per-field HLC last-writer-wins**.
 
@@ -14,8 +14,8 @@ Walk them through the steps below. **The canonical, always-up-to-date reference 
 
 1. **Prereqs** — Node 22 + pnpm; `npm i -g wrangler` then **ask the user to run `wrangler login`**.
 2. `pnpm install`.
-3. **Create resources:** `wrangler d1 create pulse` → add the printed `database_id` under `[[d1_databases]]` in `wrangler.toml`. Note: `wrangler.toml` is the **id-less template** the Deploy button reads (so it can't collide with any real DB); a fresh copy of the repo must add its own id there. `wrangler.prod.toml` is the upstream production config (carries this repo's live id) — used by CI via `-c`. `wrangler r2 bucket create pulse-receipts`.
-4. **Migrations:** apply all pending in one idempotent command: `wrangler d1 migrations apply DB --remote` (tracks applied files in a `d1_migrations` table; runs only what's pending; references the **binding** `DB`). If an OAuth `401` blocks it, fall back to per-file `wrangler d1 execute pulse --remote --command "<paste the file's SQL>"` in numeric order.
+3. **Create resources:** `wrangler d1 create lifeloom` → add the printed `database_id` under `[[d1_databases]]` in `wrangler.toml`. Note: `wrangler.toml` is the **id-less template** the Deploy button reads (so it can't collide with any real DB); a fresh copy of the repo must add its own id there. `wrangler.prod.toml` is the upstream production config (carries this repo's live id) — used by CI via `-c`. `wrangler r2 bucket create lifeloom-receipts`.
+4. **Migrations:** apply all pending in one idempotent command: `wrangler d1 migrations apply DB --remote` (tracks applied files in a `d1_migrations` table; runs only what's pending; references the **binding** `DB`). If an OAuth `401` blocks it, fall back to per-file `wrangler d1 execute lifeloom --remote --command "<paste the file's SQL>"` in numeric order.
 5. **VAPID keys:** `node scripts/generate-vapid-keys.mjs` → set BOTH keys as secrets in the next step.
 6. **Secrets** (via `wrangler secret put <NAME>`): `BETTER_AUTH_SECRET` (≥32 random chars), `BETTER_AUTH_URL` (the instance URL), `GROQ_API_KEY`, `RESEND_API_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `CRON_SECRET`. **Secrets are Worker secrets — never write them into the repo.**
 7. **Build & deploy:** `pnpm cf:build && wrangler deploy`. Set `BETTER_AUTH_URL` to the printed URL and redeploy if needed.

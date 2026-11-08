@@ -16,6 +16,10 @@ a file in place to refresh that tile, no README edit needed:
 | `analytics.jpg` | `/analytics` — net-worth line + unusual-spending anomalies |
 | `assistant.jpg` | `/assistant` — the "ask your data" prompt and example questions |
 
+## How these were made
+
+The current set (November 2026, after the Lifeloom rename) was captured headlessly from the live demo with Playwright: Chromium mobile emulation, 390×844 viewport at 2× (780×1688 px), dark colour scheme, JPEG quality 85, each tab scrolled to its content. Phone screenshots as described below work just as well; keep the filenames.
+
 ## How to refresh (iOS PWA)
 
 1. Open the [demo](https://pulse-demo.sdsheikahamed.workers.dev) (or your own instance) and

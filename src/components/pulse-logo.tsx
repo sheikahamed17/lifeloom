@@ -1,5 +1,6 @@
-// Shared brand mark. Rendered at most once per page (header on /app, logo on
-// /login), so the fixed gradient id does not collide.
+// Shared brand mark: the Lifeloom weave (3×3 interlace, see public/logo.svg for
+// the annotated SVG). Rendered at most once per page (header on /app, logo on
+// /login), so the fixed gradient/mask ids do not collide.
 export function PulseLogo({ className, title = 'Lifeloom' }: { className?: string; title?: string }) {
   return (
     <svg
@@ -10,14 +11,38 @@ export function PulseLogo({ className, title = 'Lifeloom' }: { className?: strin
       style={{ filter: 'drop-shadow(0 0 6px rgba(52,230,255,0.5))' }}
     >
       <defs>
-        <linearGradient id="pulseLogoGrad" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id="llLogoGrad" gradientUnits="userSpaceOnUse" x1="14" y1="14" x2="86" y2="86">
           <stop offset="0" stopColor="#6f7bff" />
           <stop offset="1" stopColor="#34e6ff" />
         </linearGradient>
+        <mask id="llLogoWarpMask">
+          <rect width="100" height="100" fill="#fff" />
+          <rect x="43.5" y="22" width="13" height="14" fill="#000" />
+          <rect x="22.5" y="43" width="13" height="14" fill="#000" />
+          <rect x="64.5" y="43" width="13" height="14" fill="#000" />
+          <rect x="43.5" y="64" width="13" height="14" fill="#000" />
+        </mask>
+        <mask id="llLogoWeftMask">
+          <rect width="100" height="100" fill="#fff" />
+          <rect x="22" y="22.5" width="14" height="13" fill="#000" />
+          <rect x="64" y="22.5" width="14" height="13" fill="#000" />
+          <rect x="43" y="43.5" width="14" height="13" fill="#000" />
+          <rect x="22" y="64.5" width="14" height="13" fill="#000" />
+          <rect x="64" y="64.5" width="14" height="13" fill="#000" />
+        </mask>
       </defs>
-      <circle cx="50" cy="50" r="36" fill="none" stroke="url(#pulseLogoGrad)" strokeWidth="3" opacity="0.26" />
-      <circle cx="50" cy="50" r="24" fill="none" stroke="url(#pulseLogoGrad)" strokeWidth="4" opacity="0.55" />
-      <circle cx="50" cy="50" r="12" fill="url(#pulseLogoGrad)" />
+      <g fill="none" stroke="url(#llLogoGrad)" strokeWidth="9" strokeLinecap="round">
+        <g mask="url(#llLogoWarpMask)" opacity="0.9">
+          <line x1="29" y1="18" x2="29" y2="82" />
+          <line x1="50" y1="18" x2="50" y2="82" />
+          <line x1="71" y1="18" x2="71" y2="82" />
+        </g>
+        <g mask="url(#llLogoWeftMask)">
+          <line x1="18" y1="29" x2="82" y2="29" />
+          <line x1="18" y1="50" x2="82" y2="50" />
+          <line x1="18" y1="71" x2="82" y2="71" />
+        </g>
+      </g>
     </svg>
   )
 }

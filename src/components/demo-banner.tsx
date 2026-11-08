@@ -19,7 +19,7 @@ export function DemoBanner() {
       <p className="flex-1 text-foreground">
         You&apos;re viewing a live demo — data resets every {resetHours ?? 4} hours.{' '}
         <a
-          href="https://github.com/sheikahamed17/pulse#getting-started"
+          href="https://github.com/sheikahamed17/lifeloom#getting-started"
           target="_blank"
           rel="noopener"
           className="font-medium text-accent-2 underline underline-offset-2"

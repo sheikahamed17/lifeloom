@@ -13,7 +13,7 @@ Ask *"how much did I spend on food this month?"* out loud and hear the answer. S
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%C2%B7%20D1%20%C2%B7%20R2-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)](#install-it)
 [![Tests](https://img.shields.io/badge/tests-1259%20passing-3FB950)](#testing)
-[![Release](https://img.shields.io/github/v/release/sheikahamed17/pulse?color=6E7BFF&label=release)](https://github.com/sheikahamed17/pulse/releases)
+[![Release](https://img.shields.io/github/v/release/sheikahamed17/lifeloom?color=6E7BFF&label=release)](https://github.com/sheikahamed17/lifeloom/releases)
 
 <br/>
 
@@ -21,7 +21,7 @@ Ask *"how much did I spend on food this month?"* out loud and hear the answer. S
 
 <br/>
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/sheikahamed17/pulse)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/sheikahamed17/lifeloom)
 
 **Deploy your own private instance in one click** — your Cloudflare account, your data, your keys.<br/>
 Or [set it up manually →](./SELF-HOSTING.md)
@@ -150,13 +150,13 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 
 Lifeloom is **single-user by design** — you deploy your **own** copy (your data, your API keys, your free-tier quota, fully isolated). Everything you need has a free tier.
 
-**Step 1 — get your own copy.** Click **[Use this template](https://github.com/sheikahamed17/pulse/generate)** at the top of the repo to create an independent copy of Lifeloom under your own GitHub account.
+**Step 1 — get your own copy.** Click **[Use this template](https://github.com/sheikahamed17/lifeloom/generate)** at the top of the repo to create an independent copy of Lifeloom under your own GitHub account.
 
 **Step 2 — stand it up.** From your copy, use either the one-click deploy or the manual path below. *(In a hurry? The one-click **Deploy to Cloudflare** button also creates the copy for you as it deploys, so you can skip Step 1.)*
 
 ### One-click deploy (recommended)
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/sheikahamed17/pulse)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/sheikahamed17/lifeloom)
 
 The button creates a copy of this repo in your GitHub, provisions a **fresh, isolated D1 database and R2 bucket** in your own Cloudflare account, prompts you for the secrets below, **runs the database migrations, and deploys** — then wires up automatic redeploys on every push. You'll be asked for:
 
@@ -221,8 +221,8 @@ The suite covers the sync engine's convergence invariants, the agent/query pipel
 
 ## Status & license
 
-Lifeloom is an actively developed **personal project**, deployed to production and used daily. It ships behind a CI + Cloudflare deploy pipeline on every push to `main`; changes are recorded in the [changelog](./CHANGELOG.md) and cut as [tagged releases](https://github.com/sheikahamed17/pulse/releases) (semver from `v1.0.0`).
+Lifeloom is an actively developed **personal project**, deployed to production and used daily. It ships behind a CI + Cloudflare deploy pipeline on every push to `main`; changes are recorded in the [changelog](./CHANGELOG.md) and cut as [tagged releases](https://github.com/sheikahamed17/lifeloom/releases) (semver from `v1.0.0`).
 
-> **Formerly Pulse.** The project was called Pulse until November 2026. The dated design docs under `docs/superpowers/`, this repo's Cloudflare resource names (`pulse`, `pulse-receipts`, `pulse-demo`) and the GitHub URL still carry the old name; nothing about your data or sign-in changed.
+> **Formerly Pulse.** The project was called Pulse until November 2026. The dated design docs under `docs/superpowers/`, this repo's Cloudflare resource names (`pulse`, `pulse-receipts`, `pulse-demo`) and the production URL still carry the old name (the old GitHub URL redirects here); nothing about your data or sign-in changed.
 
 No formal open-source license is attached yet — if you'd like to reuse the code, please ask. You're welcome to self-host your own copy for personal use.

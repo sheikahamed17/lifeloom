@@ -22,7 +22,7 @@ export function isDemoMode(env: { DEMO_MODE?: string | boolean | null } | null |
  */
 export const DEMO_USER = {
   id: 'demo-user',
-  email: 'demo@pulse.local',
+  email: 'demo@lifeloom.local',
   name: 'Demo',
 } as const
 

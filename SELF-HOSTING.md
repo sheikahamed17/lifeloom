@@ -17,11 +17,11 @@ Lifeloom is a **local-first, single-user** personal life-OS (money + tasks + lea
 
 ## 1. Get the code
 
-First, click **[Use this template](https://github.com/sheikahamed17/pulse/generate)** at the top of the repo to create your own copy under your GitHub account. Then clone **your** copy:
+First, click **[Use this template](https://github.com/sheikahamed17/lifeloom/generate)** at the top of the repo to create your own copy under your GitHub account. Then clone **your** copy:
 
 ```bash
-git clone https://github.com/<your-username>/pulse.git
-cd pulse
+git clone https://github.com/<your-username>/lifeloom.git
+cd lifeloom
 pnpm install
 ```
 

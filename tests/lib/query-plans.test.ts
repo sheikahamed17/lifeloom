@@ -15,6 +15,12 @@ describe('isQueryPlan', () => {
     expect(isQueryPlan(plan)).toBe(true)
   })
 
+  it('rejects a query_money plan without a period (the answer card filters on period.from/to)', () => {
+    expect(isQueryPlan({ kind: 'query_money', mode: 'total', direction: 'out', category_name: null, period: null })).toBe(false)
+    expect(isQueryPlan({ kind: 'query_money', mode: 'total', direction: 'out', category_name: null })).toBe(false)
+    expect(isQueryPlan({ kind: 'query_money', mode: 'total', direction: 'out', category_name: null, period: { from: '2026-01-01T00:00:00Z' } })).toBe(false)
+  })
+
   it('returns true for query_task plan', () => {
     const plan: QueryTaskPlan = {
       kind: 'query_task',

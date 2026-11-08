@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { isDemoMode, cannedAgentResponse, demoLimitedResponse, DEMO_EXAMPLES } from '@/lib/demo'
+import { isDemoMode, cannedAgentResponse, demoLimitedResponse, thisMonthPeriod, DEMO_EXAMPLES } from '@/lib/demo'
+import { isQueryPlan } from '@/lib/query-plans'
 
 describe('isDemoMode — defaults OFF everywhere except the demo deploy', () => {
   it('true only when DEMO_MODE is truthy', () => {
@@ -32,6 +33,21 @@ describe('cannedAgentResponse — AI works with zero Groq quota', () => {
   it('returns a query plan for suggested questions (executed locally over seeded data)', () => {
     expect(cannedAgentResponse('total spend this month', cats, now)?.payload).toMatchObject({ kind: 'query_money', mode: 'total' })
     expect(cannedAgentResponse("what's overdue?", cats, now)?.payload).toMatchObject({ kind: 'query_task', status: 'overdue' })
+  })
+
+  it('the money query carries the current month as its period (a null period crashed the answer card)', () => {
+    const payload = cannedAgentResponse('total spend this month', cats, now)?.payload
+    expect(isQueryPlan(payload)).toBe(true)
+    expect(payload).toMatchObject({
+      period: { from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z', label: 'this month' },
+    })
+    expect(payload).not.toHaveProperty('bucket')
+  })
+
+  it('thisMonthPeriod rolls over the year in December', () => {
+    expect(thisMonthPeriod('2026-12-31T23:59:59.000Z')).toEqual({
+      from: '2026-12-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z', label: 'this month',
+    })
   })
 
   it('returns null for input outside the examples', () => {

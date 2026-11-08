@@ -8,6 +8,8 @@
 // own wrangler.demo.toml (`DEMO_MODE = "true"`), so production and every
 // self-hoster's instance are completely unaffected.
 
+import type { Period } from '@/lib/query-plans'
+
 export const DEMO_RESET_HOURS = 4
 
 /** True only when the deployment's env sets DEMO_MODE truthy. */
@@ -62,14 +64,27 @@ const CANNED: Record<string, (cats: Cat[], nowIso: string) => AgentResponse> = {
     transcript: 'idea: try deploying my own Lifeloom', intent: 'log_note', confidence: 0.95,
     payload: { kind: 'note', body: 'idea: try deploying my own Lifeloom', title: 'Deploy my own Lifeloom', tags: ['ideas'], occurred_at: nowIso, source: 'manual' },
   }),
-  'total spend this month': (_cats, _nowIso) => ({
+  'total spend this month': (_cats, nowIso) => ({
     transcript: 'total spend this month', intent: 'query_money', confidence: 0.95,
-    payload: { kind: 'query_money', direction: 'out', category_name: null, mode: 'total', bucket: null, period: null },
+    payload: { kind: 'query_money', direction: 'out', category_name: null, mode: 'total', period: thisMonthPeriod(nowIso) },
   }),
   "what's overdue?": (_cats, _nowIso) => ({
     transcript: "what's overdue?", intent: 'query_task', confidence: 0.95,
     payload: { kind: 'query_task', status: 'overdue', period: null },
   }),
+}
+
+/**
+ * The calendar month containing `nowIso`, as the UTC bounds the real money
+ * query agent returns for "this month". A money query plan REQUIRES a period
+ * (`QueryMoneyPlan.period` is non-nullable and the answer card filters on it),
+ * so the canned plan must carry one like a Groq-built plan would.
+ */
+export function thisMonthPeriod(nowIso: string): Period {
+  const now = new Date(nowIso)
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+  return { from: from.toISOString(), to: to.toISOString(), label: 'this month' }
 }
 
 function moneyDraft(raw: string, amount: number, categoryName: string, description: string, cats: Cat[], nowIso: string): AgentResponse {

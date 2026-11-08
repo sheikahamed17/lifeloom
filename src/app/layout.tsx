@@ -6,10 +6,10 @@ import { DemoBanner } from '@/components/demo-banner'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Pulse',
+  title: 'Lifeloom',
   description: 'Personal AI life-OS — voice-first PWA',
   manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, title: 'Pulse', statusBarStyle: 'black-translucent' },
+  appleWebApp: { capable: true, title: 'Lifeloom', statusBarStyle: 'black-translucent' },
 }
 
 export const viewport: Viewport = {

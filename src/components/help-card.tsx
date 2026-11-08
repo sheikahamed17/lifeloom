@@ -14,7 +14,7 @@ export function HelpCard({
     <div
       className="glass rounded-2xl flex flex-col gap-3 p-4"
       role="group"
-      aria-label="Pulse help"
+      aria-label="Lifeloom help"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1">

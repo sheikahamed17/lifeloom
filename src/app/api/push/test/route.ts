@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
  * outside the CRON_SECRET-gated crons.
  *
  * Pull-on-push: the wake-up push carries no payload, so we first seed a
- * "Pulse test" notification row for the service worker to fetch and display
+ * "Lifeloom test" notification row for the service worker to fetch and display
  * when it wakes. Returns how many subscriptions were found and woken.
  */
 export async function POST(req: Request) {
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     .values({
       id: `test-${crypto.randomUUID()}`,
       user_id: userId,
-      title: 'Pulse test 🔔',
+      title: 'Lifeloom test 🔔',
       body: 'Push notifications are working.',
       url: '/app',
       created_at: new Date().toISOString(),

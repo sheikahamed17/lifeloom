@@ -1,6 +1,6 @@
 // Shared brand mark. Rendered at most once per page (header on /app, logo on
 // /login), so the fixed gradient id does not collide.
-export function PulseLogo({ className, title = 'Pulse' }: { className?: string; title?: string }) {
+export function PulseLogo({ className, title = 'Lifeloom' }: { className?: string; title?: string }) {
   return (
     <svg
       viewBox="0 0 100 100"

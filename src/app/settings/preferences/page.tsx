@@ -212,7 +212,7 @@ export default function PreferencesPage() {
           )}
           {pushStatus === 'denied' && (
             <p className="text-xs text-rose-500">
-              Notifications are blocked in your browser settings. Unblock &quot;Pulse&quot; in notification permissions to enable.
+              Notifications are blocked in your browser settings. Unblock &quot;Lifeloom&quot; in notification permissions to enable.
             </p>
           )}
           {pushStatus === 'subscribed' && (

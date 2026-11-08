@@ -114,7 +114,7 @@ export default function SettingsPage() {
             </CardHeader>
           </Card>
         </Link>
-        <Link href="/app" className="text-sm text-muted-foreground hover:underline">← Back to Pulse</Link>
+        <Link href="/app" className="text-sm text-muted-foreground hover:underline">← Back to Lifeloom</Link>
       </main>
     </>
   )

@@ -83,7 +83,7 @@ describe('/api/push/test', () => {
     expect(insertedNotifs).toHaveLength(1)
     expect(insertedNotifs[0].user_id).toBe('user1')
     expect(String(insertedNotifs[0].id)).toMatch(/^test-/)
-    expect(insertedNotifs[0].title).toBe('Pulse test 🔔')
+    expect(insertedNotifs[0].title).toBe('Lifeloom test 🔔')
 
     expect(sendPushMock).toHaveBeenCalledTimes(1)
     expect(sendPushMock).toHaveBeenCalledWith(fakeDb, { VAPID_PRIVATE_KEY: 'k', VAPID_PUBLIC_KEY: 'p' }, 'user1')

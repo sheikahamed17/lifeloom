@@ -34,7 +34,7 @@ type AuthEnvBindings = {
   AUTH_VALIDATE_SCHEMA?: string   // 'true' → Better Auth's per-request schema check (tests only)
 }
 
-// Pulse is single-user: the first account created (the /setup wizard) is the
+// Lifeloom is single-user: the first account created (the /setup wizard) is the
 // instance's owner, and no other account is created after it. Anyone who can
 // reach /login can ask for a link, so there are two guards:
 //  1. sendMagicLink only sends to the owner (or to anyone while no owner exists).
@@ -46,7 +46,7 @@ type AuthEnvBindings = {
 //     then an insert, not one atomic step: two links verified at the same instant
 //     on a fresh instance could both get through. That needs two valid links
 //     before anyone has signed in, so it isn't worth a schema-level rule.
-// Before these, Pulse stayed single-user only because Resend's sandbox sender
+// Before these, Lifeloom stayed single-user only because Resend's sandbox sender
 // can't email anyone but the Resend account itself; verifying a sending domain
 // would have opened sign-ups to anyone. Both checks run only on sign-in-link
 // requests and user creation, never on the per-request session check.
@@ -165,7 +165,7 @@ function buildAuth() {
         create: {
           before: async () => {
             if (await ownerExists(db)) {
-              throw new APIError('FORBIDDEN', { code: 'SIGNUP_CLOSED', message: 'This Pulse instance already has an owner.' })
+              throw new APIError('FORBIDDEN', { code: 'SIGNUP_CLOSED', message: 'This Lifeloom instance already has an owner.' })
             }
           },
         },
@@ -203,7 +203,7 @@ function buildAuth() {
       }),
       passkey({
         rpID: new URL(parsed.data.BETTER_AUTH_URL).hostname,
-        rpName: 'Pulse',
+        rpName: 'Lifeloom',
         origin: parsed.data.BETTER_AUTH_URL,
       }),
     ],

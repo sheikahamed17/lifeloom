@@ -1,6 +1,6 @@
 {
-  "name": "Pulse",
-  "short_name": "Pulse",
+  "name": "Lifeloom",
+  "short_name": "Lifeloom",
   "description": "Personal AI life-OS — voice-first PWA",
   "start_url": "/app",
   "display": "standalone",

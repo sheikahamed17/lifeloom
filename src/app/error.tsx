@@ -9,7 +9,7 @@ import { useEffect } from 'react'
  * error so it is diagnosable in the console (prod stacks are minified, but the
  * message + digest still narrow it down).
  *
- * Because Pulse is local-first, the user's data lives in IndexedDB and is never
+ * Because Lifeloom is local-first, the user's data lives in IndexedDB and is never
  * at risk here — a reload almost always recovers (esp. if an older cached shell
  * was the culprit; the service worker is skipWaiting + clientsClaim).
  */
@@ -21,7 +21,7 @@ export default function AppError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[Pulse] error boundary caught:', error)
+    console.error('[Lifeloom] error boundary caught:', error)
   }, [error])
 
   return (
@@ -29,7 +29,7 @@ export default function AppError({
       <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6">
         <h1 className="text-lg font-semibold">Something went wrong</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Pulse hit an unexpected error. Your data is safe on this device — reloading usually fixes it.
+          Lifeloom hit an unexpected error. Your data is safe on this device — reloading usually fixes it.
         </p>
         <div className="mt-5 flex justify-center gap-2">
           <button

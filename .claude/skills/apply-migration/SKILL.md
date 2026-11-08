@@ -1,10 +1,10 @@
 ---
 name: apply-migration
-description: Apply a Pulse D1 migration (migrations/NNNN_*.sql) to the REMOTE Cloudflare D1 database, and verify it. Use after merging any migration numbered 0005 or higher — the Deploy workflow only auto-applies 0001–0004, so every later migration must be applied to remote D1 manually. Trigger on "apply the migration", "run the migration on prod/remote D1", "migrate remote".
+description: Apply a Lifeloom D1 migration (migrations/NNNN_*.sql) to the REMOTE Cloudflare D1 database, and verify it. Use after merging any migration numbered 0005 or higher — the Deploy workflow only auto-applies 0001–0004, so every later migration must be applied to remote D1 manually. Trigger on "apply the migration", "run the migration on prod/remote D1", "migrate remote".
 disable-model-invocation: true
 ---
 
-# Applying a Pulse migration to remote D1
+# Applying a Lifeloom migration to remote D1
 
 The GitHub Deploy workflow **only auto-applies migrations 0001–0004**. Any migration **≥ 0005 must be applied to the remote D1 manually** after merge, or authenticated `/api/sync` starts 500-ing (materialize inserts into a column/table that doesn't exist). This skill codifies the exact, gotcha-laden process proven across migrations 0015–0022.
 

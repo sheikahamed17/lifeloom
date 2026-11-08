@@ -62,7 +62,7 @@ function SetupFlow() {
     return <Shell><p className="text-center text-sm text-muted-foreground">Loading…</p></Shell>
   }
   if (stage === 'app') {
-    return <Shell><p className="text-center text-sm text-muted-foreground">Taking you to Pulse…</p></Shell>
+    return <Shell><p className="text-center text-sm text-muted-foreground">Taking you to Lifeloom…</p></Shell>
   }
 
   if (stage === 'create') {

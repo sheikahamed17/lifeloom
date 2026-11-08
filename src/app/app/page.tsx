@@ -570,7 +570,7 @@ function AppPageInner() {
           <header className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <PulseLogo className="size-6" />
-              <h1 className="text-2xl font-semibold">Pulse</h1>
+              <h1 className="text-2xl font-semibold">Lifeloom</h1>
             </div>
             <div className="flex flex-wrap items-center gap-1 md:gap-3">
               <button

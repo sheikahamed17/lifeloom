@@ -60,7 +60,7 @@ export default function LoginPage() {
         <Card className="w-full max-w-sm">
           <CardHeader className="items-center gap-2">
             <PulseLogo className="size-12" />
-            <CardTitle>Sign in to Pulse</CardTitle>
+            <CardTitle>Sign in to Lifeloom</CardTitle>
           </CardHeader>
           <CardContent>
             {state === 'sent' ? (

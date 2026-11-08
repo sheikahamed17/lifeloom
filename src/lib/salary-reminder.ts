@@ -58,7 +58,7 @@ export function buildSalaryReminder(userId: string, nowIso: string, tz: string):
   return {
     id: `salary-${userId}-${ym}`,
     title: '💰 Payday — log your salary',
-    body: "It's the last working day of the month. Tap to add your salary in Pulse.",
+    body: "It's the last working day of the month. Tap to add your salary in Lifeloom.",
     url: '/app?tab=money',
   }
 }

@@ -1,6 +1,6 @@
-# Self-hosting Pulse
+# Self-hosting Lifeloom
 
-Pulse is a **local-first, single-user** personal life-OS (money + tasks + learning + notes, voice/NL capture, weekly digests). Because it's local-first and runs entirely on your own free-tier cloud, the right way to use it is to **deploy your own copy** — your data, your API keys, your quota, fully isolated from anyone else's. This guide takes you from your own copy of the template to a live instance in about 20 minutes.
+Lifeloom is a **local-first, single-user** personal life-OS (money + tasks + learning + notes, voice/NL capture, weekly digests). Because it's local-first and runs entirely on your own free-tier cloud, the right way to use it is to **deploy your own copy** — your data, your API keys, your quota, fully isolated from anyone else's. This guide takes you from your own copy of the template to a live instance in about 20 minutes.
 
 > **Just want to look around first?** [Try the live demo](https://pulse-demo.sdsheikahamed.workers.dev) — fully seeded, no sign-up, resets every 4 hours.
 
@@ -29,8 +29,8 @@ pnpm install
 
 ```bash
 wrangler login
-wrangler d1 create pulse                    # note the printed database_id
-wrangler r2 bucket create pulse-receipts
+wrangler d1 create lifeloom                    # note the printed database_id
+wrangler r2 bucket create lifeloom-receipts
 ```
 
 `wrangler.toml` ships **without** a `database_id` — that's deliberate, and it's what lets the one-click button provision a fresh database per person. Add **your** new id under `[[d1_databases]]`:
@@ -38,7 +38,7 @@ wrangler r2 bucket create pulse-receipts
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "pulse"
+database_name = "lifeloom"
 database_id = "<your new D1 id from the command above>"
 migrations_dir = "migrations"
 ```
@@ -57,7 +57,7 @@ wrangler d1 migrations apply DB --remote
 
 This is the exact command the deploy workflow (and the one-click button) run automatically on every deploy, so your database always matches the code.
 
-> If you hit an OAuth `401`, apply the files individually instead — in numeric order, `0001` → the highest — with `wrangler d1 execute pulse --remote --command "<paste that file's SQL>"` (a known Wrangler quirk with OAuth tokens; `--file` can 401 where `--command` succeeds).
+> If you hit an OAuth `401`, apply the files individually instead — in numeric order, `0001` → the highest — with `wrangler d1 execute lifeloom --remote --command "<paste that file's SQL>"` (a known Wrangler quirk with OAuth tokens; `--file` can 401 where `--command` succeeds).
 
 ## 4. Generate your Web-Push (VAPID) keys
 
@@ -71,7 +71,7 @@ This prints a **public** and a **private** key. Both are set as secrets in step 
 
 ```bash
 wrangler secret put BETTER_AUTH_SECRET   # any random string, 32+ chars
-wrangler secret put BETTER_AUTH_URL      # your instance URL, e.g. https://pulse.<you>.workers.dev
+wrangler secret put BETTER_AUTH_URL      # your instance URL, e.g. https://lifeloom.<you>.workers.dev
 wrangler secret put GROQ_API_KEY         # from console.groq.com
 wrangler secret put RESEND_API_KEY       # from resend.com
 wrangler secret put VAPID_PUBLIC_KEY     # public key from step 4
@@ -79,7 +79,7 @@ wrangler secret put VAPID_PRIVATE_KEY    # private key from step 4
 wrangler secret put CRON_SECRET          # any random string
 ```
 
-Leave `EMAIL_FROM = "Pulse <onboarding@resend.dev>"` in `wrangler.toml` as-is (see step 7).
+Leave `EMAIL_FROM = "Lifeloom <onboarding@resend.dev>"` in `wrangler.toml` as-is (see step 7).
 
 ## 6. Build & deploy
 
@@ -88,18 +88,18 @@ pnpm cf:build
 wrangler deploy
 ```
 
-Wrangler prints your live URL (e.g. `https://pulse.<you>.workers.dev`). If you hadn't set `BETTER_AUTH_URL` to it yet, set it now (step 5) and `wrangler deploy` again.
+Wrangler prints your live URL (e.g. `https://lifeloom.<you>.workers.dev`). If you hadn't set `BETTER_AUTH_URL` to it yet, set it now (step 5) and `wrangler deploy` again.
 
 ## 7. Sign in
 
 > **⚠ Use your Resend-account email.** On Resend's free tier without a verified domain, the sandbox sender `onboarding@resend.dev` **only delivers to the email you signed up to Resend with**. So enter *that* email on the login page — the magic link arrives there. That's all a personal single-user instance needs; **no domain required.**
 >
-> **The first account is the only account.** Whoever signs in first (the setup wizard) becomes the instance's owner, so sign in as soon as you deploy. After that, no other address can create an account or even receive a sign-in link. The login page answers the same way, just as fast, so it doesn't reveal your address. This holds even if you later verify a domain in Resend: a domain only changes the address the email comes *from*. Anyone else who wants Pulse deploys their own copy.
+> **The first account is the only account.** Whoever signs in first (the setup wizard) becomes the instance's owner, so sign in as soon as you deploy. After that, no other address can create an account or even receive a sign-in link. The login page answers the same way, just as fast, so it doesn't reveal your address. This holds even if you later verify a domain in Resend: a domain only changes the address the email comes *from*. Anyone else who wants Lifeloom deploys their own copy.
 >
 > Once you're the owner, your sign-in emails are sent just *after* the login page replies. So if Resend has a problem (an expired key, or the quota is used up), the page still says "link sent". If no email arrives, check `wrangler tail` for `[magic-link] email send failed`. A passkey sign-in doesn't need email at all.
 >
 > **Changing your email later:** update the owner row (keep the `lower(...)`, because sign-in matches the lowercase address), then sign in with the new address. Your passkeys keep working.
-> `wrangler d1 execute pulse --remote --command "UPDATE user SET email = lower('new@example.com') WHERE email = lower('old@example.com')"`
+> `wrangler d1 execute lifeloom --remote --command "UPDATE user SET email = lower('new@example.com') WHERE email = lower('old@example.com')"`
 
 After signing in, add a **passkey** (Settings → Security) for Face ID / one-tap sign-in on your phone. Then "Add to Home Screen" to install it as a PWA.
 

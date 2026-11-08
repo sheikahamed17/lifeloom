@@ -280,7 +280,7 @@ export default function AnalyticsPage() {
           <CategorySmallMultiples series={catSeries} periods={periods} symbol={symbol} jpy={jpy} />
         </div>
 
-        <Link href="/app" className="text-sm text-muted-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">← Back to Pulse</Link>
+        <Link href="/app" className="text-sm text-muted-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">← Back to Lifeloom</Link>
       </main>
     </>
   )

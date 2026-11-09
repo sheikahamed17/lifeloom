@@ -27,6 +27,16 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v))
 }
 
+/**
+ * True on the move that locks the gesture to the horizontal axis — the one
+ * moment SwipeRow should take pointer capture. Capturing any earlier (on
+ * pointerdown) makes Chrome retarget the following `click` to the capturing
+ * row, so taps on buttons inside the row never reach them.
+ */
+export function captureStartsOn(prev: SwipeState, next: SwipeState): boolean {
+  return next.axis === 'x' && prev.axis !== 'x'
+}
+
 export function swipeReducer(
   state: SwipeState,
   action: SwipeAction,

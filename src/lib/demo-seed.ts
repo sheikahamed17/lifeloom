@@ -225,7 +225,7 @@ export async function resetAndSeedDemo(db: Kysely<DB>): Promise<{ ops: number }>
 const DATA_TABLES = [
   'op_log', 'money_entries', 'recurring_rules', 'categories', 'tasks', 'learning_entries',
   'note_entries', 'insights', 'accounts', 'goals', 'transfers', 'budgets', 'projects',
-  'habits', 'habit_logs', 'journal_entries', 'widgets', 'devices',
+  'habits', 'habit_logs', 'journal_entries', 'people', 'expense_shares', 'widgets', 'devices',
 ] as const
 
 /** Delete every data row for the demo user (keeps the `user` row). */

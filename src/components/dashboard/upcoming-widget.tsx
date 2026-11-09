@@ -3,6 +3,8 @@
 import { useMemo } from 'react'
 import { useRecurringRules } from '@/hooks/use-recurring-rules'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
+import { useExpenseShares } from '@/hooks/use-expense-shares'
+import { withYourShare } from '@/lib/shares'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { useFxRates } from '@/hooks/use-fx-rates'
 import { useAllCategories } from '@/hooks/use-all-categories'
@@ -23,7 +25,9 @@ const DIRECTION_GLYPHS = {
 
 export function UpcomingWidget({ userId }: Props) {
   const rules = useRecurringRules(userId)
-  const entries = useMoneyEntries(userId)
+  const entriesRaw = useMoneyEntries(userId)
+  const shares = useExpenseShares(userId)
+  const entries = useMemo(() => withYourShare(entriesRaw, shares), [entriesRaw, shares])
   const { prefs } = useUserPrefs()
   const { rates } = useFxRates([...SUPPORTED_CURRENCIES])
   const allCats = useAllCategories(userId)

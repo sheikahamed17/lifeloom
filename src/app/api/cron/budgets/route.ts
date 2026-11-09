@@ -6,6 +6,7 @@ import { isAuthorizedCron } from '@/lib/cron-auth'
 import { sendPushToUser } from '@/lib/web-push'
 import { convertViaRates, parseFxOverrides } from '@/lib/fx'
 import { computeBudgetProgress, yearMonthInTz } from '@/lib/budget-exec'
+import { withYourShare } from '@/lib/shares'
 import type { BudgetRow, MoneyEntryRow } from '@/lib/dexie'
 
 export const dynamic = 'force-dynamic'
@@ -41,12 +42,20 @@ export async function POST(req: Request) {
     const fxOverrides = parseFxOverrides(prefs?.fx_overrides)
     const monthKey = yearMonthInTz(now, tz)
 
-    const money = await db.selectFrom('money_entries')
+    const moneyRaw = await db.selectFrom('money_entries')
       .where('user_id', '=', userId)
       .where('direction', '=', 'out')
       .where('deleted_at', 'is', null)
       .selectAll()
       .execute() as unknown as MoneyEntryRow[]
+
+    // Budgets count your share of a shared entry, not what others owe you.
+    const shares = await db.selectFrom('expense_shares')
+      .where('user_id', '=', userId)
+      .where('deleted_at', 'is', null)
+      .selectAll()
+      .execute()
+    const money = withYourShare(moneyRaw, shares)
 
     const toPrimary = (e: MoneyEntryRow): number => {
       if (e.currency === primary) return e.amount

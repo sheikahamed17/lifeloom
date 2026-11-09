@@ -18,6 +18,13 @@ describe('filterNewOps', () => {
     const out = filterNewOps(incoming, new Set(['a']))
     expect(out.map(o => o.id)).toEqual(['b'])
   })
+  it('orders the kept ops by HLC so a create is applied before its update or delete', () => {
+    const create = { ...mkOp('c', '0000000000000001-000000-d1', {}), op_type: 'create' as const }
+    const update = { ...mkOp('u', '0000000000000002-000000-d1', {}), op_type: 'update' as const }
+    const del = { ...mkOp('d', '0000000000000003-000000-d1', {}), op_type: 'delete' as const }
+    expect(filterNewOps([del, update, create], new Set()).map(o => o.id)).toEqual(['c', 'u', 'd'])
+  })
+
   it('returns all when existingIds is empty', () => {
     const incoming = [mkOp('a', '0000000000000001-000000-d1', {})]
     expect(filterNewOps(incoming, new Set())).toHaveLength(1)

@@ -9,6 +9,8 @@ import {
   CATEGORY_FIELDS,
   TASK_FIELDS,
   INSIGHT_FIELDS,
+  PERSON_FIELDS,
+  EXPENSE_SHARE_FIELDS,
 } from '@/lib/entity-fields'
 
 type ZodObjectShape = Record<string, z.ZodTypeAny>
@@ -107,4 +109,13 @@ describe('Schema-keys ⊆ FIELDS consistency', () => {
       expect(schemaKeys.has(field as string)).toBe(true)
     }
   })
+
+  for (const [kind, FIELDS] of [['person', PERSON_FIELDS], ['expense_share', EXPENSE_SHARE_FIELDS]] as const) {
+    it(`${kind}: schema keys and FIELDS match in both directions`, () => {
+      const schema = getPayloadSchemaForKind(kind)
+      if (!schema) throw new Error(`${kind} schema not found`)
+      const schemaKeys = Object.keys((schema as z.ZodObject<ZodObjectShape>).shape)
+      expect(new Set(schemaKeys)).toEqual(new Set(FIELDS as readonly string[]))
+    })
+  }
 })

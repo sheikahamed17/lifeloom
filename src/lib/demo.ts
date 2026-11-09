@@ -56,7 +56,7 @@ type Cat = { id: string; name: string; kind: 'spend' | 'income' }
 const CANNED: Record<string, (cats: Cat[], nowIso: string) => AgentResponse> = {
   'lunch 240': (cats, nowIso) => moneyDraft('lunch 240', 24000, 'Dining', 'Lunch', cats, nowIso),
   'coffee 120': (cats, nowIso) => moneyDraft('coffee 120', 12000, 'Dining', 'Coffee', cats, nowIso),
-  'finish the report by friday': (_cats, nowIso) => ({
+  'finish the report by friday': (_cats, _nowIso) => ({
     transcript: 'finish the report by friday', intent: 'log_task', confidence: 0.95,
     payload: { kind: 'task', title: 'Finish the report', due_at: null, priority: 'normal', completed_at: null, source: 'manual', raw_input: 'finish the report by friday' },
   }),

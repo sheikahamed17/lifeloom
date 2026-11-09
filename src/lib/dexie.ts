@@ -1,5 +1,6 @@
-import Dexie, { type EntityTable, type Table } from 'dexie'
-import type { Op } from '@/types/ops'
+import Dexie, { type EntityTable, type Table, type Transaction } from 'dexie'
+import type { Op, EntityRow } from '@/types/ops'
+import { applyOps } from '@/lib/op-log'
 import type { MoneyPayload } from '@/lib/op-schemas/money'
 
 type SyncMeta = {
@@ -213,6 +214,32 @@ export type GoalRow = {
   updated_at: string
 }
 
+export type PersonRow = {
+  id: string
+  user_id: string
+  name: string
+  is_archived?: number              // 0/1; optional like AccountRow so fixtures stay lean
+  field_hlcs: Record<string, string>
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ExpenseShareRow = {
+  id: string
+  user_id: string
+  money_entry_id: string
+  person_id: string
+  amount: number                    // minor units, the entry's currency
+  settled_at?: string | null        // ISO when marked paid; null/absent = outstanding
+  settled_account_id?: string | null
+  note?: string | null
+  field_hlcs: Record<string, string>
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type TransferRow = {
   id: string
   user_id: string
@@ -285,7 +312,7 @@ export type JournalRow = {
   updated_at: string
 }
 
-class PulseDb extends Dexie {
+export class PulseDb extends Dexie {
   op_log!: EntityTable<Op, 'id'>
   widgets!: EntityTable<WidgetRow, 'id'>
   sync_meta!: EntityTable<SyncMeta, 'key'>
@@ -307,6 +334,8 @@ class PulseDb extends Dexie {
   journal_entries!: EntityTable<JournalRow, 'id'>
   receipt_drafts!: EntityTable<ReceiptDraftRow, 'id'>
   projects!: EntityTable<ProjectRow, 'id'>
+  people!: EntityTable<PersonRow, 'id'>
+  expense_shares!: EntityTable<ExpenseShareRow, 'id'>
   fx_rates!: Table<FxRateRow>
 
   constructor() {
@@ -361,10 +390,44 @@ class PulseDb extends Dexie {
     this.version(14).stores({
       journal_entries: 'id, user_id, occurred_at',
     })
+    this.version(15).stores({
+      people: 'id, user_id',
+      expense_shares: 'id, user_id, money_entry_id, person_id, [user_id+person_id]',
+    }).upgrade(async tx => {
+      // A tab still running the previous bundle may already have pulled
+      // 'person' / 'expense_share' ops: it stored them in op_log, applied
+      // nothing (no case for the kind) and moved its cursor past them. Replay
+      // them here so the rows exist once the new code opens the database.
+      // No-op on a fresh install; idempotent (applyOps dedupes by op id).
+      const ops = await tx.table('op_log').where('entity_kind').anyOf('person', 'expense_share').toArray() as Op[]
+      await replayOpsInto(tx, ops)
+    })
   }
 }
 
 export const db = new PulseDb()
+
+/** Rebuild rows for the given ops from scratch (grouped per entity, HLC order) into their tables. */
+export async function replayOpsInto(tx: Transaction, ops: Op[]) {
+  const groups = new Map<string, Op[]>()
+  for (const op of ops) {
+    const key = `${op.entity_kind}|${op.entity_id}`
+    const list = groups.get(key)
+    if (list) list.push(op)
+    else groups.set(key, [op])
+  }
+  for (const group of groups.values()) {
+    const table = REPLAY_TABLES[group[0].entity_kind]
+    if (!table) continue
+    const row: EntityRow | undefined = applyOps(undefined, group)
+    if (row) await tx.table(table).put(row)
+  }
+}
+
+const REPLAY_TABLES: Partial<Record<Op['entity_kind'], string>> = {
+  person: 'people',
+  expense_share: 'expense_shares',
+}
 
 export async function resetDb() {
   await db.op_log.clear()
@@ -388,5 +451,7 @@ export async function resetDb() {
   await db.journal_entries.clear()
   await db.projects.clear()
   await db.receipt_drafts.clear()
+  await db.people.clear()
+  await db.expense_shares.clear()
   await db.fx_rates.clear()
 }

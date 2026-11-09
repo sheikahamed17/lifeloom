@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
+import { useExpenseShares } from '@/hooks/use-expense-shares'
+import { withYourShare } from '@/lib/shares'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { useFxRates } from '@/hooks/use-fx-rates'
 import { useCategories } from '@/hooks/use-categories'
@@ -35,7 +37,10 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
   const fetchRange = useMemo(() => {
     return deltaFetchRange(plan.mode, plan.period)
   }, [plan.mode, plan.period])
-  const entries = useMoneyEntries(userId, fetchRange)
+  const entriesRaw = useMoneyEntries(userId, fetchRange)
+  const shares = useExpenseShares(userId)
+  // Answers are about YOUR spend: a shared entry counts your share only.
+  const entries = useMemo(() => withYourShare(entriesRaw, shares), [entriesRaw, shares])
   const { rates } = useFxRates([...SUPPORTED_CURRENCIES])
   const categories = useCategories(userId)
   const allCategories = useAllCategories(userId)

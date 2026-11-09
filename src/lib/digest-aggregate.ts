@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely'
 import type { DB } from '@/lib/db'
 import { convertToPrimary } from '@/lib/fx'
 import { decodeStoredTags } from '@/lib/stored-tags'
+import { withYourShare } from '@/lib/shares'
 
 export type DigestMetrics = {
   currency: string
@@ -26,7 +27,7 @@ export async function aggregateWeek(
   fxOverrides?: Record<string, number>,
 ): Promise<DigestMetrics> {
   // Fetch money entries in the window (non-deleted)
-  const entries = await db
+  const entriesRaw = await db
     .selectFrom('money_entries')
     .where('user_id', '=', userId)
     .where('occurred_at', '>=', bounds.startsAt)
@@ -34,6 +35,15 @@ export async function aggregateWeek(
     .where('deleted_at', 'is', null)
     .selectAll()
     .execute()
+
+  // Spend counts YOUR share of a shared entry (amount − what others owe you).
+  const shares = await db
+    .selectFrom('expense_shares')
+    .where('user_id', '=', userId)
+    .where('deleted_at', 'is', null)
+    .selectAll()
+    .execute()
+  const entries = withYourShare(entriesRaw, shares)
 
   // Fetch categories (for category names)
   const categories = await db

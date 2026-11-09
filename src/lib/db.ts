@@ -209,6 +209,32 @@ export interface JournalEntryTable {
   updated_at: string
 }
 
+export interface PeopleTable {
+  id: string
+  user_id: string
+  name: string
+  is_archived: number
+  field_hlcs: string
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ExpenseSharesTable {
+  id: string
+  user_id: string
+  money_entry_id: string
+  person_id: string
+  amount: number
+  settled_at: string | null
+  settled_account_id: string | null
+  note: string | null
+  field_hlcs: string
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface BudgetTable {
   id: string
   user_id: string
@@ -379,6 +405,8 @@ export interface DB {
   habits: HabitsTable
   habit_logs: HabitLogsTable
   projects: ProjectTable
+  people: PeopleTable
+  expense_shares: ExpenseSharesTable
   fx_rates: FxRateTable
   insights: InsightTable
   push_subscriptions: PushSubscriptionTable

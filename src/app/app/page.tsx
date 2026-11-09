@@ -59,6 +59,7 @@ import { seedDefaultCategoriesIfEmpty } from '@/lib/seed-categories'
 import { runCategoryDedupeOnce } from '@/lib/dedupe-categories-migration'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import type { Allocation } from '@/lib/split-transaction'
+import { planSplitOfExisting } from '@/lib/split-edit'
 import { drainVoiceQueue } from '@/lib/voice-queue'
 import { callVoiceApiStreaming } from '@/lib/voice-sse'
 import { drainReceiptQueue } from '@/lib/receipt-queue'
@@ -371,13 +372,34 @@ function AppPageInner() {
     pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
   }
 
+  // Split an already-saved money entry: it becomes the first part (same id,
+  // receipt and history) and the other allocations are created alongside it in
+  // the same split group — the same N-entries shape the create path writes.
+  async function splitExistingEntry(final: Extract<ChipDraft, { kind: 'money' }>, id: string, allocations: Allocation[]) {
+    if (!user) return
+    const plan = planSplitOfExisting({ entryId: id, final, allocations, newId: () => crypto.randomUUID() })
+    await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: plan.update.entity_id, op_type: 'update', payload: plan.update.payload, user_id: user.id }))
+    for (const part of plan.creates) {
+      await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: part.entity_id, op_type: 'create', payload: part.payload, user_id: user.id }))
+    }
+    setDraft(null); setEditId(null)
+    pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
+  }
+
   async function confirmEntry(
     final: ChipDraft,
     recurring: { enabled: boolean; period: 'daily'|'weekly'|'monthly'|'yearly'; intervalCount: number },
     splitAllocations?: Allocation[],
   ) {
     if (!user) return
-    if (editId) { await updateEntry(final, editId); return }
+    if (editId) {
+      if (final.kind === 'money' && splitAllocations && splitAllocations.length > 0) {
+        await splitExistingEntry(final, editId, splitAllocations)
+      } else {
+        await updateEntry(final, editId)
+      }
+      return
+    }
 
     if (final.kind === 'task') {
       const op = await generateOp({

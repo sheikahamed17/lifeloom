@@ -177,15 +177,13 @@ function ConfirmationChipMoney({
             >
               {cat ? `${cat.icon ?? ''} ${cat.name}` : 'Pick category…'}
             </button>
-            {!isEdit && (
-              <button
-                type="button"
-                onClick={enterSplit}
-                className="rounded-md border border-accent-2/40 text-accent-2 px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-              >
-                ⑂ Split
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={enterSplit}
+              className="rounded-md border border-accent-2/40 text-accent-2 px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+            >
+              ⑂ Split
+            </button>
           </>
         )}
         {editingField === 'description' ? (
@@ -383,7 +381,7 @@ function ConfirmationChipMoney({
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
         <Button className="flex-[2] bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] hover:opacity-90" onClick={handleConfirm} disabled={busy || d.amount === 0 || (splitMode && !splitReady)}>
-          {isEdit ? 'Save changes' : splitMode ? `Confirm split (${splitRows.length})` : `Confirm ${symbol}${major}`}
+          {splitMode ? `${isEdit ? 'Save' : 'Confirm'} split (${splitRows.length})` : isEdit ? 'Save changes' : `Confirm ${symbol}${major}`}
         </Button>
       </div>
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { swipeReducer, initialSwipeState, REVEAL_WIDTH, type SwipeState, type SwipeAction } from '@/lib/gesture-swipe'
+import { swipeReducer, captureStartsOn, initialSwipeState, REVEAL_WIDTH, type SwipeState, type SwipeAction } from '@/lib/gesture-swipe'
 
 function run(actions: SwipeAction[], start: Partial<SwipeState> = {}): SwipeState {
   return actions.reduce((s, a) => swipeReducer(s, a), { ...initialSwipeState, ...start })
@@ -69,5 +69,37 @@ describe('swipeReducer', () => {
     const reset = swipeReducer(opened, { type: 'reset' })
     expect(reset.open).toBe(false)
     expect(reset.translateX).toBe(0)
+  })
+})
+
+// Chrome retargets the click that follows a pointer capture to the capturing
+// element, so SwipeRow must only capture once a horizontal swipe has begun —
+// never on the press itself, or every button inside the row stops working.
+describe('captureStartsOn — pointer capture only when a horizontal swipe begins', () => {
+  const down = { type: 'down', x: 200, y: 100 } as const
+
+  it('never on a tap (press with no movement)', () => {
+    const pressed = run([down])
+    expect(captureStartsOn(initialSwipeState, pressed)).toBe(false)
+    const released = swipeReducer(pressed, { type: 'up' })
+    expect(captureStartsOn(pressed, released)).toBe(false)
+  })
+
+  it('never on a sub-slop wobble or a vertical scroll', () => {
+    const pressed = run([down])
+    const wobble = swipeReducer(pressed, { type: 'move', x: 204, y: 103 })
+    expect(captureStartsOn(pressed, wobble)).toBe(false)
+    const scroll = swipeReducer(pressed, { type: 'move', x: 203, y: 140 })
+    expect(scroll.axis).toBe('y')
+    expect(captureStartsOn(pressed, scroll)).toBe(false)
+  })
+
+  it('exactly once, on the move that locks the horizontal axis', () => {
+    const pressed = run([down])
+    const locked = swipeReducer(pressed, { type: 'move', x: 170, y: 104 })
+    expect(locked.axis).toBe('x')
+    expect(captureStartsOn(pressed, locked)).toBe(true)
+    const further = swipeReducer(locked, { type: 'move', x: 140, y: 104 })
+    expect(captureStartsOn(locked, further)).toBe(false)
   })
 })

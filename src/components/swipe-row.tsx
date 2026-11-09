@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useRef } from 'react'
 import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { swipeReducer, initialSwipeState, REVEAL_WIDTH, type SwipeState, type SwipeAction } from '@/lib/gesture-swipe'
+import { swipeReducer, captureStartsOn, initialSwipeState, REVEAL_WIDTH, type SwipeState, type SwipeAction } from '@/lib/gesture-swipe'
 
 const LONG_PRESS_MS = 500
 
@@ -41,7 +41,11 @@ export function SwipeRow({ onDelete, onLongPress, deleteLabel, isOpen, onOpenCha
   function handleDown(e: React.PointerEvent) {
     downRef.current = true
     consumedRef.current = false
-    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* capture unsupported */ }
+    // Do NOT capture the pointer here. Chrome retargets the `click` that
+    // follows a capture to the capturing element, so capturing on every press
+    // made every button inside the row (Set category, Delete, receipt…) dead
+    // to mouse clicks. Capture starts in handleMove once a horizontal swipe
+    // is under way — the only time we need move events from outside the row.
     dispatch({ type: 'down', x: e.clientX, y: e.clientY })
     if (onLongPress) {
       clearTimer()
@@ -53,6 +57,9 @@ export function SwipeRow({ onDelete, onLongPress, deleteLabel, isOpen, onOpenCha
     if (!downRef.current) return
     const next = swipeReducer(state, { type: 'move', x: e.clientX, y: e.clientY })
     if (next.axis !== null) clearTimer()  // any directional lock cancels long-press
+    if (captureStartsOn(state, next)) {
+      try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* capture unsupported */ }
+    }
     dispatch({ type: 'move', x: e.clientX, y: e.clientY })
   }
 

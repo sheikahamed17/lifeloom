@@ -18,6 +18,9 @@ export function moneyRowToDraft(r: MoneyEntryRow): Extract<ChipDraft, { kind: 'm
     merchant: r.merchant,
     tags: r.tags,
     account_id: r.account_id,
+    // Carried so that splitting a part of an existing split in the edit chip
+    // adds to its group rather than starting a second one.
+    split_group_id: r.split_group_id ?? null,
   }
 }
 

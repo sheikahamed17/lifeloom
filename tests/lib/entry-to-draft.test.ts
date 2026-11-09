@@ -11,7 +11,13 @@ describe('entry-to-draft mappers', () => {
       kind: 'money', amount: 7500, currency: 'INR', direction: 'out', category_id: 'c1',
       description: 'rent', occurred_at: '2026-07-01T10:00:00.000Z', source: 'manual',
       receipt_key: null, raw_input: null, recurring_rule_id: null, merchant: null, tags: [], account_id: null,
+      split_group_id: null,
     })
+  })
+
+  it('money: a split part carries its group id so an edit-split joins the same group', () => {
+    const r: MoneyEntryRow = { ...base, id: 'm3', amount: 100, currency: 'INR', direction: 'out', category_id: null, description: null, occurred_at: '2026-07-01T10:00:00.000Z', source: 'manual', receipt_key: null, raw_input: null, recurring_rule_id: null, merchant: null, tags: [], account_id: null, split_group_id: 'grp-7' }
+    expect(moneyRowToDraft(r).split_group_id).toBe('grp-7')
   })
 
   it('money: null category/description survive', () => {

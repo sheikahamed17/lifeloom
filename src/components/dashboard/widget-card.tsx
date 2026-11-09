@@ -9,6 +9,7 @@ import { AccountsWidget } from '@/components/dashboard/accounts-widget'
 import { UpcomingWidget } from '@/components/dashboard/upcoming-widget'
 import { GoalsWidget } from '@/components/dashboard/goals-widget'
 import { HabitsWidget } from '@/components/dashboard/habits-widget'
+import { OwedWidget } from '@/components/dashboard/owed-widget'
 import type { WidgetType } from '@/lib/widgets'
 
 type Props = {
@@ -91,6 +92,14 @@ export function WidgetCard({ type, userId }: Props) {
     return (
       <section className="glass flex flex-col gap-4 rounded-2xl p-4">
         <HabitsWidget userId={userId} />
+      </section>
+    )
+  }
+
+  if (type === 'owed') {
+    return (
+      <section className="glass flex flex-col gap-4 rounded-2xl p-4">
+        <OwedWidget userId={userId} />
       </section>
     )
   }

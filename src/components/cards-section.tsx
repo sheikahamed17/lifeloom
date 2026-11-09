@@ -4,6 +4,8 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
+import { useExpenseShares } from '@/hooks/use-expense-shares'
+import { withSettlements } from '@/lib/shares'
 import { useTransfers } from '@/hooks/use-transfers'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { useFxRates } from '@/hooks/use-fx-rates'
@@ -21,7 +23,9 @@ type Props = { userId: string }
 // accounts/money/transfers; renders nothing when there are no liability accounts.
 export function CardsSection({ userId }: Props) {
   const accounts = useAccounts(userId)
-  const entries = useMoneyEntries(userId)
+  const entriesRaw = useMoneyEntries(userId)
+  const shares = useExpenseShares(userId)
+  const entries = useMemo(() => withSettlements(entriesRaw, shares), [entriesRaw, shares])
   const transfers = useTransfers(userId)
   const { prefs } = useUserPrefs()
   const { rates } = useFxRates([...SUPPORTED_CURRENCIES])

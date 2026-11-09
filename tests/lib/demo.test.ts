@@ -30,6 +30,18 @@ describe('cannedAgentResponse — AI works with zero Groq quota', () => {
     expect(cannedAgentResponse('  LUNCH   240 ', cats, now)?.intent).toBe('log_money')
   })
 
+  it('shared-expense phrases: a draft pre-filled with Arun (equal split) and a settle_share payload', () => {
+    const people = [{ id: 'p-arun', name: 'Arun' }]
+    const draft = cannedAgentResponse('rent 20000 split with Arun', cats, now, people)
+    expect(draft?.intent).toBe('log_money')
+    expect(draft?.payload).toMatchObject({ kind: 'money', amount: 2000000, shared_with: [{ person_id: 'p-arun', name: 'Arun', amount: null }] })
+    const settle = cannedAgentResponse('Arun paid me 10000', cats, now, people)
+    expect(settle?.intent).toBe('settle_share')
+    expect(settle?.payload).toEqual({ kind: 'settle_share', person_id: 'p-arun', person_name: 'Arun', amount: 1000000, currency: 'INR' })
+    // Without people the names still come through (the chip creates / asks).
+    expect((cannedAgentResponse('Arun paid me 10000', cats, now)?.payload as { person_id: unknown }).person_id).toBeNull()
+  })
+
   it('returns a query plan for suggested questions (executed locally over seeded data)', () => {
     expect(cannedAgentResponse('total spend this month', cats, now)?.payload).toMatchObject({ kind: 'query_money', mode: 'total' })
     expect(cannedAgentResponse("what's overdue?", cats, now)?.payload).toMatchObject({ kind: 'query_task', status: 'overdue' })

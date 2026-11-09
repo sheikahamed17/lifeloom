@@ -46,6 +46,7 @@ export function buildSeeds(): Seed[] {
     { id: 'demo-cat-transport', name: 'Transport', kind: 'spend', icon: '🚌' },
     { id: 'demo-cat-utilities', name: 'Utilities', kind: 'spend', icon: '💡' },
     { id: 'demo-cat-shopping', name: 'Shopping', kind: 'spend', icon: '🛍️' },
+    { id: 'demo-cat-housing', name: 'Housing', kind: 'spend', icon: '🏠' },
     { id: 'demo-cat-salary', name: 'Salary', kind: 'income', icon: '💼' },
   ]
   cats.forEach((c, i) => add('category', c.id, daysAgo(30), { name: c.name, kind: c.kind, icon: c.icon, sort_order: i }))
@@ -85,6 +86,17 @@ export function buildSeeds(): Seed[] {
     const at = daysAgo(ago)
     add('money', `demo-money-${i}`, at, { amount, currency: 'INR', direction, category_id, account_id, description: desc, occurred_at: at, source: 'manual', tags: [] })
   })
+
+  // --- Shared expense: rent paid in full, half owed by a flatmate ---
+  // Spend counts ₹10,000 (your share); the bank balance dropped ₹20,000; the
+  // People page / Owed-to-you widget show Arun owes ₹10,000. The canned
+  // "Arun paid me 10000" phrase settles exactly this share.
+  add('person', 'demo-person-arun', daysAgo(30), { name: 'Arun', is_archived: 0 })
+  {
+    const at = daysAgo(8)
+    add('money', 'demo-money-rent', at, { amount: 2000000, currency: 'INR', direction: 'out', category_id: 'demo-cat-housing', account_id: 'demo-acct-bank', description: 'Rent — shared flat', occurred_at: at, source: 'manual', tags: [] })
+    add('expense_share', 'demo-share-rent', at, { money_entry_id: 'demo-money-rent', person_id: 'demo-person-arun', amount: 1000000, settled_at: null, settled_account_id: null, note: 'half the rent' })
+  }
 
   // --- Auto-imported bank/card alerts (what email/SMS ingest produces) ---
   // account_id is what the real matcher picks from the alert text (asserted in
@@ -225,7 +237,7 @@ export async function resetAndSeedDemo(db: Kysely<DB>): Promise<{ ops: number }>
 const DATA_TABLES = [
   'op_log', 'money_entries', 'recurring_rules', 'categories', 'tasks', 'learning_entries',
   'note_entries', 'insights', 'accounts', 'goals', 'transfers', 'budgets', 'projects',
-  'habits', 'habit_logs', 'journal_entries', 'widgets', 'devices',
+  'habits', 'habit_logs', 'journal_entries', 'people', 'expense_shares', 'widgets', 'devices',
 ] as const
 
 /** Delete every data row for the demo user (keeps the `user` row). */

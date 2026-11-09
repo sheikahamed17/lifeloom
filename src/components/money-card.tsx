@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
+import { useExpenseShares } from '@/hooks/use-expense-shares'
+import { withYourShare } from '@/lib/shares'
 import { useAllCategories } from '@/hooks/use-all-categories'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { useFxRates } from '@/hooks/use-fx-rates'
@@ -21,14 +23,19 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
   const range = useMemo(() => currentPeriodRange(period), [period])
   const prevRange = useMemo(() => previousPeriodRange(period, range), [period, range])
 
-  const current = useMoneyEntries(userId, range)
-  const previous = useMoneyEntries(userId, prevRange)
+  // Spend view: a shared entry counts only YOUR share (amount − what others owe you).
+  const shares = useExpenseShares(userId)
+  const currentRaw = useMoneyEntries(userId, range)
+  const previousRaw = useMoneyEntries(userId, prevRange)
+  const current = useMemo(() => withYourShare(currentRaw, shares), [currentRaw, shares])
+  const previous = useMemo(() => withYourShare(previousRaw, shares), [previousRaw, shares])
   const eightWeeks = useMemo(() => {
     const to = new Date()
     const from = new Date(to.getTime() - 8 * 7 * 24 * 60 * 60 * 1000)
     return { from: from.toISOString(), to: to.toISOString() }
   }, [])
-  const trend = useMoneyEntries(userId, eightWeeks)
+  const trendRaw = useMoneyEntries(userId, eightWeeks)
+  const trend = useMemo(() => withYourShare(trendRaw, shares), [trendRaw, shares])
   const allCats = useAllCategories(userId)
   const { prefs } = useUserPrefs()
   const { rates } = useFxRates([...SUPPORTED_CURRENCIES])

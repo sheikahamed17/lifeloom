@@ -29,5 +29,5 @@ Copy the shape of an existing entity end-to-end. `account` is the cleanest refer
 ## Gotchas (these bite)
 - **The `db.transaction` table list (step 7)** and **`tableName` union (step 6)** are the silent-failure spots — a missing entry throws or skips at runtime, not at build.
 - **Dexie version bump (step 4)** must be a NEW version line; a new *table* needs it, a new unindexed *field* does not.
-- After the checklist, run the FULL gate `pnpm lint && pnpm typecheck && pnpm test && pnpm build`. Then apply the migration to remote D1 with the `apply-migration` skill (the Deploy workflow only auto-applies 0001–0004).
+- After the checklist, run the FULL gate `pnpm lint && pnpm typecheck && pnpm test && pnpm build`. The Deploy and Deploy Demo workflows run `wrangler d1 migrations apply` (every pending file) before `wrangler deploy`, so merging to `main` applies it; the `apply-migration` skill is only for a manual/one-off apply.
 - Consider whether hooks/widgets/pages need the entity too (a Settings CRUD page mirrors `settings/accounts/page.tsx`; a dashboard widget mirrors `dashboard/accounts-widget.tsx` + the `widgets.ts` catalog + `widget-card.tsx` dispatcher).

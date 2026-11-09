@@ -58,7 +58,7 @@ export async function applyLocalOp(op: Op): Promise<void> {
 
   await db.transaction(
     'rw',
-    [db.op_log, db.widgets, db.money_entries, db.recurring_rules, db.categories, db.tasks, db.insights, db.learning_entries, db.note_entries, db.budgets, db.accounts, db.goals, db.transfers, db.habits, db.habit_logs, db.journal_entries, db.projects],
+    [db.op_log, db.widgets, db.money_entries, db.recurring_rules, db.categories, db.tasks, db.insights, db.learning_entries, db.note_entries, db.budgets, db.accounts, db.goals, db.transfers, db.habits, db.habit_logs, db.journal_entries, db.projects, db.people, db.expense_shares],
     async () => {
       await db.op_log.add(op)
 
@@ -159,6 +159,18 @@ export async function applyLocalOp(op: Op): Promise<void> {
           await db.journal_entries.put(next as never)
           return
         }
+        case 'person': {
+          const current = await db.people.get(op.entity_id)
+          const next = applyOp(current as never, op)
+          await db.people.put(next as never)
+          return
+        }
+        case 'expense_share': {
+          const current = await db.expense_shares.get(op.entity_id)
+          const next = applyOp(current as never, op)
+          await db.expense_shares.put(next as never)
+          return
+        }
       }
     },
   )
@@ -168,7 +180,8 @@ export async function getPendingOps(): Promise<Op[]> {
   // For Phase 0, "pending" = every op generated since last server ack
   const synced = (await db.sync_meta.get('synced_op_ids'))?.value ?? ''
   const syncedSet = new Set(synced.split(',').filter(Boolean))
-  const all = await db.op_log.toArray()
+  // HLC order, so the server (and any device) sees a create before its update.
+  const all = await db.op_log.orderBy('hlc').toArray()
   return all.filter(o => !syncedSet.has(o.id))
 }
 

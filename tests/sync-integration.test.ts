@@ -59,6 +59,8 @@ function resetMockDb() {
     learning_entries: [],
     note_entries: [],
     journal_entries: [],
+    people: [],
+    expense_shares: [],
     insights: [],
   }
 }
@@ -666,6 +668,60 @@ describe('/api/sync — Journal domain', () => {
       expect(rows).toHaveLength(1)
       expect(rows[0].mood).toBe('😀')
       expect(rows[0].body).toBe('Original body')
+    })
+  })
+})
+
+describe('/api/sync — Shared expenses (person + expense_share)', () => {
+  it('persists a person and an expense_share and includes both in the next pull', async () => {
+    await withTestUser(async ({ userId, callSync, testDb }) => {
+      const push = await callSync({ device_id: 'd1', new_ops: [
+        {
+          id: 'op-person-1', hlc: '0000000000000001-000000-d1', device_id: 'd1', user_id: userId,
+          entity_kind: 'person', entity_id: 'p1', op_type: 'create' as const,
+          payload: { name: 'Arun', is_archived: 0 }, schema_version: 1,
+        },
+        {
+          id: 'op-share-1', hlc: '0000000000000002-000000-d1', device_id: 'd1', user_id: userId,
+          entity_kind: 'expense_share', entity_id: 's1', op_type: 'create' as const,
+          payload: { money_entry_id: 'm-rent', person_id: 'p1', amount: 1000000, settled_at: null, settled_account_id: null, note: 'Nov rent' },
+          schema_version: 1,
+        },
+      ] })
+      expect(push.applied_ack).toEqual(['op-person-1', 'op-share-1'])
+
+      const pull = await callSync({ device_id: 'd2', new_ops: [] })
+      expect(pull.new_ops_from_server.map((o: { entity_kind: string }) => o.entity_kind)).toEqual(['person', 'expense_share'])
+
+      const people = await testDb.selectFrom('people').where('user_id', '=', userId).selectAll().execute()
+      expect(people).toHaveLength(1)
+      expect(people[0].name).toBe('Arun')
+      const shares = await testDb.selectFrom('expense_shares').where('user_id', '=', userId).selectAll().execute()
+      expect(shares).toHaveLength(1)
+      expect(shares[0].money_entry_id).toBe('m-rent')
+      expect(shares[0].amount).toBe(1000000)
+      expect(shares[0].settled_at).toBeNull()
+    })
+  })
+
+  it('per-field LWW: settling a share leaves amount and person intact', async () => {
+    await withTestUser(async ({ userId, callSync, testDb }) => {
+      await callSync({ device_id: 'd1', new_ops: [{
+        id: 'op-s2a', hlc: '0000000000000001-000000-d1', device_id: 'd1', user_id: userId,
+        entity_kind: 'expense_share', entity_id: 's2', op_type: 'create',
+        payload: { money_entry_id: 'm1', person_id: 'p1', amount: 2400 }, schema_version: 1,
+      }] })
+      await callSync({ device_id: 'd1', new_ops: [{
+        id: 'op-s2b', hlc: '0000000000000002-000000-d1', device_id: 'd1', user_id: userId,
+        entity_kind: 'expense_share', entity_id: 's2', op_type: 'update',
+        payload: { settled_at: '2026-11-05T10:00:00Z', settled_account_id: 'acc-bank' }, schema_version: 1,
+      }] })
+      const rows = await testDb.selectFrom('expense_shares').where('user_id', '=', userId).selectAll().execute()
+      expect(rows).toHaveLength(1)
+      expect(rows[0].settled_at).toBe('2026-11-05T10:00:00Z')
+      expect(rows[0].settled_account_id).toBe('acc-bank')
+      expect(rows[0].amount).toBe(2400)
+      expect(rows[0].person_id).toBe('p1')
     })
   })
 })

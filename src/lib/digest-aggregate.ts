@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely'
 import type { DB } from '@/lib/db'
 import { convertToPrimary } from '@/lib/fx'
 import { decodeStoredTags } from '@/lib/stored-tags'
+import { withYourShare, owedByPerson } from '@/lib/shares'
 
 export type DigestMetrics = {
   currency: string
@@ -16,6 +17,8 @@ export type DigestMetrics = {
   learnings_added: number
   notes_added: number
   top_learning_tags: string[]
+  /** Outstanding shared-expense debts owed TO the user, primary currency. Absent on digests written before shared expenses. */
+  owed_total?: number
 }
 
 export async function aggregateWeek(
@@ -26,7 +29,7 @@ export async function aggregateWeek(
   fxOverrides?: Record<string, number>,
 ): Promise<DigestMetrics> {
   // Fetch money entries in the window (non-deleted)
-  const entries = await db
+  const entriesRaw = await db
     .selectFrom('money_entries')
     .where('user_id', '=', userId)
     .where('occurred_at', '>=', bounds.startsAt)
@@ -34,6 +37,15 @@ export async function aggregateWeek(
     .where('deleted_at', 'is', null)
     .selectAll()
     .execute()
+
+  // Spend counts YOUR share of a shared entry (amount − what others owe you).
+  const shares = await db
+    .selectFrom('expense_shares')
+    .where('user_id', '=', userId)
+    .where('deleted_at', 'is', null)
+    .selectAll()
+    .execute()
+  const entries = withYourShare(entriesRaw, shares)
 
   // Fetch categories (for category names)
   const categories = await db
@@ -74,6 +86,26 @@ export async function aggregateWeek(
       const catName = entry.category_id ? categoryById.get(entry.category_id)?.name : 'Uncategorized'
       const key = catName ?? 'Uncategorized'
       categorySpend.set(key, (categorySpend.get(key) ?? 0) + convertedAmount)
+    }
+  }
+
+  // "Owed to you": unsettled shares on live out-entries (any date), in primary currency.
+  let owedTotal = 0
+  if (shares.some(s => !s.settled_at)) {
+    const outEntries = await db
+      .selectFrom('money_entries')
+      .where('user_id', '=', userId)
+      .where('direction', '=', 'out')
+      .where('deleted_at', 'is', null)
+      .selectAll()
+      .execute()
+    for (const row of owedByPerson(outEntries as unknown as Parameters<typeof owedByPerson>[0], shares, [])) {
+      for (const [currency, amount] of Object.entries(row.byCurrency)) {
+        if (currency === primaryCurrency) { owedTotal += amount; continue }
+        const conv = await convertToPrimary(db, amount, currency, primaryCurrency, bounds.endsAt, fxOverrides)
+        if (conv) owedTotal += conv.amount
+        else skippedCurrencies.add(currency)
+      }
     }
   }
 
@@ -153,5 +185,6 @@ export async function aggregateWeek(
     learnings_added: learnings.length,
     notes_added: notes.length,
     top_learning_tags,
+    owed_total: owedTotal,
   }
 }

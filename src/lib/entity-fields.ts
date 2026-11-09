@@ -65,3 +65,11 @@ export const HABIT_LOG_FIELDS = [
 export const JOURNAL_FIELDS = [
   'body', 'mood', 'occurred_at', 'source',
 ] as const
+
+export const PERSON_FIELDS = [
+  'name', 'is_archived',
+] as const
+
+export const EXPENSE_SHARE_FIELDS = [
+  'money_entry_id', 'person_id', 'amount', 'settled_at', 'settled_account_id', 'note',
+] as const

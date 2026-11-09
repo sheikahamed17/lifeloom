@@ -28,6 +28,14 @@ export default function SettingsPage() {
             </CardHeader>
           </Card>
         </Link>
+        <Link href="/settings/people">
+          <Card className="hover:bg-white/10 transition">
+            <CardHeader>
+              <CardTitle>People</CardTitle>
+              <CardDescription>Who owes you for shared expenses; mark repayments paid.</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
         <Link href="/settings/goals">
           <Card className="hover:bg-white/10 transition">
             <CardHeader>

@@ -9,7 +9,7 @@ vi.mock('@opennextjs/cloudflare', () => ({ getCloudflareContext: () => ({ env: {
 vi.mock('@/lib/web-push', () => ({ sendPushToUser: sendPushMock }))
 
 let state: {
-  budgets: Row[]; money: Row[]; prefs: Row[]; notifs: Row[]; categories: Row[]
+  budgets: Row[]; money: Row[]; prefs: Row[]; notifs: Row[]; categories: Row[]; shares?: Row[]
 }
 const inserted: Row[] = []
 
@@ -20,6 +20,7 @@ function makeFakeDb() {
     : t === 'user_prefs' ? state.prefs
     : t === 'push_notifications' ? state.notifs
     : t === 'categories' ? state.categories
+    : t === 'expense_shares' ? (state.shares ?? [])
     : t === 'fx_rates' ? [] : []
   const chain = (table: string) => {
     const wheres: Array<[string, string, unknown]> = []
@@ -80,6 +81,16 @@ describe('/api/cron/budgets', () => {
     const res = await POST(req())
     const body = await res.json() as { alerts_created: number }
     expect(body.alerts_created).toBe(0)
+  })
+  it('a shared entry counts only your share: half the rent owed by someone else stays under 80%', async () => {
+    // Budget 1000, rent 1000 of which 600 is owed by a flatmate → your share 400 = 40%.
+    state.shares = [{ id: 's1', user_id: 'u1', money_entry_id: 'm1', person_id: 'p1', amount: 60000, settled_at: null, settled_account_id: null, deleted_at: null }]
+    const res = await POST(req())
+    const body = await res.json() as { alerts_created: number }
+    expect(body.alerts_created).toBe(0)
+    // Settling the share does not change spend: still no alert.
+    state.shares = [{ ...state.shares[0], settled_at: new Date().toISOString(), settled_account_id: 'acc' }]
+    expect(((await (await POST(req())).json()) as { alerts_created: number }).alerts_created).toBe(0)
   })
   it('no alert below 80%', async () => {
     state.money = [{ ...state.money[0], amount: 70000 }]

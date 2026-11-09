@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const ENTITY_KINDS = ['widget', 'money', 'recurring', 'task', 'project', 'learning', 'note', 'category', 'budget', 'account', 'goal', 'transfer', 'insight', 'habit', 'habit_log', 'journal'] as const
+export const ENTITY_KINDS = ['widget', 'money', 'recurring', 'task', 'project', 'learning', 'note', 'category', 'budget', 'account', 'goal', 'transfer', 'insight', 'habit', 'habit_log', 'journal', 'person', 'expense_share'] as const
 export const OP_TYPES = ['create', 'update', 'delete'] as const
 
 export const OpSchema = z.object({

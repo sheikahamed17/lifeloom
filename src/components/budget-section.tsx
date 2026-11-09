@@ -7,6 +7,8 @@ import { db } from '@/lib/dexie'
 import { useBudgets } from '@/hooks/use-budgets'
 import { useCategories } from '@/hooks/use-categories'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
+import { useExpenseShares } from '@/hooks/use-expense-shares'
+import { withYourShare } from '@/lib/shares'
 import { useFxRates } from '@/hooks/use-fx-rates'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { convertViaRates } from '@/lib/fx'
@@ -52,7 +54,10 @@ async function removeBudget(userId: string, categoryId: string) {
 export function BudgetSection({ userId }: Props) {
   const budgets = useBudgets(userId)
   const spendCats = useCategories(userId, 'spend')
-  const entries = useMoneyEntries(userId)
+  const entriesRaw = useMoneyEntries(userId)
+  const shares = useExpenseShares(userId)
+  // Budgets count your share of a shared entry, not the part others owe you.
+  const entries = useMemo(() => withYourShare(entriesRaw, shares), [entriesRaw, shares])
   const { prefs } = useUserPrefs()
   const { rates } = useFxRates([...SUPPORTED_CURRENCIES])
   const [adding, setAdding] = useState(false)

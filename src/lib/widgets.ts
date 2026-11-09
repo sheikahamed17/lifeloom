@@ -1,4 +1,4 @@
-export type WidgetType = 'spent' | 'budgets' | 'today-tasks' | 'spend-trend' | 'recent-activity' | 'accounts' | 'upcoming' | 'goals' | 'habits'
+export type WidgetType = 'spent' | 'budgets' | 'today-tasks' | 'spend-trend' | 'recent-activity' | 'accounts' | 'upcoming' | 'goals' | 'habits' | 'owed'
 
 export const WIDGET_CATALOG: Array<{ type: WidgetType; label: string; description: string }> = [
   { type: 'spent', label: 'Spent', description: 'Total spending overview' },
@@ -10,6 +10,7 @@ export const WIDGET_CATALOG: Array<{ type: WidgetType; label: string; descriptio
   { type: 'upcoming', label: 'Upcoming', description: 'Cash-flow forecast: upcoming recurring events + projected month-end' },
   { type: 'goals', label: 'Goals', description: 'Savings goals + progress' },
   { type: 'habits', label: 'Habits', description: 'Today\'s habits + streaks' },
+  { type: 'owed', label: 'Owed to you', description: 'Shared expenses others still owe you' },
 ]
 
 export const DEFAULT_WIDGET_TYPES: WidgetType[] = [

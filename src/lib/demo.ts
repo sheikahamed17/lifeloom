@@ -38,6 +38,8 @@ export const DEMO_EXAMPLES = [
   'idea: try deploying my own Lifeloom',
   'total spend this month',
   "what's overdue?",
+  'rent 20000 split with Arun',
+  'Arun paid me 10000',
 ] as const
 
 export type AgentResponse = {
@@ -49,14 +51,15 @@ export type AgentResponse = {
 }
 
 type Cat = { id: string; name: string; kind: 'spend' | 'income' }
+type Person = { id: string; name: string }
 
 // Each canned phrase maps to the SAME response shape /api/agent produces, built
 // from the request's live categories + timestamp so it drops straight into the
 // existing confirmation-chip / query-answer UI.
-const CANNED: Record<string, (cats: Cat[], nowIso: string) => AgentResponse> = {
+const CANNED: Record<string, (cats: Cat[], nowIso: string, people: Person[]) => AgentResponse> = {
   'lunch 240': (cats, nowIso) => moneyDraft('lunch 240', 24000, 'Dining', 'Lunch', cats, nowIso),
   'coffee 120': (cats, nowIso) => moneyDraft('coffee 120', 12000, 'Dining', 'Coffee', cats, nowIso),
-  'finish the report by friday': (_cats, nowIso) => ({
+  'finish the report by friday': (_cats, _nowIso) => ({
     transcript: 'finish the report by friday', intent: 'log_task', confidence: 0.95,
     payload: { kind: 'task', title: 'Finish the report', due_at: null, priority: 'normal', completed_at: null, source: 'manual', raw_input: 'finish the report by friday' },
   }),
@@ -72,6 +75,20 @@ const CANNED: Record<string, (cats: Cat[], nowIso: string) => AgentResponse> = {
     transcript: "what's overdue?", intent: 'query_task', confidence: 0.95,
     payload: { kind: 'query_task', status: 'overdue', period: null },
   }),
+  // Shared expenses: the seed holds a person "Arun" with one outstanding half-rent
+  // share, so the second phrase has exactly one debt to settle.
+  'rent 20000 split with arun': (cats, nowIso, people) => {
+    const draft = moneyDraft('rent 20000 split with Arun', 2000000, 'Housing', 'Rent', cats, nowIso)
+    const arun = people.find(p => p.name.toLowerCase() === 'arun')
+    return { ...draft, payload: { ...draft.payload, shared_with: [{ person_id: arun?.id ?? null, name: arun?.name ?? 'Arun', amount: null }] } }
+  },
+  'arun paid me 10000': (_cats, _nowIso, people) => {
+    const arun = people.find(p => p.name.toLowerCase() === 'arun')
+    return {
+      transcript: 'Arun paid me 10000', intent: 'settle_share', confidence: 0.95,
+      payload: { kind: 'settle_share', person_id: arun?.id ?? null, person_name: arun?.name ?? 'Arun', amount: 1000000, currency: 'INR' },
+    }
+  },
 }
 
 /**
@@ -100,10 +117,10 @@ function moneyDraft(raw: string, amount: number, categoryName: string, descripti
  * one of the examples (caller then returns a friendly demo-limited response).
  * Matching is case- and whitespace-insensitive.
  */
-export function cannedAgentResponse(text: string, categories: Cat[], nowIso: string): AgentResponse | null {
+export function cannedAgentResponse(text: string, categories: Cat[], nowIso: string, people: Person[] = []): AgentResponse | null {
   const key = text.trim().toLowerCase().replace(/\s+/g, ' ')
   const build = CANNED[key]
-  return build ? build(categories, nowIso) : null
+  return build ? build(categories, nowIso, people) : null
 }
 
 /** The response for AI input outside the suggested examples. */

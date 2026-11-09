@@ -15,8 +15,11 @@ import { formatLocalDateTime } from '@/lib/format'
 import { parseAmountInput } from '@/lib/parse-amount'
 import { type Allocation, isSplitValid, splitRemaining } from '@/lib/split-transaction'
 import { pickDefaultAccountId, resolveDraftAccountId } from '@/lib/default-account'
+import { equalShares, isSharesValid } from '@/lib/shares'
+import type { ShareDraftRow } from '@/lib/share-edit'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { useAccounts } from '@/hooks/use-accounts'
+import { usePeople } from '@/hooks/use-people'
 import { useCategories } from '@/hooks/use-categories'
 import type { MoneyPayload } from '@/lib/op-schemas/money'
 import type { TaskPayload } from '@/lib/op-schemas/task'
@@ -25,11 +28,12 @@ import type { NotePayload } from '@/lib/op-schemas/note'
 import type { CategoryRow } from '@/lib/dexie'
 
 export type ChipDraft =
-  | (MoneyPayload & { kind: 'money'; draftCategoryName?: string; receiptPreviewUrl?: string; draftId?: string; merchant?: string | null; tags?: string[]; account_id?: string | null })
+  | (MoneyPayload & { kind: 'money'; draftCategoryName?: string; receiptPreviewUrl?: string; draftId?: string; merchant?: string | null; tags?: string[]; account_id?: string | null; shared_with?: ShareDraftRow[] })
   | (TaskPayload & { kind: 'task' })
   | (LearningPayload & { kind: 'learning' })
   | (NotePayload & { kind: 'note' })
   | { kind: 'budget'; category_id: string; category_name: string; amount: number; currency: string }
+  | { kind: 'settle'; person_id: string; person_name: string; share_ids: string[]; amount: number; currency: string; summary: string; account_id?: string | null }
 
 type Props = {
   userId: string
@@ -53,6 +57,9 @@ export function ConfirmationChip({ userId, draft, categoryById, onConfirm, onCan
   if (draft.kind === 'budget') {
     return <ConfirmationChipBudget draft={draft} onConfirm={onConfirm} onCancel={onCancel} />
   }
+  if (draft.kind === 'settle') {
+    return <ConfirmationChipSettle userId={userId} draft={draft} onConfirm={onConfirm} onCancel={onCancel} />
+  }
   return <ConfirmationChipMoney userId={userId} draft={draft} categoryById={categoryById} onConfirm={onConfirm} onCancel={onCancel} mode={mode} />
 }
 
@@ -65,13 +72,13 @@ function ConfirmationChipMoney({
   mode,
 }: {
   userId: string
-  draft: MoneyPayload & { kind: 'money'; draftCategoryName?: string; receiptPreviewUrl?: string; merchant?: string | null; tags?: string[]; account_id?: string | null }
+  draft: MoneyPayload & { kind: 'money'; draftCategoryName?: string; receiptPreviewUrl?: string; merchant?: string | null; tags?: string[]; account_id?: string | null; shared_with?: ShareDraftRow[] }
   categoryById: Map<string, CategoryRow>
   onConfirm: Props['onConfirm']
   onCancel: () => void
   mode: 'create' | 'edit'
 }) {
-  const [d, setD] = useState<MoneyPayload & { kind: 'money'; draftCategoryName?: string; receiptPreviewUrl?: string; merchant?: string | null; tags?: string[]; account_id?: string | null }>(draft)
+  const [d, setD] = useState<MoneyPayload & { kind: 'money'; draftCategoryName?: string; receiptPreviewUrl?: string; merchant?: string | null; tags?: string[]; account_id?: string | null; shared_with?: ShareDraftRow[] }>(draft)
   const accounts = useAccounts(userId)
   const splitCats = useCategories(userId, d.direction === 'out' ? 'spend' : 'income')
   const [editingField, setEditingField] = useState<null | 'amount' | 'description' | 'category' | 'date' | 'merchant'>(draft.amount === 0 ? 'amount' : null)
@@ -83,6 +90,11 @@ function ConfirmationChipMoney({
   const [splitMode, setSplitMode] = useState(false)
   const [splitRows, setSplitRows] = useState<{ key: number; category_id: string | null; amountText: string }[]>([])
   const splitKey = useRef(0)
+  // "Shared with": people who owe part of this entry. Rows mirror split rows;
+  // null amounts from a voice capture are resolved to an equal split here.
+  const people = usePeople(userId)
+  const shareKey = useRef(1_000_000)   // initial rows are keyed 0..n-1; new rows never collide
+  const [shareRows, setShareRows] = useState<ShareRow[]>(() => initialShareRows(draft.amount, draft.shared_with ?? []))
   const isEdit = mode === 'edit'
   // A new entry with no account starts on the ★ default (Settings → Accounts);
   // any pick in the dropdown — including "No account" — overrides it.
@@ -99,6 +111,20 @@ function ConfirmationChipMoney({
   const remaining = splitRemaining(d.amount, allocations)
   const splitReady = isSplitValid(d.amount, allocations)
 
+  const sharesActive = d.direction === 'out' && !splitMode && shareRows.length > 0
+  const shareAmounts = shareRows.map(r => parseAmountInput(r.amountText) ?? 0)
+  const sharesTotalMinor = shareAmounts.reduce((n, a) => n + a, 0)
+  const yourShareMinor = Math.max(0, d.amount - sharesTotalMinor)
+  const sharesReady = shareRows.every(r => r.settled || (r.name.trim().length > 0 && (parseAmountInput(r.amountText) ?? 0) > 0)) && isSharesValid(d.amount, shareAmounts)
+
+  const [focusShareKey, setFocusShareKey] = useState<number | null>(null)
+  function addShareRow() {
+    setEditingField(null)
+    const key = shareKey.current++
+    setFocusShareKey(key)
+    setShareRows(prev => equalizeShareRows(d.amount, [...prev, { key, personId: null as string | null, name: '', amountText: '', settled: false }]))
+  }
+
   function enterSplit() {
     setSplitRows([
       { key: splitKey.current++, category_id: d.category_id ?? null, amountText: d.amount ? String(d.amount / 100) : '' },
@@ -111,7 +137,10 @@ function ConfirmationChipMoney({
   async function handleConfirm() {
     setBusy(true)
     try {
-      const final = { ...d, account_id: accountId }
+      const shared_with: ShareDraftRow[] = sharesActive
+        ? shareRows.map(r => ({ share_id: r.shareId, person_id: r.personId, name: r.name.trim(), amount: parseAmountInput(r.amountText) ?? 0, settled: r.settled }))
+        : []
+      const final = { ...d, account_id: accountId, shared_with }
       if (splitMode) await onConfirm(final, { enabled: false, period, intervalCount }, allocations)
       else await onConfirm(final, { enabled: makeRecurring, period, intervalCount })
     } finally { setBusy(false) }
@@ -177,13 +206,24 @@ function ConfirmationChipMoney({
             >
               {cat ? `${cat.icon ?? ''} ${cat.name}` : 'Pick category…'}
             </button>
-            <button
-              type="button"
-              onClick={enterSplit}
-              className="rounded-md border border-accent-2/40 text-accent-2 px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-            >
-              ⑂ Split
-            </button>
+            {shareRows.length === 0 && (
+              <button
+                type="button"
+                onClick={enterSplit}
+                className="rounded-md border border-accent-2/40 text-accent-2 px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+              >
+                ⑂ Split
+              </button>
+            )}
+            {d.direction === 'out' && shareRows.length === 0 && (
+              <button
+                type="button"
+                onClick={addShareRow}
+                className="relative rounded-md border border-accent-2/40 text-accent-2 px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none before:absolute before:-inset-x-1 before:-inset-y-3"
+              >
+                <span aria-hidden="true">👥</span> Share with…
+              </button>
+            )}
           </>
         )}
         {editingField === 'description' ? (
@@ -262,6 +302,90 @@ function ConfirmationChipMoney({
           </button>
           <div className={cn('text-xs font-mono tabular-nums', remaining === 0 ? 'text-muted-foreground' : 'text-destructive')}>
             Remaining: {symbol}{(remaining / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </div>
+        </div>
+      )}
+
+      {sharesActive && (
+        <div className="mb-3 flex flex-col gap-2 rounded-md border bg-background p-2" role="group" aria-label="Shared with">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium">Shared with</span>
+            {!shareRows.some(r => r.settled) && (
+              <button
+                type="button"
+                onClick={() => setShareRows([])}
+                className="relative text-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded before:absolute before:-inset-x-1 before:-inset-y-3"
+              >
+                Not shared
+              </button>
+            )}
+          </div>
+          {shareRows.map((row, i) => row.settled ? (
+            <div key={row.key} className="flex items-center justify-between gap-1.5 text-xs text-muted-foreground">
+              <span>{row.name}</span>
+              <span className="font-mono tabular-nums">{symbol}{((parseAmountInput(row.amountText) ?? 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} · paid</span>
+            </div>
+          ) : (
+            <div key={row.key} className="flex items-center gap-1.5">
+              {row.shareId ? (
+                <span className="min-w-0 flex-1 truncate text-xs" title={row.name}>{row.name}</span>
+              ) : (
+              <select
+                value={row.personId ?? '__new__'}
+                onChange={e => {
+                  const v = e.target.value
+                  const person = people.find(p => p.id === v)
+                  setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, personId: person ? person.id : null, name: person ? person.name : '' } : r)))
+                }}
+                aria-label={`Person ${i + 1}`}
+                className="min-w-0 flex-1 rounded-md border bg-muted px-2 py-1 text-base md:text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+              >
+                <option value="__new__">New person…</option>
+                {people.filter(p => p.id === row.personId || !shareRows.some(r => r.personId === p.id)).map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              )}
+              {!row.shareId && row.personId === null && (
+                <Input
+                  value={row.name}
+                  maxLength={60}
+                  autoFocus={row.key === focusShareKey}
+                  onChange={e => { const v = e.currentTarget.value; setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, name: v } : r))) }}
+                  placeholder="Name"
+                  aria-label={`Name of person ${i + 1}`}
+                  className="h-7 w-24 text-base md:text-xs"
+                />
+              )}
+              <Input
+                inputMode="decimal"
+                value={row.amountText}
+                onChange={e => { const v = e.currentTarget.value; setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, amountText: v } : r))) }}
+                placeholder="0"
+                aria-label={`Amount owed by person ${i + 1}`}
+                className="h-7 w-20 text-base md:text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setShareRows(prev => prev.filter((_, j) => j !== i))}
+                aria-label={`Remove person ${i + 1}`}
+                className="relative text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded before:absolute before:-inset-2"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addShareRow}
+            className="relative self-start text-xs text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded before:absolute before:-inset-x-1 before:-inset-y-3"
+          >
+            ＋ Add person
+          </button>
+          <div className={cn('text-xs font-mono tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
+            {sharesTotalMinor <= d.amount
+              ? `Your share: ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+              : `Shares exceed the amount by ${symbol}${((sharesTotalMinor - d.amount) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
           </div>
         </div>
       )}
@@ -358,7 +482,7 @@ function ConfirmationChipMoney({
         </div>
       )}
 
-      {!isEdit && !splitMode && (
+      {!isEdit && !splitMode && !sharesActive && (
         <div className="mb-3 flex flex-col gap-2">
           <label className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
             <span>Make recurring</span>
@@ -380,14 +504,42 @@ function ConfirmationChipMoney({
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="flex-[2] bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] hover:opacity-90" onClick={handleConfirm} disabled={busy || d.amount === 0 || (splitMode && !splitReady)}>
-          {splitMode ? `${isEdit ? 'Save' : 'Confirm'} split (${splitRows.length})` : isEdit ? 'Save changes' : `Confirm ${symbol}${major}`}
+        <Button className="flex-[2] bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] hover:opacity-90" onClick={handleConfirm} disabled={busy || d.amount === 0 || (splitMode && !splitReady) || (sharesActive && !sharesReady)}>
+          {splitMode ? `${isEdit ? 'Save' : 'Confirm'} split (${splitRows.length})`
+            : isEdit ? 'Save changes'
+            : sharesActive ? `Confirm ${symbol}${major} · you ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+            : `Confirm ${symbol}${major}`}
         </Button>
       </div>
 
       <p className="mt-1 text-center text-[10px] text-muted-foreground">tap any field to edit</p>
     </div>
   )
+}
+
+type ShareRow = { key: number; shareId?: string; personId: string | null; name: string; amountText: string; settled: boolean }
+
+/** Rows from a draft: null amounts (voice "split with Arun") get an equal share of the entry. */
+function initialShareRows(amount: number, rows: ShareDraftRow[]): ShareRow[] {
+  const open = rows.filter(r => r.amount === null).length
+  const fixed = rows.reduce((n, r) => n + (r.amount ?? 0), 0)
+  const each = open > 0 ? Math.max(0, Math.floor((amount - fixed) / (open + 1))) : 0
+  return rows.map((r, i) => ({
+    key: i, shareId: r.share_id, personId: r.person_id, name: r.name,
+    amountText: toAmountText(r.amount ?? each), settled: !!r.settled,
+  }))
+}
+
+/** Re-split the entry equally among you and the unsettled rows (settled rows keep their amount). */
+function equalizeShareRows(amount: number, rows: ShareRow[]): ShareRow[] {
+  const settled = rows.filter(r => r.settled).reduce((n, r) => n + (parseAmountInput(r.amountText) ?? 0), 0)
+  const open = rows.filter(r => !r.settled).length
+  const [each] = equalShares(Math.max(0, amount - settled), open)
+  return rows.map(r => (r.settled ? r : { ...r, amountText: toAmountText(each ?? 0) }))
+}
+
+function toAmountText(minor: number): string {
+  return minor > 0 ? String(minor / 100) : ''
 }
 
 function ConfirmationChipTask({
@@ -826,6 +978,57 @@ function ConfirmationChipNote({
       </div>
 
       <p className="mt-1 text-center text-[10px] text-muted-foreground">tap any field to edit</p>
+    </div>
+  )
+}
+
+/** "Arun paid me ₹10,000": settle the matched shares into an account. Not a money entry — never income. */
+function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
+  userId: string
+  draft: Extract<ChipDraft, { kind: 'settle' }>
+  onConfirm: Props['onConfirm']
+  onCancel: () => void
+}) {
+  const accounts = useAccounts(userId)
+  const [busy, setBusy] = useState(false)
+  const [touched, setTouched] = useState(false)
+  const [accountId, setAccountId] = useState<string | null>(null)
+  const receiveInto = touched ? accountId : pickDefaultAccountId(accounts)
+  const major = draft.amount / (draft.currency === 'JPY' ? 1 : 100)
+
+  async function handleConfirm() {
+    setBusy(true)
+    try { await onConfirm({ ...draft, account_id: receiveInto }, { enabled: false, period: 'monthly', intervalCount: 1 }) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="glass rounded-2xl p-4 flex flex-col gap-3">
+      <div className="text-xs font-semibold uppercase tracking-wide text-emerald-500"><span aria-hidden="true">👥</span> Paid back</div>
+      <p className="text-sm">
+        <span className="font-medium">{draft.person_name}</span> paid{' '}
+        <span className="font-mono tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+        {' '}for {draft.summary} ({draft.share_ids.length} {draft.share_ids.length === 1 ? 'share' : 'shares'}).
+      </p>
+      <label className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-muted-foreground">Paid into</span>
+        <select
+          value={receiveInto ?? ''}
+          onChange={e => { setTouched(true); setAccountId(e.target.value || null) }}
+          className="rounded-md border bg-muted px-2 py-1 text-base md:text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+          aria-label="Account the repayment landed in"
+        >
+          <option value="">No account</option>
+          {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon ? `${acc.icon} ${acc.name}` : acc.name}</option>)}
+        </select>
+      </label>
+      <p className="text-[11px] text-muted-foreground">This clears the debt and tops up the account. It is not recorded as income.</p>
+      <div className="flex gap-2">
+        <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button className="flex-[2] bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] hover:opacity-90" onClick={handleConfirm} disabled={busy}>
+          Mark paid
+        </Button>
+      </div>
     </div>
   )
 }

@@ -31,7 +31,8 @@ Rules:
      "direction": <"out" | "in">,
      "category_name": <one of the active categories above, exact spelling — or null if no good match>,
      "description": <≤6-word phrase about what the money was for — or null>,
-     "occurred_at": <ISO 8601 timestamp>
+     "occurred_at": <ISO 8601 timestamp>,
+     "shared_with": <array of {"name": <person>, "amount": <integer minor units or null>} — people who owe the user part of this; [] when nobody does>
    }
 
 2. Amount conversion:
@@ -68,6 +69,14 @@ Rules:
 
 7. If you cannot detect any amount, return amount=0 (the UI will prompt the user).
 
+8. shared_with — the user paid the WHOLE amount and other people owe them a part of it.
+   - Cues: "split with X", "shared with X and Y", "X owes half", "X's share is 500", "for me and X".
+   - amount is the part THAT PERSON owes, in minor units. Use null when the utterance implies an equal split
+     ("split with Arun", "shared with Arun and Priya") — never compute halves yourself.
+   - "amount" at the top level stays the FULL amount the user paid.
+   - NOT shared: paying someone ("paid Arun 500 for lunch" is the user's own spend → shared_with: []),
+     receiving money (direction "in" → shared_with: []).
+
 Examples:
 User: "spent 80 on chai"
 → {"amount":8000,"currency":"INR","direction":"out","category_name":"Food","description":"chai","occurred_at":"${nowIso}"}
@@ -88,6 +97,18 @@ User: "netflix 199 monthly"
 → {"amount":19900,"currency":"INR","direction":"out","category_name":"Entertainment","description":"netflix subscription","occurred_at":"${nowIso}"}
 
 User: "freelance client paid 50k"
-→ {"amount":5000000,"currency":"INR","direction":"in","category_name":"Freelance","description":null,"occurred_at":"${nowIso}"}
+→ {"amount":5000000,"currency":"INR","direction":"in","category_name":"Freelance","description":null,"occurred_at":"${nowIso}","shared_with":[]}
+
+User: "rent 20000 split with Arun"
+→ {"amount":2000000,"currency":"INR","direction":"out","category_name":null,"description":"rent","occurred_at":"${nowIso}","shared_with":[{"name":"Arun","amount":null}]}
+
+User: "dinner 2400 shared with Arun and Priya"
+→ {"amount":240000,"currency":"INR","direction":"out","category_name":"Food","description":"dinner","occurred_at":"${nowIso}","shared_with":[{"name":"Arun","amount":null},{"name":"Priya","amount":null}]}
+
+User: "cab 900, Priya's share is 300"
+→ {"amount":90000,"currency":"INR","direction":"out","category_name":"Transport","description":"cab","occurred_at":"${nowIso}","shared_with":[{"name":"Priya","amount":30000}]}
+
+User: "paid Arun 500 for lunch"
+→ {"amount":50000,"currency":"INR","direction":"out","category_name":"Food","description":"lunch with Arun","occurred_at":"${nowIso}","shared_with":[]}
 `
 }

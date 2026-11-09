@@ -11,6 +11,8 @@ import { MoversBars } from '@/components/charts/movers-bars'
 import { CategorySmallMultiples } from '@/components/charts/category-small-multiples'
 import { NetWorthLine } from '@/components/charts/net-worth-line'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
+import { useExpenseShares } from '@/hooks/use-expense-shares'
+import { withYourShare, withSettlements } from '@/lib/shares'
 import { useAllCategories } from '@/hooks/use-all-categories'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useTransfers } from '@/hooks/use-transfers'
@@ -37,7 +39,12 @@ export default function AnalyticsPage() {
   }, [router])
 
   const count = bucket === 'week' ? 12 : 6
-  const entries = useMoneyEntries(userId ?? undefined)
+  const entriesRaw = useMoneyEntries(userId ?? undefined)
+  const shares = useExpenseShares(userId ?? undefined)
+  // Spend view (your share) drives every spend chart; the ledger view (full
+  // amounts + repayments as credits) drives net worth. Income uses the raw list.
+  const entries = useMemo(() => withYourShare(entriesRaw, shares), [entriesRaw, shares])
+  const ledger = useMemo(() => withSettlements(entriesRaw, shares), [entriesRaw, shares])
   const allCats = useAllCategories(userId ?? undefined)
   const accts = useAccounts(userId ?? undefined)
   const transfers = useTransfers(userId ?? undefined)
@@ -111,8 +118,8 @@ export default function AnalyticsPage() {
 
   // Current net worth (for net worth series computation)
   const currentNet = useMemo(
-    () => netWorth(accts, entries, transfers, toAcctForNet, toPrimaryForNet).net,
-    [accts, entries, transfers, toAcctForNet, toPrimaryForNet],
+    () => netWorth(accts, ledger, transfers, toAcctForNet, toPrimaryForNet).net,
+    [accts, ledger, transfers, toAcctForNet, toPrimaryForNet],
   )
 
   // Entry to primary currency (for net worth series)
@@ -126,8 +133,8 @@ export default function AnalyticsPage() {
 
   // Net worth series over time
   const netWorthSeriesData = useMemo(
-    () => netWorthSeries(currentNet, entries, activeAccountIds, analyticsPeriods(nowMs, 'month', 6), toPrimaryEntry),
-    [currentNet, entries, activeAccountIds, nowMs, toPrimaryEntry],
+    () => netWorthSeries(currentNet, ledger, activeAccountIds, analyticsPeriods(nowMs, 'month', 6), toPrimaryEntry),
+    [currentNet, ledger, activeAccountIds, nowMs, toPrimaryEntry],
   )
 
   // Compute spend and income series aligned 1:1 to periods
@@ -143,11 +150,11 @@ export default function AnalyticsPage() {
   const incomeSeries = useMemo(() => {
     return periods.map(p => ({
       label: p.label,
-      amount: entries
+      amount: entriesRaw
         .filter(e => e.direction === 'in' && e.occurred_at >= p.from && e.occurred_at < p.to && !e.deleted_at)
         .reduce((sum, e) => sum + toPrimary(e), 0),
     }))
-  }, [periods, entries, toPrimary])
+  }, [periods, entriesRaw, toPrimary])
 
   // Compute movers (current vs previous period)
   const movers = useMemo(() => {

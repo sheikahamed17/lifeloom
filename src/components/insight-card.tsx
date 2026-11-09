@@ -29,6 +29,7 @@ export function InsightCard({ insight, variant = 'card' }: { insight: InsightRow
           {metrics.tasks_overdue > 0 && <Chip label="Overdue" value={String(metrics.tasks_overdue)} tone="danger" />}
           {metrics.learnings_added > 0 && <Chip label="Learned" value={String(metrics.learnings_added)} />}
           {metrics.notes_added > 0 && <Chip label="Notes" value={String(metrics.notes_added)} />}
+          {(metrics.owed_total ?? 0) > 0 && <Chip label="Owed to you" value={money(metrics.owed_total ?? 0)} />}
         </div>
       )}
       {variant === 'detail' && metrics && (

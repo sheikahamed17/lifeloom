@@ -36,6 +36,28 @@ function makeFakeDb(rowsByTable: Record<string, unknown[]>): Kysely<DB> {
   } as unknown as Kysely<DB>
 }
 
+describe('aggregateWeek — shared expenses', () => {
+  const userId = 'user-123'
+  const bounds = { startsAt: '2026-11-01T00:00:00.000Z', endsAt: '2026-11-08T00:00:00.000Z' }
+  const rent = { id: 'm-rent', user_id: userId, amount: 2000000, currency: 'INR', direction: 'out', category_id: null, description: 'rent', occurred_at: '2026-11-02T10:00:00.000Z', source: 'manual', raw_input: null, recurring_rule_id: null, field_hlcs: '{}', deleted_at: null, created_at: '', updated_at: '', tags: '[]', merchant: null, account_id: null, receipt_key: null }
+  const share = { id: 's1', user_id: userId, money_entry_id: 'm-rent', person_id: 'p-arun', amount: 1000000, settled_at: null, settled_account_id: null, note: null, deleted_at: null }
+
+  it('spend counts your share; owed_total is what others still owe', async () => {
+    const db = makeFakeDb({ money_entries: [rent], expense_shares: [share], categories: [], tasks: [], learning_entries: [], note_entries: [] })
+    const m = await aggregateWeek(db, userId, bounds, 'INR')
+    expect(m.spend_total).toBe(1000000)
+    expect(m.owed_total).toBe(1000000)
+  })
+
+  it('a settled share: spend unchanged, nothing owed, nothing counted as income', async () => {
+    const db = makeFakeDb({ money_entries: [rent], expense_shares: [{ ...share, settled_at: '2026-11-05T00:00:00.000Z', settled_account_id: 'acc' }], categories: [], tasks: [], learning_entries: [], note_entries: [] })
+    const m = await aggregateWeek(db, userId, bounds, 'INR')
+    expect(m.spend_total).toBe(1000000)
+    expect(m.owed_total).toBe(0)
+    expect(m.income_total).toBe(0)
+  })
+})
+
 describe('aggregateWeek', () => {
   let fakeDb: Kysely<DB>
   const userId = 'user-123'

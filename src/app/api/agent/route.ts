@@ -16,6 +16,8 @@ import { parseNotesQuery } from '@/lib/agents/query-notes-agent'
 import { parseLearning } from '@/lib/agents/learning-agent'
 import { parseNote } from '@/lib/agents/note-agent'
 import { parseBudget } from '@/lib/agents/budget-agent'
+import { parseSettlement } from '@/lib/agents/settle-agent'
+import { matchPeople, matchPerson } from '@/lib/people-match'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +29,8 @@ const RequestSchema = z.object({
     kind: z.enum(['spend', 'income']),
   })).default([]),
   history: z.array(z.string().max(500)).max(12).optional().default([]),
+  // Active people (for "split with Arun" / "Arun paid me"); names map back to ids here.
+  people: z.array(z.object({ id: z.string(), name: z.string() })).max(200).optional().default([]),
 })
 
 async function loadUserPrefs(db: ReturnType<typeof createDb>, userId: string) {
@@ -56,7 +60,7 @@ export async function POST(req: Request) {
   // demo-limited response the UI turns into "deploy your own for full AI".
   if (isDemoMode(env as { DEMO_MODE?: string })) {
     const nowIso = new Date().toISOString()
-    const canned = cannedAgentResponse(parsed.data.text, parsed.data.categories, nowIso)
+    const canned = cannedAgentResponse(parsed.data.text, parsed.data.categories, nowIso, parsed.data.people)
     return NextResponse.json(canned ?? demoLimitedResponse(parsed.data.text))
   }
 
@@ -97,7 +101,25 @@ export async function POST(req: Request) {
           occurred_at: payload.occurred_at,
           source: 'manual',
           raw_input: parsed.data.text,
+          shared_with: payload.direction === 'out' ? matchPeople(payload.shared_with ?? [], parsed.data.people) : [],
         },
+      })
+    }
+
+    if (router.intent === 'settle_share') {
+      const settle = await parseSettlement({
+        client: groq,
+        text: parsed.data.text,
+        people: parsed.data.people,
+        defaultCurrency: prefs.primary_currency,
+      })
+      const person = matchPerson(settle.person_name, parsed.data.people)
+      return NextResponse.json({
+        transcript: parsed.data.text,
+        intent: 'settle_share',
+        confidence: router.confidence,
+        // The client resolves WHICH shares this settles (oldest first, exact match) — never the model.
+        payload: { kind: 'settle_share', person_id: person?.id ?? null, person_name: person?.name ?? settle.person_name, amount: settle.amount, currency: settle.currency },
       })
     }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Trash2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SwipeRow } from '@/components/swipe-row'
@@ -12,13 +13,16 @@ import { useCategories } from '@/hooks/use-categories'
 import { useAllCategories } from '@/hooks/use-all-categories'
 import { useAllAccounts } from '@/hooks/use-all-accounts'
 import { useAccounts } from '@/hooks/use-accounts'
+import { useExpenseShares } from '@/hooks/use-expense-shares'
+import { useAllPeople } from '@/hooks/use-all-people'
+import { sharesByEntry, yourShare } from '@/lib/shares'
 import { accountTokens, addHintDigits, extractAlertIdentifiers, planAccountBackfill } from '@/lib/account-match'
 import { tagEntries, untagEntries } from '@/lib/account-autotag'
 import { useUndo } from '@/components/undo-provider'
 import { resurrectPayload } from '@/lib/undo-delete'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { useFxRates } from '@/hooks/use-fx-rates'
-import { currencySymbol } from '@/lib/currency'
+import { currencySymbol, formatMinor } from '@/lib/currency'
 import { convertViaRates } from '@/lib/fx'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { EntryTimestamp } from '@/components/entry-timestamp'
@@ -37,6 +41,10 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
   const allCats = useAllCategories(userId)
   const allAccounts = useAllAccounts(userId)
   const activeAccounts = useAccounts(userId)
+  const shares = useExpenseShares(userId)
+  const allPeople = useAllPeople(userId)
+  const sharesFor = useMemo(() => sharesByEntry(shares), [shares])
+  const personName = useMemo(() => new Map(allPeople.map(p => [p.id, p.name])), [allPeople])
   const [linkingId, setLinkingId] = useState<string | null>(null)
   const undo = useUndo()
   const router = useRouter()
@@ -280,6 +288,8 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
           const acc = e.account_id ? accountById.get(e.account_id) : undefined
           const accName = acc ? (acc.icon ? `${acc.icon} ${acc.name}` : acc.name) : (e.account_id ? 'Unknown account' : null)
           const cardLast4 = unknownCardById.get(e.id)
+          const mine = sharesFor.get(e.id)
+          const shared = !!mine && mine.length > 0 && e.direction === 'out'
           return (
             <li key={e.id} id={`pulse-row-${e.id}`} className="relative">
               <SwipeRow
@@ -346,6 +356,20 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                         })() : '≈ convert'}
                       </button>
                     )}
+                    {shared && mine!.map(s => (
+                      <Link
+                        key={s.id}
+                        href={`/settings/people#${s.person_id}`}
+                        onClick={ev => ev.stopPropagation()}
+                        aria-label={`${personName.get(s.person_id) ?? 'Someone'} ${s.settled_at ? 'paid' : 'owes'} ${formatMinor(s.amount, e.currency)}`}
+                        className={cn(
+                          'relative text-[10px] rounded-full px-1.5 py-0.5 border transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none before:absolute before:-inset-x-1 before:-inset-y-3',
+                          s.settled_at ? 'border-white/20 text-muted-foreground' : 'border-accent-2/40 text-accent-2 hover:bg-accent-2/10',
+                        )}
+                      >
+                        <span aria-hidden="true">👥 </span>{personName.get(s.person_id) ?? 'Someone'} {s.settled_at ? 'paid' : `owes ${formatMinor(s.amount, e.currency)}`}
+                      </Link>
+                    ))}
                     {e.receipt_key && (
                       <button
                         type="button"
@@ -393,11 +417,20 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                 </div>
 
                 <div className="flex flex-col items-end gap-2">
-                  <span className={`font-mono tabular-nums text-sm font-medium whitespace-nowrap ${
-                    e.direction === 'out' ? 'text-destructive' : 'text-income'
-                  }`}>
-                    {formatAmount(e)}
-                  </span>
+                  {shared ? (
+                    <span className="flex flex-col items-end" title={`Full payment ${formatAmount(e)}; the rest is owed to you`}>
+                      <span className="font-mono tabular-nums text-sm font-medium whitespace-nowrap text-destructive">
+                        you -{formatMinor(yourShare(e, mine), e.currency)}
+                      </span>
+                      <span className="font-mono tabular-nums text-[10px] text-muted-foreground whitespace-nowrap">of {formatAmount(e)}</span>
+                    </span>
+                  ) : (
+                    <span className={`font-mono tabular-nums text-sm font-medium whitespace-nowrap ${
+                      e.direction === 'out' ? 'text-destructive' : 'text-income'
+                    }`}>
+                      {formatAmount(e)}
+                    </span>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"

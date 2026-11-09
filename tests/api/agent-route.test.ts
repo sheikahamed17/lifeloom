@@ -19,6 +19,9 @@ vi.mock('@/lib/agents/money-agent', () => ({
   }),
 }))
 
+vi.mock('@/lib/agents/settle-agent', () => ({
+  parseSettlement: vi.fn().mockResolvedValue({ person_name: 'arun', amount: 1000000, currency: 'INR' }),
+}))
 vi.mock('@/lib/agents/task-agent', () => ({
   parseTaskEntry: vi.fn().mockResolvedValue({
     title: 'Call mom',
@@ -90,6 +93,37 @@ describe('/api/agent', () => {
     expect(body.payload.kind).toBe('money')
     expect(body.payload.amount).toBe(8000)
     expect(body.payload.category_id).toBe('cat-food')
+  })
+})
+
+describe('/api/agent — shared expenses', () => {
+  it('maps shared_with names onto the caller\'s people (unknown names stay new) on log_money', async () => {
+    const { parseMoneyEntry } = await import('@/lib/agents/money-agent')
+    ;(parseMoneyEntry as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      amount: 2000000, currency: 'INR', direction: 'out', category_name: null, description: 'rent', occurred_at: '2026-11-01T04:30:00.000Z',
+      shared_with: [{ name: 'arun', amount: null }, { name: 'Ravi', amount: 50000 }],
+    })
+    const res = await POST(new Request('http://x/api/agent', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'rent 20000 split with arun and ravi', categories: [], people: [{ id: 'p-arun', name: 'Arun' }] }),
+    }))
+    const body = await res.json() as { payload: { shared_with: unknown } }
+    expect(body.payload.shared_with).toEqual([
+      { person_id: 'p-arun', name: 'Arun', amount: null },
+      { person_id: null, name: 'Ravi', amount: 50000 },
+    ])
+  })
+
+  it('settle_share returns the person + amount for the client to resolve (no money entry)', async () => {
+    const { routeIntent } = await import('@/lib/agents/router')
+    ;(routeIntent as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ intent: 'settle_share', confidence: 0.95 })
+    const res = await POST(new Request('http://x/api/agent', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'Arun paid me 10000', categories: [], people: [{ id: 'p-arun', name: 'Arun' }] }),
+    }))
+    const body = await res.json() as { intent: string; payload: Record<string, unknown> }
+    expect(body.intent).toBe('settle_share')
+    expect(body.payload).toEqual({ kind: 'settle_share', person_id: 'p-arun', person_name: 'Arun', amount: 1000000, currency: 'INR' })
   })
 })
 

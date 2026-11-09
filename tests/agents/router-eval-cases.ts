@@ -188,4 +188,20 @@ export const ROUTER_EVAL_CASES: EvalCase[] = [
     acceptable: ['query_money', 'set_budget'],
     note: 'regression guard: the old "set a budget for food"→chat example was replaced; no amount → vague',
   },
+
+  // ── shared expenses: log_money with shared_with ─────────────
+  { utterance: 'rent 20000 split with Arun', expected: 'log_money' },
+  { utterance: 'dinner 2400 shared with Arun and Priya', expected: 'log_money' },
+  { utterance: 'paid 900 for the cab, Priya owes a third', expected: 'log_money' },
+  { utterance: 'groceries 3200 for me and Arun', expected: 'log_money' },
+  { utterance: 'electricity bill 1800, split with my flatmate Ravi', expected: 'log_money' },
+  { utterance: "movie tickets 600, Priya's share is 300", expected: 'log_money' },
+  // ── settle_share: someone paid the user back ────────────────
+  { utterance: 'Arun paid me 10000', expected: 'settle_share' },
+  { utterance: 'got 10k back from Arun for rent', expected: 'settle_share' },
+  { utterance: 'Priya transferred her share, 800', expected: 'settle_share' },
+  { utterance: 'Ravi settled up 1200', expected: 'settle_share' },
+  // ── negatives: paying someone is the user's own spend ───────
+  { utterance: 'paid Arun 500 for lunch', expected: 'log_money', note: 'the user pays Arun → spend, not a repayment' },
+  { utterance: 'gave Priya 2000 for the gift', expected: 'log_money', note: 'user gives money → spend, not settle_share' },
 ]

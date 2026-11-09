@@ -20,6 +20,10 @@ export function fallbackSummary(metrics: DigestMetrics): string {
     summary += learningPart + notesPart
   }
 
+  if ((metrics.owed_total ?? 0) > 0) {
+    summary += ` Friends still owe you ${symbol}${((metrics.owed_total ?? 0) / div).toLocaleString()} for shared expenses.`
+  }
+
   return summary
 }
 

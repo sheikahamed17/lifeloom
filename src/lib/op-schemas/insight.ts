@@ -19,6 +19,7 @@ export const InsightMetricsSchema = z.object({
   tasks_overdue: z.number().nonnegative().int(),
   skipped_currencies: z.array(z.string()),
   entry_count: z.number().nonnegative().int(),
+  owed_total: z.number().nonnegative().optional(),   // shared expenses still owed to the user
 })
 
 export type InsightMetrics = z.infer<typeof InsightMetricsSchema>

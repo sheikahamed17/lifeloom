@@ -64,6 +64,7 @@ Most life-trackers make you fill in forms. Lifeloom flips it: you **say or type 
 - 🏦 **Bank-transaction auto-import** — forward your bank's alert emails and they land as categorized entries on the right card or account, hands-free.
 - 📊 **Spending trends** — a dedicated analytics view: spend / income / net over time, top movers, and per-category small multiples.
 - 🧩 **Split transactions** — allocate one payment across several categories, so budgets and analytics stay accurate.
+- 👥 **Shared expenses** — pay the rent or dinner in full, say who owes what, and spend only counts *your* share; repayments settle the debt and are never income.
 - 📲 **Installable PWA** — add to home screen; push notifications for budget alerts and follow-ups.
 - 🚀 **One-click deploy** — the *Deploy to Cloudflare* button stands up your own isolated instance (database, storage, and schema migrations) on the free tier in a single click.
 
@@ -88,6 +89,7 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 - **Transfers.** Move money between your own accounts (Bank → Savings, or paying down a card) without it distorting your spend/income totals.
 - **Recurring transfers.** Schedule those moves — a monthly card payment or savings sweep that posts itself.
 - **Split transactions.** Allocate one payment across several categories; each part flows into budgets and analytics as a normal entry.
+- **Shared expenses.** Share an entry with named people ("rent 20000 split with Arun"); spend, budgets, analytics and the digest count your share while balances keep the full payment. Settings → People shows who owes you; "Arun paid me 10000" or *Mark paid* tops up an account without recording income.
 - **Cards & debts.** A per-card view: what's owed now, this month's spend charged to it, and the last payment made.
 - **Salary reminder.** An opt-in monthly nudge on the last working day to log income that arrives with no email trail.
 - **Manual exchange rates.** Money is multi-currency with daily ECB FX; for any currency the ECB feed doesn't list, set your own `1 EUR = N` rate so those amounts still convert into your primary currency.

@@ -47,6 +47,9 @@ import { useTasks, type TaskFilter as TaskFilterValue } from '@/hooks/use-tasks'
 import { usePushSubscription } from '@/hooks/use-push-subscription'
 import { db, type MoneyEntryRow, type TaskRow, type LearningRow, type NoteRow } from '@/lib/dexie'
 import { moneyRowToDraft, taskRowToDraft, learningRowToDraft, noteRowToDraft } from '@/lib/entry-to-draft'
+import { planShareChanges, type ShareDraftRow } from '@/lib/share-edit'
+import { owedByPerson, planSettlement } from '@/lib/shares'
+import { usePeople } from '@/hooks/use-people'
 import { blankDraftForKind } from '@/lib/blank-draft'
 import { manualDraftFromText } from '@/lib/manual-draft'
 import { useOnline } from '@/hooks/use-online'
@@ -263,6 +266,7 @@ function AppPageInner() {
   }, [user, draft, parsing, queryPlan, drainTick])
 
   const categories = useCategories(user?.id)
+  const people = usePeople(user?.id)
   const categoryById = useMemo(() => new Map(categories.map(c => [c.id, c])), [categories])
 
   const openTasksForBadge = useTasks(user?.id, 'open')
@@ -297,10 +301,11 @@ function AppPageInner() {
         body: JSON.stringify({
           text: text.trim(),
           categories: categories.map(c => ({ id: c.id, name: c.name, kind: c.kind })),
+          people: people.map(p => ({ id: p.id, name: p.name })),
         }),
       })
       if (!res.ok) throw new Error(`/api/agent ${res.status}`)
-      const data = await res.json() as { intent: string; payload: ChipDraft | QueryPlan | null }
+      const data = await res.json() as { intent: string; payload: ChipDraft | QueryPlan | SettleSharePayload | null }
 
       if (data.intent === 'chat') {
         setShowHelp(true)
@@ -309,6 +314,11 @@ function AppPageInner() {
       }
 
       if (!data.payload) {
+        setText('')
+        return
+      }
+      if (isSettleSharePayload(data.payload)) {
+        await startSettlement(data.payload)
         setText('')
         return
       }
@@ -336,7 +346,18 @@ function AppPageInner() {
     }
   }
 
-  function editMoney(r: MoneyEntryRow) { if (draft) return; setEditId(r.id); setDraft(moneyRowToDraft(r)) }
+  async function editMoney(r: MoneyEntryRow) {
+    if (draft) return
+    // Existing shares ride along so the chip can show / edit them.
+    const shares = (await db.expense_shares.where('money_entry_id').equals(r.id).toArray()).filter(s => !s.deleted_at)
+    const people = shares.length ? await db.people.where('user_id').equals(r.user_id).toArray() : []
+    const nameById = new Map(people.map(p => [p.id, p.name]))
+    const shared_with: ShareDraftRow[] = shares.map(s => ({
+      share_id: s.id, person_id: s.person_id, name: nameById.get(s.person_id) ?? 'Someone', amount: s.amount, settled: !!s.settled_at,
+    }))
+    setEditId(r.id)
+    setDraft({ ...moneyRowToDraft(r), shared_with })
+  }
   function editTask(r: TaskRow) { if (draft) return; setEditId(r.id); setDraft(taskRowToDraft(r)) }
   function editLearning(r: LearningRow) { if (draft) return; setEditId(r.id); setDraft(learningRowToDraft(r)) }
   function editNote(r: NoteRow) { if (draft) return; setEditId(r.id); setDraft(noteRowToDraft(r)) }
@@ -368,6 +389,7 @@ function AppPageInner() {
     }
     const op = await generateOp({ entity_kind, entity_id: id, op_type: 'update', payload, user_id: user.id })
     await applyLocalOp(op)
+    if (final.kind === 'money') await applyShareChanges(id, final.direction === 'out' ? (final.shared_with ?? []) : [])
     setDraft(null); setEditId(null)
     pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
   }
@@ -386,12 +408,57 @@ function AppPageInner() {
     pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
   }
 
+  // "Arun paid me 10000": settle that person's outstanding shares, oldest first,
+  // only when they sum EXACTLY to the amount. Otherwise open the People page —
+  // never guess which debt it was.
+  async function startSettlement(p: SettleSharePayload) {
+    if (!user) return
+    const match = p.person_id ? people.find(x => x.id === p.person_id) : people.find(x => x.name.trim().toLocaleLowerCase() === p.person_name.trim().toLocaleLowerCase())
+    if (!match) { router.push('/settings/people'); return }
+    const [entries, shares] = await Promise.all([
+      db.money_entries.where('user_id').equals(user.id).toArray(),
+      db.expense_shares.where('[user_id+person_id]').equals([user.id, match.id]).toArray(),
+    ])
+    const row = owedByPerson(entries, shares, [match]).find(r => r.personId === match.id)
+    const candidates = (row?.shares ?? []).filter(s => s.currency === p.currency)
+    const ids = planSettlement(candidates, p.amount)
+    if (!ids) { router.push(`/settings/people#${match.id}`); return }
+    const chosen = candidates.filter(s => ids.includes(s.shareId))
+    setDraft({
+      kind: 'settle', person_id: match.id, person_name: match.name, share_ids: ids, amount: p.amount, currency: p.currency,
+      summary: chosen.map(s => s.description || 'entry').join(', '),
+    })
+  }
+
+  // "Shared with": people who owe part of an entry. Writes the person (when new)
+  // and expense_share ops the chip's rows imply; never touches the money payload.
+  async function applyShareChanges(entryId: string, rows: ShareDraftRow[]) {
+    if (!user) return
+    const existing = (await db.expense_shares.where('money_entry_id').equals(entryId).toArray())
+    if (rows.length === 0 && existing.every(s => s.deleted_at || s.settled_at)) return
+    const people = await db.people.where('user_id').equals(user.id).toArray()
+    const plan = planShareChanges({ entryId, existing, rows, people, newId: () => crypto.randomUUID() })
+    for (const p of plan.people) await applyLocalOp(await generateOp({ entity_kind: 'person', entity_id: p.entity_id, op_type: 'create', payload: p.payload, user_id: user.id }))
+    for (const c of plan.creates) await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: c.entity_id, op_type: 'create', payload: c.payload, user_id: user.id }))
+    for (const u of plan.updates) await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: u.entity_id, op_type: 'update', payload: u.payload, user_id: user.id }))
+    for (const id of plan.deletes) await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: id, op_type: 'delete', payload: {}, user_id: user.id }))
+  }
+
   async function confirmEntry(
     final: ChipDraft,
     recurring: { enabled: boolean; period: 'daily'|'weekly'|'monthly'|'yearly'; intervalCount: number },
     splitAllocations?: Allocation[],
   ) {
     if (!user) return
+    if (final.kind === 'settle') {
+      const settled_at = new Date().toISOString()
+      for (const id of final.share_ids) {
+        await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: id, op_type: 'update', payload: { settled_at, settled_account_id: final.account_id ?? null }, user_id: user.id }))
+      }
+      setDraft(null); setEditId(null)
+      pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
+      return
+    }
     if (editId) {
       if (final.kind === 'money' && splitAllocations && splitAllocations.length > 0) {
         await splitExistingEntry(final, editId, splitAllocations)
@@ -555,9 +622,10 @@ function AppPageInner() {
       await applyLocalOp(ruleOp)
     }
 
+    const entryId = crypto.randomUUID()
     const entryOp = await generateOp({
       entity_kind: 'money',
-      entity_id: crypto.randomUUID(),
+      entity_id: entryId,
       op_type: 'create',
       payload: {
         amount: final.amount, currency: final.currency, direction: final.direction,
@@ -575,6 +643,7 @@ function AppPageInner() {
       user_id: user.id,
     })
     await applyLocalOp(entryOp)
+    if (final.direction === 'out' && final.shared_with?.length) await applyShareChanges(entryId, final.shared_with)
     if (final.draftId) await deleteReceiptDraft(final.draftId)
     if (activeTab !== 'money') setTab('money')
     setDraft(null)
@@ -917,6 +986,11 @@ function AppPageInner() {
 // Suspense boundary during static prerender of /app — without this wrapper the
 // route fails to build and the Cloudflare deploy fails. (Missed until now
 // because the gate ran typecheck/lint/test but never `next build`.)
+type SettleSharePayload = { kind: 'settle_share'; person_id: string | null; person_name: string; amount: number; currency: string }
+function isSettleSharePayload(p: unknown): p is SettleSharePayload {
+  return typeof p === 'object' && p !== null && (p as { kind?: unknown }).kind === 'settle_share'
+}
+
 export default function AppPage() {
   return (
     <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading…</div>}>

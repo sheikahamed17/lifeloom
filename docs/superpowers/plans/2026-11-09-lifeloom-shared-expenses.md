@@ -30,3 +30,14 @@
 7. **Digest, export, docs** — "Owed to you" digest line; export/import both tables; CHANGELOG; README feature line; memory note.
 
 Steps 1–3 merge first (no visible change without shares), then 4–5, then 6–7.
+
+## As built (2026-11-09) — deviations from the spec
+
+- **Consumers switched via two pure views, not per-helper arguments.** `withYourShare(entries, shares)` (spend view) and `withSettlements(entries, shares)` (ledger view: each settled share becomes a credit pseudo-entry into `settled_account_id`, computed only, never stored). Every existing aggregation helper kept its signature; `accounts.ts` is unchanged.
+- **People are matched on the request, like categories.** The client sends its active people to `/api/agent`; names map to ids there (`matchPeople`), unknown names come back with `person_id: null` and the chip creates them on confirm. The voice route reads active people from D1 for the same mapping. People are only ever created on the client at confirm time, so no server-side dedupe helper was needed.
+- **Voice settlement is text-capture only in v1.** `settle_share` is handled when typed into the capture box (resolved on the client: oldest shares first, exact match, else the People page opens); the voice SSE route does not dispatch it yet.
+- **An existing share's person cannot be swapped in the chip** (shown as text, amount editable, removable); add a new row instead.
+- **Make recurring is hidden while sharing** (shares would attach to the first entry only). Recurring shares remain deferred.
+- **The Owed-to-you widget shows an empty state** instead of hiding, since the user added it deliberately.
+- **Export needed no change**: backups are the op-log, so the new kinds are included automatically.
+- **Two sync fixes rode along** (found in review): a Dexie v15 upgrade replays `person`/`expense_share` ops a tab on the previous bundle had already pulled, and pushed ops are applied in HLC order on both ends.

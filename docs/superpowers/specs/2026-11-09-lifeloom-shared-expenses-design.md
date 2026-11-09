@@ -1,6 +1,6 @@
 # Lifeloom — Shared expenses: "my share" and people who owe you (design)
 
-**Status:** Approved 2026-11-09 — implementation plan: `docs/superpowers/plans/2026-11-09-lifeloom-shared-expenses.md`
+**Status:** Implemented 2026-11-09 (branch `feat/shared-expenses`) — plan: `docs/superpowers/plans/2026-11-09-lifeloom-shared-expenses.md`. Deviations from this draft are listed at the end of the plan.
 **Date:** 2026-11-09
 **Owner:** Sheik
 

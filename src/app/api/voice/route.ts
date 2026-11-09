@@ -4,6 +4,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 import { getSession } from '@/lib/auth'
 import { createDb } from '@/lib/db'
 import { captureCategories } from '@/lib/capture-categories'
+import { matchPeople } from '@/lib/people-match'
 import { isDemoMode } from '@/lib/demo'
 import { makeGroqClient } from '@/lib/agents/llm-client'
 import { groqWhisper } from '@/lib/agents/whisper'
@@ -70,6 +71,15 @@ export async function POST(req: Request) {
     .select(['id', 'name', 'kind', 'created_at'])
     .execute(), userId)
 
+  // Active people, so "rent 20000 split with Arun" pre-fills Arun on the chip.
+  const people = await db
+    .selectFrom('people')
+    .where('user_id', '=', userId)
+    .where('is_archived', '=', 0)
+    .where('deleted_at', 'is', null)
+    .select(['id', 'name'])
+    .execute()
+
   const stream = new ReadableStream({
     async start(controller) {
       const enc = new TextEncoder()
@@ -114,6 +124,7 @@ export async function POST(req: Request) {
               occurred_at: payload.occurred_at,
               source: 'voice',
               raw_input: transcript,
+              shared_with: payload.direction === 'out' ? matchPeople(payload.shared_with ?? [], people) : [],
             },
           })
         } else if (router.intent === 'log_task') {

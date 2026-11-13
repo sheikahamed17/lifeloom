@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
-import { PageShell } from '@/components/page-shell'
-import { InsightCard } from '@/components/insight-card'
+import { PageShell } from '@/components/layout/page-shell'
+import { InsightCard } from '@/components/insights/insight-card'
 import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
 import { useInsights } from '@/hooks/use-insights'
 

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ChevronRight, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/dexie'
-import { InsightCard } from '@/components/insight-card'
+import { InsightCard } from '@/components/insights/insight-card'
 import { Button } from '@/components/ui/button'
 
 export function DigestCard({ userId }: { userId: string }) {

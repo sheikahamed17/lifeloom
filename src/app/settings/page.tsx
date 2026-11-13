@@ -7,7 +7,7 @@ import {
   ArrowLeftRight, ChevronRight, DatabaseBackup, FolderKanban, Landmark, LogOut, MailPlus, RefreshCw,
   Repeat, Settings2, ShieldCheck, Tags, Target, Users,
 } from 'lucide-react'
-import { PageShell } from '@/components/page-shell'
+import { PageShell } from '@/components/layout/page-shell'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from '@/components/ui/item'

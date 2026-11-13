@@ -18,7 +18,7 @@ import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { PageShell } from '@/components/page-shell'
+import { PageShell } from '@/components/layout/page-shell'
 import { cn } from '@/lib/utils'
 import type { HabitRow } from '@/lib/dexie'
 

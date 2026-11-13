@@ -57,7 +57,18 @@ Walk them through the steps below. **The canonical, always-up-to-date reference 
 
 - `src/app/` — App Router routes, API handlers, and pages (`/app`, `/analytics`, `/insights`, `/settings/*`).
 - `src/lib/` — sync engine, agents, ingest, auth/email, and pure helpers (unit-tested).
-- `src/components/` — UI (capture chips, domain lists, answer cards, `charts/`).
+- `src/components/` — UI, one folder per area. **Put every new `.tsx` component in the matching folder** (import it as `@/components/<folder>/<file>`; no files directly in `src/components/`):
+  - `ui/` — shadcn primitives only (Button, Input, Select, Dialog, Table…). Added with `shadcn add`; every control in the app must come from here (ESLint bans raw `<button>`, `<input>`, `<select>`, `<table>`…).
+  - `layout/` — app chrome: header, page shell, tab bar, global search, demo banner, lock screen, today nudge.
+  - `providers/` — non-visual runtime: background sync, service-worker registrar, undo provider.
+  - `capture/` — the capture box and its results: confirmation chip, voice/receipt buttons, query answer cards.
+  - `money/` — money list/card/controls/overview, review queue, budgets, cards, goals/owed/upcoming/accounts widgets, category picker.
+  - `tasks/`, `learning/`, `notes/` — each domain's list, summary and filters (`project-picker` lives in `tasks/`).
+  - `insights/` — digest and insight cards.
+  - `charts/` — HTML/CSS charts and `chart-kit`.
+  - `setup/` — first-run wizard steps.
+  - `shared/` — used by several areas: row menu, swipe row, list section, sort control, period picker, help card, logo.
+  Pages stay in `src/app/<route>/page.tsx`; hooks in `src/hooks/`; pure logic in `src/lib/`.
 - `migrations/` — D1 schema; apply in numeric order.
 - `scripts/` — icon generation, service-worker build, VAPID keygen, router eval.
 - `docs/superpowers/` — design specs + implementation plans.

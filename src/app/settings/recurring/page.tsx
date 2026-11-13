@@ -17,8 +17,8 @@ import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { formatMinor } from '@/lib/currency'
 import { formatDay } from '@/lib/format'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
-import { PageShell } from '@/components/page-shell'
-import { UndoProvider, useUndo } from '@/components/undo-provider'
+import { PageShell } from '@/components/layout/page-shell'
+import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 
 const BACK = { href: '/settings', label: 'Settings' }
 const PERIOD_NOUN = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' } as const

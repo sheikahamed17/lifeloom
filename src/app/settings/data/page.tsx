@@ -17,7 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { SettingsCard } from '../_ui'
-import { PageShell } from '@/components/page-shell'
+import { PageShell } from '@/components/layout/page-shell'
 import type { Op } from '@/types/ops'
 
 const BACK = { href: '/settings', label: 'Settings' }

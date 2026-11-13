@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { PageShell } from '@/components/page-shell'
+import { PageShell } from '@/components/layout/page-shell'
 import { runBackfill, BackfillHttpError, type BackfillResult } from '@/lib/backfill-driver'
 
 // Workers Free plan: 10 ms CPU per request, tolerated only "infrequently" —

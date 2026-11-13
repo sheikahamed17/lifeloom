@@ -15,7 +15,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { SettingsCard } from '../_ui'
-import { PageShell } from '@/components/page-shell'
+import { PageShell } from '@/components/layout/page-shell'
 
 interface PasskeyRow { id: string; name?: string | null; createdAt?: string | number | null }
 

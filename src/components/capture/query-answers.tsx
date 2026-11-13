@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { Circle, CheckCircle2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { QueryListAnswer } from '@/components/query-list-answer'
+import { QueryListAnswer } from '@/components/capture/query-list-answer'
 import type { QueryPlan } from '@/lib/query-plans'
 import { filterTasksForQuery } from '@/lib/query-task-exec'
 import { filterLearningsForQuery } from '@/lib/query-learning-exec'

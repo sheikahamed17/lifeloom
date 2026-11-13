@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { isQueryPlan, QUERY_KINDS } from '@/lib/query-plans'
 import type { QueryMoneyPlan, QueryTaskPlan, QueryLearningPlan, QueryNotesPlan } from '@/lib/query-plans'
-import type { ChipDraft } from '@/components/confirmation-chip'
+import type { ChipDraft } from '@/components/capture/confirmation-chip'
 
 describe('isQueryPlan', () => {
   it('returns true for query_money plan', () => {

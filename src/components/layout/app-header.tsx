@@ -4,8 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BookHeart, ChartColumn, Flame, Lightbulb, Search, Settings, Sparkles } from 'lucide-react'
-import { PulseLogo } from '@/components/pulse-logo'
-import { RowMenu } from '@/components/row-menu'
+import { PulseLogo } from '@/components/shared/pulse-logo'
+import { RowMenu } from '@/components/shared/row-menu'
 import { Button } from '@/components/ui/button'
 
 const DESTINATIONS = [

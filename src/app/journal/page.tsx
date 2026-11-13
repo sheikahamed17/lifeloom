@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { PageShell } from '@/components/page-shell'
+import { PageShell } from '@/components/layout/page-shell'
 import type { JournalRow } from '@/lib/dexie'
 
 // The stored value stays the emoji (unchanged data); each mood gets a visible word.

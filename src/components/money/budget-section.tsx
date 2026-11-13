@@ -13,7 +13,7 @@ import { useFxRates } from '@/hooks/use-fx-rates'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { convertViaRates } from '@/lib/fx'
 import { currencySymbol } from '@/lib/currency'
-import { FIELD_NATIVE_SELECT } from '@/components/sort-control'
+import { FIELD_NATIVE_SELECT } from '@/components/shared/sort-control'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { computeBudgetProgress, yearMonthInTz } from '@/lib/budget-exec'
 import type { MoneyEntryRow } from '@/lib/dexie'
-import { useUndo } from '@/components/undo-provider'
+import { useUndo } from '@/components/providers/undo-provider'
 
 type Props = { userId: string }
 

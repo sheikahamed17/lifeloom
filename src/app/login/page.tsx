@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { authClient } from '@/lib/auth-client'
 import { useDemo } from '@/hooks/use-demo'
-import { PulseLogo } from '@/components/pulse-logo'
+import { PulseLogo } from '@/components/shared/pulse-logo'
 
 export default function LoginPage() {
   const router = useRouter()

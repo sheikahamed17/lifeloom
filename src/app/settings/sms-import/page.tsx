@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
 import { SettingsCard } from '../_ui'
-import { PageShell } from '@/components/page-shell'
+import { PageShell } from '@/components/layout/page-shell'
 
 const COPY_TARGET = 'glass-soft h-auto w-full items-start justify-start gap-2 whitespace-normal break-all p-3 text-left font-mono text-xs font-normal'
 

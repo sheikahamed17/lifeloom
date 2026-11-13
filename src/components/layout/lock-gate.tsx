@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { isPinSet, shouldRelock } from '@/lib/pin-lock'
-import { LockScreen } from '@/components/lock-screen'
+import { LockScreen } from '@/components/layout/lock-screen'
 
 export function LockGate({ children }: { children: ReactNode }) {
   // Locked on cold start iff a PIN is configured on this device.

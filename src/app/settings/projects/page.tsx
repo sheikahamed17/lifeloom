@@ -14,9 +14,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { SettingsCard } from '../_ui'
-import { PageShell } from '@/components/page-shell'
-import { RowMenu } from '@/components/row-menu'
-import { UndoProvider, useUndo } from '@/components/undo-provider'
+import { PageShell } from '@/components/layout/page-shell'
+import { RowMenu } from '@/components/shared/row-menu'
+import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 import type { ProjectRow } from '@/lib/dexie'
 
 const BACK = { href: '/settings', label: 'Settings' }

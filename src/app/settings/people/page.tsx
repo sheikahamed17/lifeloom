@@ -27,9 +27,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { SELECT_CLASS, SettingsCard } from '../_ui'
-import { PageShell } from '@/components/page-shell'
-import { RowMenu } from '@/components/row-menu'
-import { UndoProvider, useUndo } from '@/components/undo-provider'
+import { PageShell } from '@/components/layout/page-shell'
+import { RowMenu } from '@/components/shared/row-menu'
+import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 import type { ExpenseShareRow, MoneyEntryRow, PersonRow } from '@/lib/dexie'
 
 const fmt = formatMinor

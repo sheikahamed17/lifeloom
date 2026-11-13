@@ -1,4 +1,4 @@
-import type { ChipDraft } from '@/components/confirmation-chip'
+import type { ChipDraft } from '@/components/capture/confirmation-chip'
 import type { Currency } from '@/lib/op-schemas/money'
 
 /** A blank ConfirmationChip draft for manual "+ Add" — kind decided by the active tab. */

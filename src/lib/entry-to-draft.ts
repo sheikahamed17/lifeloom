@@ -1,4 +1,4 @@
-import type { ChipDraft } from '@/components/confirmation-chip'
+import type { ChipDraft } from '@/components/capture/confirmation-chip'
 import type { MoneyEntryRow, TaskRow, LearningRow, NoteRow } from '@/lib/dexie'
 import type { Currency } from '@/lib/op-schemas/money'
 

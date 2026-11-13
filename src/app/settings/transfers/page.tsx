@@ -23,8 +23,8 @@ import { Card } from '@/components/ui/card'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SELECT_CLASS, SettingsCard } from '../_ui'
-import { PageShell } from '@/components/page-shell'
-import { UndoProvider, useUndo } from '@/components/undo-provider'
+import { PageShell } from '@/components/layout/page-shell'
+import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 
 const BACK = { href: '/settings', label: 'Settings' }
 

@@ -1,5 +1,5 @@
 import { blankDraftForKind } from '@/lib/blank-draft'
-import type { ChipDraft } from '@/components/confirmation-chip'
+import type { ChipDraft } from '@/components/capture/confirmation-chip'
 import type { MoneyPayload } from '@/lib/op-schemas/money'
 import type { TaskPayload } from '@/lib/op-schemas/task'
 import type { LearningPayload } from '@/lib/op-schemas/learning'

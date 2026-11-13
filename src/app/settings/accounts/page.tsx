@@ -21,9 +21,9 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
 import { ArchivedCollapsible, SELECT_CLASS, SettingsCard } from '../_ui'
-import { PageShell } from '@/components/page-shell'
-import { RowMenu } from '@/components/row-menu'
-import { UndoProvider, useUndo } from '@/components/undo-provider'
+import { PageShell } from '@/components/layout/page-shell'
+import { RowMenu } from '@/components/shared/row-menu'
+import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 import { db, type AccountRow } from '@/lib/dexie'
 
 const BACK = { href: '/settings', label: 'Settings' }

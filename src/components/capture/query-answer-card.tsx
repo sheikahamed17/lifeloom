@@ -194,7 +194,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
           <span className="text-sm font-semibold text-accent-2">{headerText}</span>
         </div>
 
-        <div className="mb-2 text-4xl font-semibold font-mono tabular-nums text-accent-2">
+        <div className="mb-2 text-4xl font-semibold tabular-nums text-accent-2">
           {currencySymbol(prefs.primary_currency)}{major}
         </div>
 
@@ -249,7 +249,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
                 <li key={idx} className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium">{item.categoryName ?? 'Uncategorized'}</span>
-                    <span className="font-mono tabular-nums">{currencySymbol(prefs.primary_currency)}{amount}</span>
+                    <span className="tabular-nums">{currencySymbol(prefs.primary_currency)}{amount}</span>
                   </div>
                   <div className="relative h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`${item.categoryName ?? 'Uncategorized'}: ${currencySymbol(prefs.primary_currency)}${amount}`} aria-valuenow={barWidth} aria-valuemin={0} aria-valuemax={100}>
                     <div
@@ -291,14 +291,14 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
         <div className="mb-4 flex items-baseline justify-between gap-2">
           <div>
             <p className="text-xs text-muted-foreground mb-1">Current period</p>
-            <div className="text-3xl font-semibold font-mono tabular-nums text-accent-2">
+            <div className="text-3xl font-semibold tabular-nums text-accent-2">
               {currencySymbol(prefs.primary_currency)}{currentMajor}
             </div>
           </div>
           {deltaPct !== null && (
             <div className="text-right">
               <p className="text-xs text-muted-foreground mb-1">Change</p>
-              <div className={`text-2xl font-semibold font-mono tabular-nums ${deltaPct > 0 ? 'text-destructive' : 'text-income'}`}>
+              <div className={`text-2xl font-semibold tabular-nums ${deltaPct > 0 ? 'text-destructive' : 'text-income'}`}>
                 {deltaPct > 0 ? '↑' : '↓'}{Math.abs(deltaPct).toFixed(1)}%
               </div>
             </div>
@@ -424,7 +424,7 @@ function FilteredMoneyList({
               </div>
 
               <div className="flex flex-col items-end gap-2">
-                <span className={`font-mono tabular-nums text-sm font-medium whitespace-nowrap ${
+                <span className={`tabular-nums text-sm font-medium whitespace-nowrap ${
                   e.direction === 'out' ? 'text-destructive' : 'text-income'
                 }`}>
                   {formatAmount(e)}

@@ -41,7 +41,7 @@ export function HelpCard({
             className="h-auto min-h-11 flex-col items-start gap-1 whitespace-normal px-3 py-2 text-left"
           >
             <span className="text-sm font-medium">{example.label}</span>
-            <code className="font-mono text-xs font-normal text-muted-foreground">
+            <code className="tabular-nums text-xs font-normal text-muted-foreground">
               {example.prompt}
             </code>
           </Button>

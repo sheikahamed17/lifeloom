@@ -35,13 +35,13 @@ export function BarTrend({ data, symbol, jpy, label }: BarTrendProps) {
           <TableHeader><TableRow><TableHead>Period</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
           <TableBody>
             {data.map(d => (
-              <TableRow key={d.label}><TableCell>{d.label}</TableCell><TableCell className="text-right font-mono tabular-nums">{money(d.amount)}</TableCell></TableRow>
+              <TableRow key={d.label}><TableCell>{d.label}</TableCell><TableCell className="text-right tabular-nums">{money(d.amount)}</TableCell></TableRow>
             ))}
           </TableBody>
         </Table>
       ) : (
         <figure role="img" aria-label={`${label}: ${data.map(d => `${d.label} ${money(d.amount)}`).join(', ')}`} className="flex flex-col gap-1">
-          <p className="text-right text-xs text-muted-foreground">Highest <span className="font-mono tabular-nums">{money(max)}</span></p>
+          <p className="text-right text-xs text-muted-foreground">Highest <span className="tabular-nums">{money(max)}</span></p>
           <div className="relative flex h-40 items-end gap-0.5 border-b border-border">
             <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border" />
             {data.map((d, i) => (

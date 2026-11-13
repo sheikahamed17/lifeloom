@@ -50,7 +50,7 @@ export function PeriodPicker({ period, intervalCount, onChange }: Props) {
           max={365}
           value={intervalCount}
           onChange={e => onChange(period, Math.max(1, parseInt(e.target.value, 10) || 1))}
-          className="w-20 text-right font-mono tabular-nums"
+          className="w-20 text-right tabular-nums"
         />
         <span className="text-sm text-muted-foreground">{period === 'daily' ? 'day(s)' : period === 'weekly' ? 'week(s)' : period === 'monthly' ? 'month(s)' : 'year(s)'}</span>
       </div>

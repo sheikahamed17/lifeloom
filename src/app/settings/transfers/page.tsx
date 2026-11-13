@@ -299,7 +299,7 @@ function TransfersPageInner() {
                           {formatDay(t.occurred_at, prefs.tz)}{t.note ? ` · ${t.note}` : ''}
                         </p>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMinor(t.amount, t.currency)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-sm tabular-nums">{formatMinor(t.amount, t.currency)}</TableCell>
                       <TableCell className="pr-1">
                         <Button
                           variant="ghost"

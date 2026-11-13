@@ -61,7 +61,7 @@ export function QueryTaskListAnswer({ userId, plan, onDismiss, onResult }: { use
                       </span>
                     )}
                     {t.due_at && (
-                      <span className={`font-mono tabular-nums ${isOverdue ? 'text-warning' : ''}`}>
+                      <span className={`tabular-nums ${isOverdue ? 'text-warning' : ''}`}>
                         due {formatLocalDateTime(t.due_at, prefs.tz)}
                         {isOverdue && ' · overdue'}
                       </span>
@@ -119,7 +119,7 @@ export function QueryLearningListAnswer({ userId, plan, onDismiss, onResult }: {
                   <span className="truncate">— {l.attribution}</span>
                 )}
               </div>
-              <span className="font-mono tabular-nums flex-shrink-0">
+              <span className="tabular-nums flex-shrink-0">
                 {formatLocalDateTime(l.occurred_at, prefs.tz)}
               </span>
             </div>
@@ -168,7 +168,7 @@ export function QueryNotesListAnswer({ userId, plan, onDismiss, onResult }: { us
               </div>
             )}
             <div className="flex items-center justify-end text-xs text-muted-foreground">
-              <span className="font-mono tabular-nums flex-shrink-0">
+              <span className="tabular-nums flex-shrink-0">
                 {formatLocalDateTime(n.occurred_at, prefs.tz)}
               </span>
             </div>

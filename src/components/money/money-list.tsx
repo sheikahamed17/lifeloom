@@ -11,6 +11,7 @@ import { Empty, EmptyDescription } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
 import { SwipeRow } from '@/components/shared/swipe-row'
 import { RowMenu } from '@/components/shared/row-menu'
+import { IconTile } from '@/components/shared/icon-tile'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useAllCategories } from '@/hooks/use-all-categories'
@@ -122,20 +123,21 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
   }
 
   return (
-    <ul className="flex flex-col gap-2" aria-labelledby="entries-heading">
+    <ul className="glass flex flex-col divide-y divide-border overflow-hidden rounded-xl" aria-labelledby="entries-heading">
       {groups.map(g => {
         if (g.kind === 'split') {
           const open = expandedGroups.has(g.groupId)
           const first = g.parts[0]
           return (
-            <li key={g.groupId} id={`pulse-row-${g.groupId}`} className="glass-soft rounded-xl p-3 text-sm">
+            <li key={g.groupId} id={`pulse-row-${g.groupId}`} className="px-4 py-3.5 text-sm">
               <Collapsible open={open} onOpenChange={() => toggleGroup(g.groupId)}>
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <IconTile icon={Split} />
                   <CollapsibleTrigger
                     render={<Button variant="ghost" />}
                     className="h-auto min-w-0 flex-1 flex-col items-start justify-start gap-1 whitespace-normal px-0 py-0 text-left font-normal hover:bg-transparent"
                   >
-                    <span className="text-sm font-medium md:text-base">{first.description || first.merchant || 'Split payment'}</span>
+                    <span className="text-base font-medium leading-tight">{first.description || first.merchant || 'Split payment'}</span>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                       <Split className="size-3.5" aria-hidden />
                       Split {g.parts.length} ways
@@ -144,7 +146,7 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
                     <EntryTimestamp occurredAt={first.occurred_at} />
                   </CollapsibleTrigger>
                   <div className="flex flex-col items-end">
-                    <span className={cn('whitespace-nowrap font-mono text-sm font-medium tabular-nums', first.direction === 'out' ? 'text-destructive' : 'text-income')}>
+                    <span className={cn('whitespace-nowrap tabular-nums text-base font-semibold', first.direction === 'out' ? 'text-destructive' : 'text-income')}>
                       {signedAmount(g.total, first.currency, first.direction)}
                     </span>
                     <div className="-mb-2 -mr-2">
@@ -169,7 +171,7 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
                             <span className="truncate text-muted-foreground">{pc?.name ?? 'Uncategorized'}</span>
                           </span>
                           <span className="flex items-center">
-                            <span className="font-mono tabular-nums">{formatMinor(p.amount, p.currency)}</span>
+                            <span className="tabular-nums">{formatMinor(p.amount, p.currency)}</span>
                             {onEdit && (
                               <Button
                                 variant="ghost"
@@ -206,23 +208,15 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
               onLongPress={() => setMenuFor(e.id)}
               onDelete={() => deleteEntry(e)}
               deleteLabel={`Delete ${title} ${formatAmount(e)}`}
-              className="glass-soft flex items-start justify-between gap-3 rounded-xl p-3 text-sm transition-colors hover:bg-accent"
+              className="flex items-start gap-3 bg-card px-4 py-3.5 text-sm transition-colors hover:bg-accent"
             >
+              <IconTile emoji={cat?.icon} />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <p className="text-sm font-medium text-foreground md:text-base">{title}</p>
+                <p className="text-base font-medium leading-tight text-foreground">{title}</p>
                 <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-                  {cat && (
-                    <span className="inline-flex items-center gap-1">
-                      {cat.icon && <span aria-hidden="true">{cat.icon}</span>}
-                      {cat.name}
-                    </span>
-                  )}
+                  {cat && <span>{cat.name}</span>}
                   {e.merchant && e.merchant !== title && <span>· {e.merchant}</span>}
-                  {acc && (
-                    <span className="inline-flex items-center gap-1">
-                      · {acc.icon && <span aria-hidden="true">{acc.icon}</span>}{acc.name}
-                    </span>
-                  )}
+                  {acc && <span>· {acc.name}</span>}
                   {!acc && e.account_id && <span>· Unknown account</span>}
                 </p>
                 {(e.tags?.length ?? 0) > 0 && (
@@ -281,13 +275,13 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
               <div className="flex flex-col items-end">
                 {shared ? (
                   <span className="flex flex-col items-end" title={`Full payment ${formatAmount(e)}; the rest is owed to you`}>
-                    <span className="whitespace-nowrap font-mono text-sm font-medium tabular-nums text-destructive">
+                    <span className="whitespace-nowrap tabular-nums text-base font-semibold text-destructive">
                       you {signedAmount(yourShare(e, mine), e.currency, 'out')}
                     </span>
-                    <span className="whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground">of {formatAmount(e)}</span>
+                    <span className="whitespace-nowrap tabular-nums text-xs tabular-nums text-muted-foreground">of {formatAmount(e)}</span>
                   </span>
                 ) : (
-                  <span className={cn('whitespace-nowrap font-mono text-sm font-medium tabular-nums', e.direction === 'out' ? 'text-destructive' : 'text-income')}>
+                  <span className={cn('whitespace-nowrap tabular-nums text-base font-semibold', e.direction === 'out' ? 'text-destructive' : 'text-income')}>
                     {formatAmount(e)}
                   </span>
                 )}

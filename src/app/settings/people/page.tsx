@@ -157,7 +157,7 @@ function PeoplePageInner() {
         {showTotal && (
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold">Owed to you</h2>
-            <span className="font-mono text-2xl font-semibold tabular-nums">{fmt(headline.total, prefs.primary_currency)}</span>
+            <span className="tabular-nums text-2xl font-semibold tabular-nums">{fmt(headline.total, prefs.primary_currency)}</span>
           </div>
         )}
         {showTotal && headline.skipped.length > 0 && (
@@ -268,7 +268,7 @@ function PersonCard({
             {/* A person's total only when it sums more than one row; one row already says it. */}
             {owed && outstanding.length > 1 && (
               <span className="whitespace-nowrap text-sm text-muted-foreground">
-                owes <span className="font-mono tabular-nums text-foreground">{Object.entries(owed.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
+                owes <span className="tabular-nums text-foreground">{Object.entries(owed.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
               </span>
             )}
             {!owed && <span className="text-sm text-muted-foreground">Settled up</span>}
@@ -311,7 +311,7 @@ function PersonCard({
                   <div className="truncate">{s.description || 'Untitled'}</div>
                   <div className="text-xs text-muted-foreground">{formatDay(s.occurred_at, tz)}{s.note ? ` · ${s.note}` : ''}</div>
                 </div>
-                <span className="font-mono tabular-nums">{fmt(s.amount, s.currency)}</span>
+                <span className="tabular-nums">{fmt(s.amount, s.currency)}</span>
                 <Button disabled={busy} onClick={() => onSettle([s.shareId], receiveInto)} aria-label={`Mark paid: ${s.description || 'entry'} ${fmt(s.amount, s.currency)}`}>
                   Mark paid
                 </Button>
@@ -340,7 +340,7 @@ function PersonCard({
                       <div className="truncate">{e.description || 'Untitled'}</div>
                       <div className="text-xs text-muted-foreground">Paid {s.settled_at ? formatDay(s.settled_at, tz) : ''}{acc ? ` into ${acc.name}` : ''}</div>
                     </div>
-                    <span className="font-mono tabular-nums text-muted-foreground">{fmt(s.amount, e.currency)}</span>
+                    <span className="tabular-nums text-muted-foreground">{fmt(s.amount, e.currency)}</span>
                     <Button variant="ghost" disabled={busy} onClick={() => onUnsettle(s.id)} aria-label={`Mark unpaid: ${e.description || 'entry'}`}>
                       Mark unpaid
                     </Button>

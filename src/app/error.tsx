@@ -41,7 +41,7 @@ export default function AppError({
             <Button variant="outline" onClick={() => reset()}>Try again</Button>
           </div>
           {error?.digest && (
-            <p className="font-mono text-xs text-muted-foreground">ref: {error.digest}</p>
+            <p className="tabular-nums text-xs text-muted-foreground">ref: {error.digest}</p>
           )}
         </CardContent>
       </Card>

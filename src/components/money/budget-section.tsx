@@ -14,6 +14,7 @@ import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { convertViaRates } from '@/lib/fx'
 import { currencySymbol } from '@/lib/currency'
 import { FIELD_NATIVE_SELECT } from '@/components/shared/sort-control'
+import { IconTile } from '@/components/shared/icon-tile'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -101,7 +102,7 @@ export function BudgetSection({ userId }: Props) {
   }
 
   return (
-    <Card role="region" aria-labelledby="budgets-heading" className="p-4">
+    <Card role="region" aria-labelledby="budgets-heading" className="p-5">
       <Collapsible open={adding} onOpenChange={setAdding} className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 id="budgets-heading" className="text-sm font-semibold">Budgets</h2>
@@ -127,12 +128,12 @@ export function BudgetSection({ userId }: Props) {
             return (
               <li key={p.categoryId} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-1.5">
-                    {cat?.icon && <span aria-hidden="true">{cat.icon}</span>}
+                  <span className="flex items-center gap-3">
+                    <IconTile emoji={cat?.icon} size="sm" />
                     <span>{cat?.name ?? 'Category'}</span>
                   </span>
                   <span className="flex items-center gap-2">
-                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    <span className="tabular-nums text-xs tabular-nums text-muted-foreground">
                       {fmt(p.spent, primary)} of {fmt(p.limit, primary)}
                     </span>
                     <Button

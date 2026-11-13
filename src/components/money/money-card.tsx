@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
+import { IconTile } from '@/components/shared/icon-tile'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -108,20 +109,20 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
         aria-label={`${row.name}: ${symbol}${fmt(row.amount)}, ${row.pct.toFixed(0)}% of spending, ${row.count} ${row.count === 1 ? 'entry' : 'entries'}. Show them in the list`}
         className="-mx-2 h-auto min-h-11 w-[calc(100%+1rem)] justify-start gap-2 px-2 text-left font-normal"
       >
-        <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">{row.icon && <span aria-hidden="true">{row.icon}</span>}{row.name}</span>
+        <span className="flex w-36 shrink-0 items-center gap-2.5"><IconTile emoji={row.icon} size="sm" /><span className="truncate">{row.name}</span></span>
         <Progress
           value={(row.amount / maxAmount) * 100}
           aria-hidden
           className="min-w-0 flex-1 flex-nowrap [&_[data-slot=progress-indicator]]:bg-foreground/70 [&_[data-slot=progress-track]]:h-1.5"
         />
-        <span className="shrink-0 font-mono tabular-nums">{symbol}{fmt(row.amount)}</span>
+        <span className="shrink-0 tabular-nums">{symbol}{fmt(row.amount)}</span>
         <span className="w-10 shrink-0 text-right text-muted-foreground tabular-nums">{row.pct.toFixed(0)}%</span>
       </Button>
     </li>
   )
 
   return (
-    <Card role="region" aria-labelledby="spent-heading" className="gap-4 p-4">
+    <Card role="region" aria-labelledby="spent-heading" className="gap-5 p-5">
       <header className="flex items-center justify-between gap-2">
         <h2 id="spent-heading" className="text-sm font-semibold">Spent this {period}</h2>
         <ToggleGroup
@@ -145,7 +146,7 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
 
       {/* The figure carries its own name; no neon glow (glow is for the primary action only). */}
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="font-mono text-4xl font-semibold tabular-nums leading-tight">{symbol}{fmt(bd.spend)}</span>
+        <span className="tabular-nums text-4xl font-semibold tabular-nums leading-tight">{symbol}{fmt(bd.spend)}</span>
         {delta !== null && (
           <span className={`inline-flex items-center gap-0.5 text-sm ${delta > 0 ? 'text-destructive' : 'text-income'}`}>
             {delta > 0 ? <ArrowUp className="size-3.5" aria-hidden /> : <ArrowDown className="size-3.5" aria-hidden />}
@@ -176,10 +177,10 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
           <Separator />
           <div className="flex gap-4 text-sm">
             <span>
-              Earned <span className="font-mono font-medium tabular-nums">{symbol}{fmt(bd.income)}</span>
+              Earned <span className="tabular-nums font-medium tabular-nums">{symbol}{fmt(bd.income)}</span>
             </span>
             <span className={bd.net >= 0 ? 'text-income' : 'text-destructive'}>
-              {bd.net >= 0 ? 'Saved' : 'Overspent'} <span className="font-mono font-medium tabular-nums">{symbol}{fmt(Math.abs(bd.net))}</span>
+              {bd.net >= 0 ? 'Saved' : 'Overspent'} <span className="tabular-nums font-medium tabular-nums">{symbol}{fmt(Math.abs(bd.net))}</span>
             </span>
           </div>
         </>

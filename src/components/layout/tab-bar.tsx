@@ -3,14 +3,12 @@
 import { BookOpen, CheckSquare, NotebookPen, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Tab } from '@/hooks/use-tab-state'
 
 type Props = {
-  active: Tab
-  onChange: (t: Tab) => void
   taskBadgeCount?: number      // overdue + open count; undefined = no badge
-  /** `inline`: desktop segmented control in the page flow. `dock`: the phone's fixed bottom dock. */
+  /** `inline`: desktop underline tabs in the page flow. `dock`: the phone's fixed bottom bar. */
   variant: 'inline' | 'dock'
 }
 
@@ -24,58 +22,64 @@ const TABS: { id: Tab; icon: React.ComponentType<{ className?: string }>; label:
 /** Height the dock occupies above the safe area, so pages can pad their last item clear of it. */
 export const DOCK_CLEARANCE = 'pb-[calc(6rem_+_env(safe-area-inset-bottom))]'
 
-// One active-tab language on every screen size: a quiet pill, cyan icon, full-strength label. No glow.
-const LIST = 'group-data-horizontal/tabs:h-auto w-full gap-1 bg-transparent p-0'
-const TRIGGER =
-  'rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-accent-2 ' +
-  'data-active:bg-accent data-active:text-foreground data-active:shadow-none data-active:[&_svg]:text-accent-2'
-
-export function TabBar({ active, onChange, taskBadgeCount, variant }: Props) {
+/**
+ * The section switcher. It renders ONLY the tab list: the `<Tabs>` root and the
+ * `<TabsContent>` panels live in the page (`app/app/page.tsx`), so the desktop list and
+ * the phone dock are two views of one tab set and every tab is wired to its panel.
+ */
+export function TabBar({ taskBadgeCount, variant }: Props) {
   const badge = taskBadgeCount !== undefined && taskBadgeCount > 0 ? (taskBadgeCount > 9 ? '9+' : String(taskBadgeCount)) : null
   const dock = variant === 'dock'
 
-  return (
-    <Tabs
-      value={active}
-      onValueChange={v => onChange(v as Tab)}
+  const list = (
+    <TabsList
+      aria-label="Sections"
+      variant={dock ? 'default' : 'line'}
       className={cn(
-        'glass rounded-xl',
-        dock ? 'fixed bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] left-3 right-3 z-40 p-1.5' : 'p-1',
+        'group-data-horizontal/tabs:h-auto w-full',
+        dock ? 'gap-1 bg-transparent p-0' : 'justify-start gap-1 border-b border-border p-0',
       )}
     >
-      <TabsList aria-label="Sections" className={LIST}>
-        {TABS.map(t => {
-          const Icon = t.icon
-          const count = t.id === 'tasks' ? badge : null
-          return (
-            <TabsTrigger
-              key={t.id}
-              value={t.id}
-              className={cn(
-                TRIGGER,
-                dock ? 'h-auto min-h-12 flex-col gap-0.5 py-1.5 text-xs' : 'h-auto min-h-11 gap-2 px-4',
-              )}
-            >
-              {dock ? (
-                <>
-                  <span className="relative">
-                    <Icon className="size-5" aria-hidden />
-                    {count && <span className="absolute -right-3 -top-2"><DueBadge value={count} /></span>}
-                  </span>
-                  {t.label}
-                </>
-              ) : (
-                <>
+      {TABS.map(t => {
+        const Icon = t.icon
+        const count = t.id === 'tasks' ? badge : null
+        return (
+          <TabsTrigger
+            key={t.id}
+            value={t.id}
+            className={cn(
+              'focus-visible:ring-2 focus-visible:ring-ring/50',
+              dock
+                ? 'h-auto min-h-14 flex-col gap-1 rounded-lg py-2 text-xs text-muted-foreground after:hidden data-active:bg-accent data-active:text-foreground data-active:shadow-none'
+                : 'h-11 flex-none gap-2 rounded-none px-4 text-sm text-muted-foreground group-data-horizontal/tabs:after:bottom-[-1px] data-active:text-foreground',
+            )}
+          >
+            {dock ? (
+              <>
+                <span className="relative">
                   <Icon className="size-5" aria-hidden />
-                  {t.label}
-                  {count && <DueBadge value={count} />}
-                </>
-              )}
-            </TabsTrigger>
-          )
-        })}
-      </TabsList>
-    </Tabs>
+                  {count && <span className="absolute -right-3 -top-2"><DueBadge value={count} /></span>}
+                </span>
+                {t.label}
+              </>
+            ) : (
+              <>
+                <Icon className="size-4" aria-hidden />
+                {t.label}
+                {count && <DueBadge value={count} />}
+              </>
+            )}
+          </TabsTrigger>
+        )
+      })}
+    </TabsList>
+  )
+
+  if (!dock) return list
+  return (
+    <div className="glass fixed bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] left-3 right-3 z-40 rounded-xl p-1.5">
+      {list}
+    </div>
   )
 }
 

@@ -1,8 +1,10 @@
 'use client'
 
+import { CreditCard } from 'lucide-react'
 import { formatDay } from '@/lib/format'
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { IconTile } from '@/components/shared/icon-tile'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
@@ -57,19 +59,19 @@ export function CardsSection({ userId }: Props) {
     `${currencySymbol(cur)}${(amt / (cur === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
   return (
-    <Card role="region" aria-labelledby="cards-heading" className="gap-3 p-4">
+    <Card role="region" aria-labelledby="cards-heading" className="gap-4 p-5">
       <h2 id="cards-heading" className="text-sm font-semibold">Cards &amp; debts</h2>
       <ul className="flex flex-col gap-2">
         {summaries.map(({ acct, s }) => (
           <li key={acct.id} className="border-t border-border pt-2 first:border-t-0 first:pt-0">
             <Item size="xs" className="flex-nowrap items-start p-0">
               <ItemContent className="min-w-0 gap-1">
-                <ItemTitle className="max-w-full text-sm font-normal">
-                  {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
+                <ItemTitle className="max-w-full gap-3 text-sm font-normal">
+                  <IconTile emoji={acct.icon} icon={CreditCard} size="sm" />
                   <span className="truncate">{acct.name}</span>
                 </ItemTitle>
                 <ItemDescription className="text-xs">
-                  This month <span className="font-mono tabular-nums">{fmtIn(s.monthSpend, acct.currency)}</span>
+                  This month <span className="tabular-nums">{fmtIn(s.monthSpend, acct.currency)}</span>
                 </ItemDescription>
                 {s.recentPayments.length > 0 && (
                   <ItemDescription className="text-xs">
@@ -79,7 +81,7 @@ export function CardsSection({ userId }: Props) {
               </ItemContent>
               <ItemActions className="flex-col items-end gap-0">
                 <span className="text-xs text-muted-foreground">You owe</span>
-                <span className={`font-mono tabular-nums text-sm font-medium ${s.owed > 0 ? 'text-destructive' : 'text-income'}`}>
+                <span className={`tabular-nums text-sm font-medium ${s.owed > 0 ? 'text-destructive' : 'text-income'}`}>
                   {fmtIn(s.owed, acct.currency)}
                 </span>
                 <Link

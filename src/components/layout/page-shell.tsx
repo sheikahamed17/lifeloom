@@ -13,13 +13,13 @@ type Props = {
 }
 
 /**
- * One page shell for every screen outside Money home: the aurora, one back link
+ * One page shell for every screen outside Money home: one back link
  * in one place, one title style (critique: four back-link variants, no shared shell).
  */
 export function PageShell({ title, back = { href: '/app', label: 'Lifeloom' }, actions, width = 'narrow', children }: Props) {
   return (
     <>
-      <main className={cn('mx-auto flex w-full flex-col gap-4 p-4 pb-12 sm:p-6', width === 'narrow' ? 'max-w-2xl' : 'max-w-5xl')}>
+      <main className={cn('mx-auto flex w-full flex-col gap-6 p-4 pb-12 sm:p-6 lg:p-8', width === 'narrow' ? 'max-w-2xl' : 'max-w-5xl')}>
         <header className="flex flex-col gap-1">
           <Button
             variant="ghost"
@@ -32,7 +32,7 @@ export function PageShell({ title, back = { href: '/app', label: 'Lifeloom' }, a
             {back.label}
           </Button>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h1 className="text-2xl font-semibold">{title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
             {actions}
           </div>
         </header>

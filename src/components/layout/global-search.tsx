@@ -64,7 +64,7 @@ export function GlobalSearch({ userId, onClose, onSelect }: { userId: string; on
                   >
                     <Icon className="text-muted-foreground" aria-hidden />
                     <span className="flex-1 truncate">{it.label}</span>
-                    {it.snippet && <CommandShortcut className="font-mono tabular-nums tracking-normal">{it.snippet}</CommandShortcut>}
+                    {it.snippet && <CommandShortcut className="tabular-nums tracking-normal">{it.snippet}</CommandShortcut>}
                   </CommandItem>
                 ))}
                 {g.truncated && <p className="px-2 pt-1 text-xs text-muted-foreground">More matches — refine your search.</p>}

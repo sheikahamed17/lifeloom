@@ -24,7 +24,7 @@ export function ListSection({ id, title, activeFilters, onClearFilters, filters,
   return (
     <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 id={`${id}-heading`} className="text-sm font-semibold">{title}</h2>
+        <h2 id={`${id}-heading`} className="text-base font-semibold tracking-tight">{title}</h2>
         <div className="flex items-center gap-1">
           {activeFilters > 0 && (
             <Button variant="ghost" onClick={onClearFilters}>Clear</Button>

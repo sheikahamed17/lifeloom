@@ -107,7 +107,7 @@ export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
             {data.map((d) => (
               <TableRow key={d.label}>
                 <TableCell>{d.label}</TableCell>
-                <TableCell className="text-right font-mono tabular-nums">{formatNet(d.net)}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatNet(d.net)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

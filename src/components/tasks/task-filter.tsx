@@ -1,6 +1,6 @@
 'use client'
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { TaskFilter as TaskFilterValue } from '@/hooks/use-tasks'
 
 type Props = {
@@ -14,20 +14,23 @@ const OPTIONS: { value: TaskFilterValue; label: string }[] = [
   { value: 'all',       label: 'All' },
 ]
 
+/**
+ * Open / Completed / All narrows ONE list, it doesn't switch between sections, so it is a
+ * segmented control (single-select toggle group), not tabs: tabs would need a panel each.
+ */
 export function TaskFilter({ active, onChange }: Props) {
   return (
-    <Tabs value={active} onValueChange={v => onChange(v as TaskFilterValue)}>
-      <TabsList aria-label="Task filter" className="glass-soft group-data-horizontal/tabs:h-auto w-full gap-1 rounded-lg bg-transparent p-1">
-        {OPTIONS.map(o => (
-          <TabsTrigger
-            key={o.value}
-            value={o.value}
-            className="h-auto min-h-10 rounded-lg px-3 text-xs text-muted-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-accent-2 data-active:border-accent-2/50 data-active:bg-accent-2/15 data-active:text-accent-2 data-active:shadow-none"
-          >
-            {o.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <ToggleGroup
+      aria-label="Task filter"
+      className="w-full"
+      value={[active]}
+      onValueChange={next => { if (next[0]) onChange(next[0] as TaskFilterValue) }}
+    >
+      {OPTIONS.map(o => (
+        <ToggleGroupItem key={o.value} value={o.value} className="h-10 flex-1 px-3 text-sm">
+          {o.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   )
 }

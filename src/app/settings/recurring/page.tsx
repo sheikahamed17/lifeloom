@@ -118,7 +118,7 @@ function RecurringSettingsPageInner() {
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="py-3 pl-4 align-top whitespace-normal">
-                      <span className={`flex items-center gap-1.5 font-mono tabular-nums ${isTransfer ? 'text-foreground' : r.direction === 'out' ? 'text-destructive' : 'text-income'}`}>
+                      <span className={`flex items-center gap-1.5 tabular-nums ${isTransfer ? 'text-foreground' : r.direction === 'out' ? 'text-destructive' : 'text-income'}`}>
                         {isTransfer ? '' : r.direction === 'out' ? '−' : '+'}{formatMinor(r.amount, r.currency)}
                         {isTransfer && (
                           <>

@@ -53,9 +53,9 @@ export function DualSeriesTrend({ spend, income, symbol, jpy }: DualSeriesTrendP
             {periods.map(p => (
               <TableRow key={p.label}>
                 <TableCell>{p.label}</TableCell>
-                <TableCell className="text-right font-mono tabular-nums">{money(p.spend)}</TableCell>
-                <TableCell className="text-right font-mono tabular-nums">{money(p.income)}</TableCell>
-                <TableCell className="text-right font-mono tabular-nums">{p.spend || p.income ? `${p.income - p.spend >= 0 ? '+' : ''}${money(p.income - p.spend)}` : '—'}</TableCell>
+                <TableCell className="text-right tabular-nums">{money(p.spend)}</TableCell>
+                <TableCell className="text-right tabular-nums">{money(p.income)}</TableCell>
+                <TableCell className="text-right tabular-nums">{p.spend || p.income ? `${p.income - p.spend >= 0 ? '+' : ''}${money(p.income - p.spend)}` : '—'}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -66,7 +66,7 @@ export function DualSeriesTrend({ spend, income, symbol, jpy }: DualSeriesTrendP
           aria-label={`Income and spend: ${periods.map(p => `${p.label} spend ${money(p.spend)}, income ${money(p.income)}`).join('; ')}`}
           className="flex flex-col gap-1"
         >
-          <p className="text-right text-xs text-muted-foreground">Highest <span className="font-mono tabular-nums">{money(max)}</span></p>
+          <p className="text-right text-xs text-muted-foreground">Highest <span className="tabular-nums">{money(max)}</span></p>
           <div className="relative flex h-44 items-end gap-1 border-b border-border">
             <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border" />
             {periods.map(p => (
@@ -90,7 +90,7 @@ export function DualSeriesTrend({ spend, income, symbol, jpy }: DualSeriesTrendP
                   {!empty && (
                     <>
                       <span className="h-1 w-6 max-w-full rounded-full" style={{ backgroundColor: net >= 0 ? DIVERGING.positive : DIVERGING.negative }} />
-                      <span className="max-w-full truncate font-mono text-xs tabular-nums text-muted-foreground">{net >= 0 ? '+' : ''}{compactMoney(net, symbol, jpy)}</span>
+                      <span className="max-w-full truncate tabular-nums text-xs tabular-nums text-muted-foreground">{net >= 0 ? '+' : ''}{compactMoney(net, symbol, jpy)}</span>
                     </>
                   )}
                 </span>

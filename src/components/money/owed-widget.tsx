@@ -61,7 +61,7 @@ export function OwedWidget({ userId }: Props) {
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold">Owed to you</h2>
-        <span className="font-mono text-2xl font-semibold tabular-nums">{fmt(headline.total, prefs.primary_currency)}</span>
+        <span className="tabular-nums text-2xl font-semibold tabular-nums">{fmt(headline.total, prefs.primary_currency)}</span>
       </div>
       {headline.skipped.length > 0 && (
         <p className="text-xs text-muted-foreground">Not converted (no FX rate yet): {headline.skipped.join(', ')}</p>
@@ -78,7 +78,7 @@ export function OwedWidget({ userId }: Props) {
                 <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 <ItemTitle className="min-w-0 font-normal"><span className="truncate">{r.name}</span></ItemTitle>
               </ItemContent>
-              <span className="font-mono text-sm tabular-nums">{Object.entries(r.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
+              <span className="tabular-nums text-sm tabular-nums">{Object.entries(r.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
             </Item>
           </li>
         ))}

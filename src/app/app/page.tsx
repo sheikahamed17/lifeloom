@@ -32,6 +32,7 @@ import { type DateSort, type TaskSort } from '@/lib/list-sort'
 import { VoiceRecorder } from '@/components/capture/voice-recorder'
 import { ReceiptButton } from '@/components/capture/receipt-button'
 import { TabBar, DOCK_CLEARANCE } from '@/components/layout/tab-bar'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { TaskList } from '@/components/tasks/task-list'
 import { TaskFilter } from '@/components/tasks/task-filter'
 import { TaskTagFilter } from '@/components/tasks/task-tag-filter'
@@ -43,7 +44,7 @@ import { LearningSummary } from '@/components/learning/learning-summary'
 import { NotesSummary } from '@/components/notes/notes-summary'
 import { NotesList } from '@/components/notes/notes-list'
 import { NotesTagFilter } from '@/components/notes/notes-tag-filter'
-import { useTabState } from '@/hooks/use-tab-state'
+import { useTabState, type Tab } from '@/hooks/use-tab-state'
 import { useCategories } from '@/hooks/use-categories'
 import { useTasks, type TaskFilter as TaskFilterValue } from '@/hooks/use-tasks'
 import { usePushSubscription } from '@/hooks/use-push-subscription'
@@ -739,12 +740,15 @@ function AppPageInner() {
 
   return (
     <>
-      <main className={`mx-auto grid w-full max-w-6xl content-start gap-4 p-4 sm:p-6 md:gap-x-8 md:gap-y-5 md:p-8 lg:grid-cols-[1fr_380px] lg:pb-8 ${DOCK_CLEARANCE}`}>
+      {/* One Tabs root for the whole page (display: contents keeps the grid below intact): the desktop
+          tab list, the phone dock and the four panels are all part of the same tab set. */}
+      <Tabs value={activeTab} onValueChange={v => setTab(v as Tab)} className="contents">
+      <main className={`mx-auto grid w-full max-w-6xl content-start gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-x-8 lg:p-8 ${DOCK_CLEARANCE}`}>
         {/* Full width on desktop so every destination fits beside the name. */}
         <div className="lg:col-span-2">
           <AppHeader onSearch={() => setSearchOpen(true)} />
         </div>
-        <div className="flex min-w-0 flex-col gap-4 md:gap-5">
+        <div className="flex min-w-0 flex-col gap-6">
 
           {/* The capture bar: the text field leads, voice / receipt / manual are secondary.
               Sticky, so capture is one tap away from anywhere in the list. */}
@@ -914,11 +918,10 @@ function AppPageInner() {
 
           {/* Desktop section switcher, in the page flow (the phone uses the dock). */}
           <div className="hidden lg:block">
-            <TabBar variant="inline" active={activeTab} onChange={setTab} taskBadgeCount={taskBadgeCount} />
+            <TabBar variant="inline" taskBadgeCount={taskBadgeCount} />
           </div>
 
-          {activeTab === 'money' && (
-            <div className="flex flex-col gap-4">
+          <TabsContent value="money" className="flex flex-col gap-6">
               <GettingStarted userId={user.id} />
               <ReviewQueue userId={user.id} focusId={categorizeId} />
               <div className="lg:hidden">
@@ -933,9 +936,8 @@ function AppPageInner() {
               >
                 <MoneyList userId={user.id} onEdit={editMoney} filter={moneyFilter} sort={moneySort} />
               </ListSection>
-            </div>
-          )}
-          {activeTab === 'tasks' && (
+          </TabsContent>
+          <TabsContent value="tasks">
             <ListSection
               id="tasks"
               title="Tasks"
@@ -962,8 +964,8 @@ function AppPageInner() {
             >
               <TaskList userId={user.id} filter={taskFilter} projectId={taskProjectId} tag={taskTag} sort={taskSort} onEdit={editTask} />
             </ListSection>
-          )}
-          {activeTab === 'learning' && (
+          </TabsContent>
+          <TabsContent value="learning">
             <ListSection
               id="learnings"
               title="Learnings"
@@ -978,8 +980,8 @@ function AppPageInner() {
             >
               <LearningList userId={user.id} selectedTag={selectedLearningTag} sort={learningSort} onEdit={editLearning} />
             </ListSection>
-          )}
-          {activeTab === 'notes' && (
+          </TabsContent>
+          <TabsContent value="notes">
             <ListSection
               id="notes"
               title="Notes"
@@ -1002,7 +1004,7 @@ function AppPageInner() {
               />
               <NotesList userId={user.id} selectedTag={selectedNotesTag} searchQuery={notesSearchQuery} sort={notesSort} onEdit={editNote} />
             </ListSection>
-          )}
+          </TabsContent>
         </div>
 
         {/* Desktop right column: the money Overview (scrolls with the page), or the tab's summary. */}
@@ -1021,8 +1023,9 @@ function AppPageInner() {
 
       {/* Phone + tablet dock (desktop uses the in-flow switcher above). */}
       <div className="lg:hidden">
-        <TabBar variant="dock" active={activeTab} onChange={setTab} taskBadgeCount={taskBadgeCount} />
+        <TabBar variant="dock" taskBadgeCount={taskBadgeCount} />
       </div>
+      </Tabs>
 
       {searchOpen && (
         <GlobalSearch

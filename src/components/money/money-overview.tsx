@@ -106,7 +106,7 @@ export function MonthSummary({ userId, onSelectCategory }: { userId: string; onS
         <Card className={`${CARD} gap-1`}>
           <h2 id="month-heading" className="text-sm font-semibold">This month</h2>
           <p className="flex items-baseline gap-2">
-            <span className="font-mono text-2xl font-semibold tabular-nums">{formatMinor(spent, primary, 0)}</span>
+            <span className="tabular-nums text-2xl font-semibold tabular-nums">{formatMinor(spent, primary, 0)}</span>
             <span className="text-sm text-muted-foreground">spent</span>
           </p>
           <div className="flex flex-col">
@@ -117,7 +117,7 @@ export function MonthSummary({ userId, onSelectCategory }: { userId: string; onS
             )}
             {owed > 0 && (
               <Link href="/settings/people" className={LINK}>
-                <span className="font-mono tabular-nums">{formatMinor(owed, primary, 0)}</span> owed to you
+                <span className="tabular-nums">{formatMinor(owed, primary, 0)}</span> owed to you
                 <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
               </Link>
             )}

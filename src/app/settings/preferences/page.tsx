@@ -160,7 +160,7 @@ export default function PreferencesPage() {
         <ul className="flex flex-col">
           {Object.entries(state.fxOverrides).map(([cur, rate]) => (
             <li key={cur} className="flex items-center justify-between text-sm">
-              <span className="font-mono tabular-nums">1 EUR = {rate} {cur}</span>
+              <span className="tabular-nums">1 EUR = {rate} {cur}</span>
               <Button
                 type="button"
                 variant="ghost"
@@ -210,7 +210,7 @@ export default function PreferencesPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm">
             <span className="text-muted-foreground">Current: </span>
-            <span className="font-mono">{state.tz}</span>
+            <span className="tabular-nums">{state.tz}</span>
           </p>
           <Button type="button" variant="outline" onClick={detectBrowserTz}>Use this device&apos;s time zone</Button>
         </div>

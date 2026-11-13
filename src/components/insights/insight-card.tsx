@@ -52,7 +52,7 @@ export function InsightCard({ insight, variant = 'card' }: { insight: InsightRow
                 {metrics.top_categories.map(c => (
                   <li key={c.name} className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{c.name}</span>
-                    <span className="font-mono tabular-nums">{money(c.amount)}</span>
+                    <span className="tabular-nums">{money(c.amount)}</span>
                   </li>
                 ))}
               </ul>
@@ -78,7 +78,7 @@ function Chip({ label, value, tone }: { label: string; value: string; tone?: 'da
   return (
     <Badge variant="secondary" className="h-auto gap-1 rounded-lg px-2 py-1">
       <span className={tone === 'danger' ? 'text-destructive' : 'text-muted-foreground'}>{label}</span>
-      <span className="font-mono font-semibold tabular-nums">{value}</span>
+      <span className="tabular-nums font-semibold tabular-nums">{value}</span>
     </Badge>
   )
 }

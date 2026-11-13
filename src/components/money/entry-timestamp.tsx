@@ -12,7 +12,7 @@ export function EntryTimestamp({ occurredAt, className }: { occurredAt: string; 
     [occurredAt, prefs.tz],
   )
   return (
-    <time dateTime={occurredAt} title={absolute} className={className ?? 'font-mono tabular-nums text-xs text-muted-foreground'}>
+    <time dateTime={occurredAt} title={absolute} className={className ?? 'tabular-nums text-xs text-muted-foreground'}>
       {relative ?? absolute}
     </time>
   )

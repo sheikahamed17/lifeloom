@@ -43,13 +43,13 @@ export function TaskSummary({ userId }: Props) {
           {rows.map(r => (
             <Item key={r.label} role="listitem" size="xs" className="flex-nowrap justify-between py-1.5">
               <ItemTitle className={cn('font-normal', r.warn && 'text-warning')}>{r.label}</ItemTitle>
-              <span className="font-mono tabular-nums">{r.value}</span>
+              <span className="tabular-nums">{r.value}</span>
             </Item>
           ))}
         </ItemGroup>
       </CardContent>
       <CardFooter className="bg-transparent py-3 text-xs text-muted-foreground">
-        <span className="font-mono tabular-nums">{tasks.length === 0 ? 'No open tasks.' : `${tasks.length} open`}</span>
+        <span className="tabular-nums">{tasks.length === 0 ? 'No open tasks.' : `${tasks.length} open`}</span>
       </CardFooter>
     </Card>
   )

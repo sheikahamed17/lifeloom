@@ -125,10 +125,10 @@ export default function SecurityPage() {
         <div className="flex flex-col gap-2">
           {hasPin && (
             <Input type="password" inputMode="numeric" placeholder="Current PIN" value={current}
-              onChange={e => setCurrent(e.target.value)} aria-label="Current PIN" className="font-mono" />
+              onChange={e => setCurrent(e.target.value)} aria-label="Current PIN" className="tabular-nums" />
           )}
           <Input type="password" inputMode="numeric" placeholder={hasPin ? 'New PIN' : 'New PIN (4+ digits)'} value={next}
-            onChange={e => setNext(e.target.value)} aria-label="New PIN" className="font-mono" />
+            onChange={e => setNext(e.target.value)} aria-label="New PIN" className="tabular-nums" />
           <div className="flex gap-2">
             <Button onClick={saveNewPin} disabled={busy} className="flex-1">{hasPin ? 'Change PIN' : 'Set PIN'}</Button>
             {hasPin && <Button variant="secondary" onClick={removePin} disabled={busy}>Turn off</Button>}

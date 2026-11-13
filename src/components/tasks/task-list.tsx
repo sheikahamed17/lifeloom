@@ -151,7 +151,7 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
             <div className="flex min-w-0 flex-1 flex-col">
               <span className={`md:text-base ${isCompleted ? 'text-muted-foreground line-through' : ''}`}>
                 {t.title}
-                {progress && <span className="ml-2 font-mono tabular-nums text-xs text-muted-foreground">{progress.done}/{progress.total}</span>}
+                {progress && <span className="ml-2 tabular-nums text-xs text-muted-foreground">{progress.done}/{progress.total}</span>}
               </span>
               <span className="text-xs text-muted-foreground">
                 {t.recur_period && t.recur_interval && (
@@ -176,12 +176,12 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
                   </span>
                 )}
                 {t.due_at && (
-                  <span className={`font-mono tabular-nums ${isOverdue ? 'text-warning' : ''}`}>
+                  <span className={`tabular-nums ${isOverdue ? 'text-warning' : ''}`}>
                     due {formatLocalDateTime(t.due_at, prefs.tz)}
                     {isOverdue && ' · overdue'}
                   </span>
                 )}
-                <EntryTimestamp occurredAt={t.created_at} className="ml-2 font-mono tabular-nums" />
+                <EntryTimestamp occurredAt={t.created_at} className="ml-2 tabular-nums" />
                 {isOverdue && t.nudge_muted_at && (
                   <span className="ml-1 inline-flex items-center align-middle" aria-label="Reminders muted">
                     <BellOff className="h-3 w-3" />

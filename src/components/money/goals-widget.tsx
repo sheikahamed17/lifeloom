@@ -1,8 +1,9 @@
 'use client'
 
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Target } from 'lucide-react'
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { IconTile } from '@/components/shared/icon-tile'
 import { buttonVariants } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription } from '@/components/ui/empty'
 import { Progress } from '@/components/ui/progress'
@@ -101,11 +102,11 @@ export function GoalsWidget({ userId }: Props) {
         return (
           <div key={goal.id} className="flex flex-col gap-1">
             <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="flex min-w-0 items-center gap-1.5">
-                {goal.icon && <span aria-hidden="true">{goal.icon}</span>}
+              <span className="flex min-w-0 items-center gap-3">
+                <IconTile emoji={goal.icon} icon={Target} size="sm" />
                 <span className="truncate">{goal.name}</span>
               </span>
-              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              <span className="tabular-nums text-xs tabular-nums text-muted-foreground">
                 {fmt(p.current, goal.currency)} of {fmt(goal.target_amount, goal.currency)}
               </span>
             </div>

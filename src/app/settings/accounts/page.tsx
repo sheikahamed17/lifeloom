@@ -361,7 +361,7 @@ function AccountRowItem({
             {account.icon && <span aria-hidden="true" className="mr-1.5">{account.icon}</span>}
             {account.name}
           </span>
-          <span className="shrink-0 font-mono text-sm tabular-nums">{formatMinor(account.opening_balance, account.currency)}</span>
+          <span className="shrink-0 tabular-nums text-sm tabular-nums">{formatMinor(account.opening_balance, account.currency)}</span>
         </div>
         <p className="truncate text-xs text-muted-foreground">{meta}</p>
       </div>

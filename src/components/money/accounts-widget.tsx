@@ -1,8 +1,9 @@
 'use client'
 
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Landmark, CreditCard } from 'lucide-react'
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { IconTile } from '@/components/shared/icon-tile'
 import { buttonVariants } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription } from '@/components/ui/empty'
 import { Item, ItemContent, ItemTitle } from '@/components/ui/item'
@@ -109,7 +110,7 @@ export function AccountsWidget({ userId }: Props) {
       {/* Net worth headline */}
       <div className="flex flex-col gap-1">
         <h2 className="text-sm font-semibold">Net worth</h2>
-        <div className="font-mono text-2xl font-semibold tabular-nums">
+        <div className="tabular-nums text-2xl font-semibold tabular-nums">
           {nw.net < 0 ? '−' : ''}{symbol}{fmt(Math.abs(nw.net))}
         </div>
       </div>
@@ -121,11 +122,11 @@ export function AccountsWidget({ userId }: Props) {
           .filter(a => a.type === 'asset')
           .map(acct => (
             <Item key={acct.id} size="xs" className="flex-nowrap justify-between p-0">
-              <ItemContent className="min-w-0 flex-row items-center gap-2">
-                {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
+              <ItemContent className="min-w-0 flex-row items-center gap-3">
+                <IconTile emoji={acct.icon} icon={Landmark} size="sm" />
                 <ItemTitle className="min-w-0 font-normal"><span className="truncate">{acct.name}</span></ItemTitle>
               </ItemContent>
-              <span className="font-mono text-sm tabular-nums">
+              <span className="tabular-nums text-sm tabular-nums">
                 {fmtIn(acct.balance, acct.currency)}
               </span>
             </Item>
@@ -142,11 +143,11 @@ export function AccountsWidget({ userId }: Props) {
               .filter(a => a.type === 'liability')
               .map(acct => (
                 <Item key={acct.id} size="xs" className="flex-nowrap justify-between p-0">
-                  <ItemContent className="min-w-0 flex-row items-center gap-2">
-                    {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
+                  <ItemContent className="min-w-0 flex-row items-center gap-3">
+                    <IconTile emoji={acct.icon} icon={CreditCard} size="sm" />
                     <ItemTitle className="min-w-0 font-normal"><span className="truncate">{acct.name}</span></ItemTitle>
                   </ItemContent>
-                  <span className="font-mono text-sm tabular-nums text-destructive">
+                  <span className="tabular-nums text-sm tabular-nums text-destructive">
                     {fmtIn(acct.balance, acct.currency)}
                   </span>
                 </Item>

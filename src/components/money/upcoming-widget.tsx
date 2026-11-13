@@ -104,7 +104,7 @@ export function UpcomingWidget({ userId }: Props) {
 
   if (upcoming.length === 0) {
     return (
-      <Card role="region" aria-labelledby="upcoming-heading" className="gap-2 p-4">
+      <Card role="region" aria-labelledby="upcoming-heading" className="gap-3 p-5">
         <h2 id="upcoming-heading" className="text-sm font-semibold">Upcoming</h2>
         <Empty className="p-2">
           <EmptyDescription>Add a recurring entry (rent, salary, a subscription) to see what’s coming and how the month ends.</EmptyDescription>
@@ -117,10 +117,10 @@ export function UpcomingWidget({ userId }: Props) {
   }
 
   return (
-    <Card role="region" aria-labelledby="upcoming-heading" className="gap-4 p-4">
+    <Card role="region" aria-labelledby="upcoming-heading" className="gap-5 p-5">
       <div className="flex flex-col gap-1">
         <h2 id="upcoming-heading" className="text-sm font-semibold">Month end, projected</h2>
-        <div className={`font-mono text-3xl font-semibold tabular-nums leading-tight ${netColor}`}>
+        <div className={`tabular-nums text-3xl font-semibold tabular-nums leading-tight ${netColor}`}>
           {summary.projectedNet < 0 ? '−' : ''}{symbol}{fmt(Math.abs(summary.projectedNet))}
         </div>
         <p className={`text-xs tabular-nums ${subColor}`}>
@@ -145,7 +145,7 @@ export function UpcomingWidget({ userId }: Props) {
                     {formatLocalDate(event.date, prefs.tz, { day: 'numeric', month: 'short' })}
                   </span>
                   <span className="flex-1 truncate">{catName}</span>
-                  <span className={`shrink-0 font-mono tabular-nums ${event.direction === 'in' ? 'text-income' : 'text-foreground'}`}>
+                  <span className={`shrink-0 tabular-nums ${event.direction === 'in' ? 'text-income' : 'text-foreground'}`}>
                     {event.direction === 'in' ? '+' : '−'}{symbol}{fmt(toPrimary(event.amount, event.currency))}
                   </span>
                 </Item>

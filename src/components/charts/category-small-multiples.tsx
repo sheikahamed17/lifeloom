@@ -51,7 +51,7 @@ export function CategorySmallMultiples({ series, periods, symbol, jpy }: Categor
             {series.map(s => (
               <TableRow key={s.name}>
                 <TableCell>{s.icon && <span aria-hidden="true">{s.icon} </span>}{s.name}</TableCell>
-                {s.points.map((v, i) => <TableCell key={i} className="text-right font-mono tabular-nums">{money(v)}</TableCell>)}
+                {s.points.map((v, i) => <TableCell key={i} className="text-right tabular-nums">{money(v)}</TableCell>)}
               </TableRow>
             ))}
           </TableBody>
@@ -70,7 +70,7 @@ export function CategorySmallMultiples({ series, periods, symbol, jpy }: Categor
                       {s.icon && <span aria-hidden="true">{s.icon}</span>}
                       <span className="truncate">{s.name}</span>
                     </span>
-                    <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">{money(total)}</span>
+                    <span className="shrink-0 tabular-nums text-xs tabular-nums text-muted-foreground">{money(total)}</span>
                   </div>
                   <figure
                     role="img"

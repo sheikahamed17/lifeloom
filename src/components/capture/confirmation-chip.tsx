@@ -210,14 +210,14 @@ function ConfirmationChipMoney({
           placeholder="0"
           onChange={(e) => { const amt = parseAmountInput(e.currentTarget.value) ?? 0; setD(s => ({ ...s, amount: amt })) }}
           onBlur={() => setEditingField(null)}
-          className="mb-3 font-mono text-3xl font-semibold"
+          className="mb-3 tabular-nums text-3xl font-semibold"
         />
       ) : (
         <Button
           variant="ghost"
           onClick={() => setEditingField('amount')}
           aria-label={`Amount ${symbol}${major}, edit`}
-          className="mb-3 h-auto min-h-11 px-2 font-mono text-3xl font-semibold tabular-nums"
+          className="mb-3 h-auto min-h-11 px-2 tabular-nums text-3xl font-semibold tabular-nums"
         >
           {symbol}{major}
         </Button>
@@ -343,7 +343,7 @@ function ConfirmationChipMoney({
           >
             <Plus className="size-3.5" aria-hidden /> Add category
           </Button>
-          <div className={cn('text-xs font-mono tabular-nums', remaining === 0 ? 'text-muted-foreground' : 'text-destructive')}>
+          <div className={cn('text-xs tabular-nums', remaining === 0 ? 'text-muted-foreground' : 'text-destructive')}>
             Remaining: {symbol}{(remaining / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
@@ -362,7 +362,7 @@ function ConfirmationChipMoney({
           {shareRows.map((row, i) => row.settled ? (
             <div key={row.key} className="flex items-center justify-between gap-1.5 text-xs text-muted-foreground">
               <span>{row.name}</span>
-              <span className="font-mono tabular-nums">{symbol}{((parseAmountInput(row.amountText) ?? 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} · paid</span>
+              <span className="tabular-nums">{symbol}{((parseAmountInput(row.amountText) ?? 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} · paid</span>
             </div>
           ) : (
             <div key={row.key} className="flex items-center gap-1.5">
@@ -422,7 +422,7 @@ function ConfirmationChipMoney({
           >
             <Plus className="size-3.5" aria-hidden /> Add person
           </Button>
-          <div className={cn('text-xs font-mono tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
+          <div className={cn('text-xs tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
             {sharesTotalMinor <= d.amount
               ? `Your share: ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
               : `Shares exceed the amount by ${symbol}${((sharesTotalMinor - d.amount) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
@@ -601,13 +601,13 @@ function ConfirmationChipTask({
             if (v) setD(s => ({ ...s, title: v }))
             setEditingTitle(false)
           }}
-          className="mb-3 font-mono text-2xl font-semibold"
+          className="mb-3 tabular-nums text-2xl font-semibold"
         />
       ) : (
         <Button
           variant="ghost"
           onClick={() => setEditingTitle(true)}
-          className="mb-3 h-auto min-h-11 justify-start whitespace-normal px-2 text-left font-mono text-2xl font-semibold"
+          className="mb-3 h-auto min-h-11 justify-start whitespace-normal px-2 text-left tabular-nums text-2xl font-semibold"
         >
           {d.title}
         </Button>
@@ -748,7 +748,7 @@ function ConfirmationChipLearning({
             if (v) setD(s => ({ ...s, text: v }))
             setEditingText(false)
           }}
-          className="mb-3 resize-none font-mono text-sm"
+          className="mb-3 resize-none tabular-nums text-sm"
           rows={3}
           aria-label="What you learned"
         />
@@ -756,7 +756,7 @@ function ConfirmationChipLearning({
         <Button
           variant="ghost"
           onClick={() => setEditingText(true)}
-          className={cn(EDIT_BLOCK, 'mb-3 font-mono text-sm')}
+          className={cn(EDIT_BLOCK, 'mb-3 tabular-nums text-sm')}
         >
           {d.text}
         </Button>
@@ -894,7 +894,7 @@ function ConfirmationChipNote({
             if (v) setD(s => ({ ...s, body: v }))
             setEditingBody(false)
           }}
-          className="mb-3 resize-none font-mono text-sm"
+          className="mb-3 resize-none tabular-nums text-sm"
           rows={3}
           aria-label="Note body"
         />
@@ -902,7 +902,7 @@ function ConfirmationChipNote({
         <Button
           variant="ghost"
           onClick={() => setEditingBody(true)}
-          className={cn(EDIT_BLOCK, 'mb-3 font-mono text-sm')}
+          className={cn(EDIT_BLOCK, 'mb-3 tabular-nums text-sm')}
           aria-label="Edit note body"
         >
           {d.body}
@@ -920,7 +920,7 @@ function ConfirmationChipNote({
           }}
           placeholder="title (optional)…"
           aria-label="Note title"
-          className="mb-3 font-mono text-sm"
+          className="mb-3 tabular-nums text-sm"
         />
       ) : (
         <Button
@@ -1011,7 +1011,7 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
       <div className="inline-flex items-center gap-1.5 text-sm font-medium text-income"><Users className="size-4" aria-hidden /> Paid back</div>
       <p className="text-sm">
         <span className="font-medium">{draft.person_name}</span> paid{' '}
-        <span className="font-mono tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+        <span className="tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
         {' '}for {draft.summary} ({draft.share_ids.length} {draft.share_ids.length === 1 ? 'share' : 'shares'}).
       </p>
       <Label className="flex-wrap text-xs">
@@ -1057,7 +1057,7 @@ function ConfirmationChipBudget({ draft, onConfirm, onCancel }: {
     <div className="glass-soft rounded-xl p-3 flex items-center justify-between gap-3">
       <span className="text-sm">
         Budget · <span className="font-medium">{draft.category_name}</span> ·{' '}
-        <span className="font-mono tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>/mo
+        <span className="tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>/mo
       </span>
       <span className="flex items-center gap-2">
         <Button variant="secondary" aria-label="Confirm budget" className="h-11 bg-accent-2/20 px-3 text-accent-2 hover:bg-accent-2/30" onClick={handleConfirm} disabled={busy}>Set</Button>

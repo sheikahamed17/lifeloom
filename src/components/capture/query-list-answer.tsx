@@ -25,7 +25,7 @@ export function QueryListAnswer({ title, count, onDismiss, children }: Props) {
         <h3 className="text-sm font-semibold text-accent-2">
           {title}
         </h3>
-        <span className="font-mono text-xs text-accent-2">{count}</span>
+        <span className="tabular-nums text-xs text-accent-2">{count}</span>
       </div>
 
       <div className="mb-4 max-h-[60vh] overflow-y-auto">

@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SettingsCard } from '../_ui'
 import { PageShell } from '@/components/layout/page-shell'
 
-const COPY_TARGET = 'glass-soft h-auto w-full items-start justify-start gap-2 whitespace-normal break-all p-3 text-left font-mono text-xs font-normal'
+const COPY_TARGET = 'glass-soft h-auto w-full items-start justify-start gap-2 whitespace-normal break-all p-3 text-left tabular-nums text-xs font-normal'
 
 const APPS_SCRIPT = `/**
  * Lifeloom — email transaction auto-ingest.
@@ -132,7 +132,7 @@ export default function AutoImportPage() {
           <li>Open <strong>Triggers</strong> (the clock), choose <strong>Add trigger</strong>: function <code>ingestPulseEmails</code>, event source <em>Time-driven</em>, <em>Minutes timer</em>, <em>every 10 minutes</em>.</li>
           <li>That&apos;s it: <strong>no Gmail label or filter needed</strong>. New bank emails become Email entries within about 10 minutes.</li>
         </ol>
-        <Button type="button" variant="outline" onClick={() => copy(APPS_SCRIPT, 'script')} aria-label="Copy script" className="glass-soft relative block h-auto max-h-48 w-full overflow-auto whitespace-pre p-3 pr-9 text-left font-mono text-xs font-normal">
+        <Button type="button" variant="outline" onClick={() => copy(APPS_SCRIPT, 'script')} aria-label="Copy script" className="glass-soft relative block h-auto max-h-48 w-full overflow-auto whitespace-pre p-3 pr-9 text-left tabular-nums text-xs font-normal">
           <Copy className="absolute right-3 top-3 size-4 text-muted-foreground" aria-hidden />
           {APPS_SCRIPT}
         </Button>

@@ -1,6 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
 import { ServiceWorkerRegistrar } from '@/components/providers/service-worker-registrar'
 import { DemoBanner } from '@/components/layout/demo-banner'
 import { BackgroundSync } from '@/components/providers/background-sync'
@@ -26,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen overflow-x-clip bg-background text-foreground antialiased">
         <ServiceWorkerRegistrar />
         <BackgroundSync />

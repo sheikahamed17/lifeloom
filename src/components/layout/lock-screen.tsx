@@ -41,7 +41,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
                 value={pin}
                 onChange={e => setPin(e.target.value)}
                 aria-label="PIN"
-                className="h-12 text-center font-mono text-2xl tracking-[0.4em] md:text-2xl"
+                className="h-12 text-center tabular-nums text-2xl tracking-[0.4em] md:text-2xl"
               />
               <Button type="submit" size="lg" disabled={busy || pin.length === 0}>
                 {busy ? 'Checking…' : 'Unlock'}

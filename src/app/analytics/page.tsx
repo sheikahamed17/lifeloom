@@ -251,9 +251,9 @@ export default function AnalyticsPage() {
                         {anomaly.name}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        <span className="font-mono tabular-nums text-foreground">{fmt(anomaly.current)}</span>, {' '}
+                        <span className="tabular-nums text-foreground">{fmt(anomaly.current)}</span>, {' '}
                         <Badge variant="destructive" className="align-middle">{anomaly.pct}% above</Badge> your usual{' '}
-                        <span className="font-mono tabular-nums">{fmt(anomaly.baseline)}</span>
+                        <span className="tabular-nums">{fmt(anomaly.baseline)}</span>
                       </span>
                     </li>
                   )

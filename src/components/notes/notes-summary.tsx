@@ -51,7 +51,7 @@ export function NotesSummary({ userId }: Props) {
           {rows.map(r => (
             <Item key={r.label} role="listitem" size="xs" className="flex-nowrap justify-between py-1.5">
               <ItemTitle className="font-normal">{r.label}</ItemTitle>
-              <span className="font-mono tabular-nums">{r.value}</span>
+              <span className="tabular-nums">{r.value}</span>
             </Item>
           ))}
         </ItemGroup>

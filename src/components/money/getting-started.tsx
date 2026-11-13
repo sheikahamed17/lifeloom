@@ -60,7 +60,7 @@ export function GettingStarted({ userId }: Props) {
   // Only what's left to do: finished steps collapse into the count, so a nearly
   // complete checklist doesn't push the real work down the screen.
   return (
-    <Card role="region" aria-labelledby="get-started-heading" className="gap-1 p-4">
+    <Card role="region" aria-labelledby="get-started-heading" className="gap-1 p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 id="get-started-heading" className="text-sm font-semibold">
           Get started <span className="font-normal text-muted-foreground">· {doneCount} of {steps.length} done</span>

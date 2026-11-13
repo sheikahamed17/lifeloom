@@ -43,8 +43,8 @@ export function MoversBars({ movers, symbol, jpy, limit = 8 }: MoversBarsProps) 
             {top.map(m => (
               <TableRow key={m.name}>
                 <TableCell>{m.icon && <span aria-hidden="true">{m.icon} </span>}{m.name}</TableCell>
-                <TableCell className="text-right font-mono tabular-nums">{signed(m.delta)}</TableCell>
-                <TableCell className="text-right font-mono tabular-nums">{pct(m)}</TableCell>
+                <TableCell className="text-right tabular-nums">{signed(m.delta)}</TableCell>
+                <TableCell className="text-right tabular-nums">{pct(m)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -77,7 +77,7 @@ export function MoversBars({ movers, symbol, jpy, limit = 8 }: MoversBarsProps) 
                     />
                   )}
                 </span>
-                <span className="flex items-center justify-end gap-1 whitespace-nowrap font-mono text-xs tabular-nums">
+                <span className="flex items-center justify-end gap-1 whitespace-nowrap tabular-nums text-xs tabular-nums">
                   {up ? <ArrowUp className="size-3.5 text-destructive" aria-hidden /> : <ArrowDown className="size-3.5 text-income" aria-hidden />}
                   {signed(m.delta)}
                   <span className="text-muted-foreground">{pct(m)}</span>

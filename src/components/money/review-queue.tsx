@@ -60,7 +60,7 @@ export function ReviewQueue({ userId, focusId }: { userId: string; focusId?: str
               <EntryTimestamp occurredAt={e.occurred_at} className="tabular-nums" />
             </p>
           </div>
-          <span className={cn('whitespace-nowrap font-mono text-sm font-medium tabular-nums', e.direction === 'out' ? 'text-destructive' : 'text-income')}>
+          <span className={cn('whitespace-nowrap tabular-nums text-sm font-medium tabular-nums', e.direction === 'out' ? 'text-destructive' : 'text-income')}>
             {signedAmount(e.amount, e.currency, e.direction)}
           </span>
         </div>
@@ -101,7 +101,7 @@ export function ReviewQueue({ userId, focusId }: { userId: string; focusId?: str
   }
 
   return (
-    <Card role="region" aria-labelledby="needs-you-heading" className="gap-1 p-4">
+    <Card role="region" aria-labelledby="needs-you-heading" className="gap-1 p-5">
       <h2 id="needs-you-heading" className="text-sm font-semibold">
         Needs you <span className="font-normal text-muted-foreground">· {items.length}</span>
       </h2>

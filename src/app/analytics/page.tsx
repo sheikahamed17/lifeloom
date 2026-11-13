@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
 import { BarTrend } from '@/components/charts/bar-trend'
 import { DualSeriesTrend } from '@/components/charts/dual-series-trend'
 import { MoversBars } from '@/components/charts/movers-bars'
@@ -191,104 +191,83 @@ export default function AnalyticsPage() {
   const symbol = currencySymbol(prefs.primary_currency)
   const jpy = prefs.primary_currency === 'JPY'
 
-  return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-4 p-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Analytics</h1>
-          <div className="flex gap-2">
-            {(['week', 'month'] as const).map(b => (
-              <button
-                key={b}
-                onClick={() => setBucket(b)}
-                className={`min-h-[44px] px-3 py-1 text-xs font-medium uppercase tracking-wide rounded transition-colors ${
-                  bucket === b ? 'text-accent-2' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {b}
-              </button>
-            ))}
-          </div>
-        </div>
+  const CARD = 'glass rounded-2xl p-4'
+  const bucketToggle = (
+    <div className="glass-soft flex rounded-lg p-0.5" role="group" aria-label="Group by">
+      {(['week', 'month'] as const).map(b => (
+        <button
+          key={b}
+          type="button"
+          aria-pressed={bucket === b}
+          onClick={() => setBucket(b)}
+          className={`min-h-9 rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 ${bucket === b ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          {b === 'week' ? 'Weeks' : 'Months'}
+        </button>
+      ))}
+    </div>
+  )
 
-        {/* Net worth */}
-        <div className="glass rounded-2xl p-4">
+  return (
+    <PageShell title="Analytics" width="wide" actions={bucketToggle}>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className={CARD} aria-label="Net worth">
           {accts.length === 0 ? (
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Net worth</p>
-              <p className="text-xs text-muted-foreground">
-                Add accounts (<Link href="/settings/accounts" className="text-blue-500 hover:underline">Settings → Accounts</Link>) to see net worth over time
+              <h2 className="text-sm font-semibold">Net worth</h2>
+              <p className="text-sm text-muted-foreground">
+                Add your accounts in <Link href="/settings/accounts" className="text-accent-2 underline-offset-4 hover:underline">Settings → Accounts</Link> to see net worth over time.
               </p>
             </div>
           ) : (
             <NetWorthLine data={netWorthSeriesData} symbol={symbol} jpy={jpy} />
           )}
-        </div>
+        </section>
 
-        {/* Unusual spending */}
-        <div className="glass rounded-2xl p-4">
+        <section className={CARD} aria-label="Income and spend">
+          <DualSeriesTrend spend={spendSeries} income={incomeSeries} symbol={symbol} jpy={jpy} />
+        </section>
+
+        <section className={CARD} aria-label="Spend per period">
+          <BarTrend data={spendSeries} symbol={symbol} jpy={jpy} label={bucket === 'week' ? 'Spend per week' : 'Spend per month'} />
+        </section>
+
+        <section className={CARD} aria-label="Biggest changes">
+          <MoversBars movers={movers} symbol={symbol} jpy={jpy} />
+        </section>
+
+        <section className={`${CARD} lg:col-span-2`} aria-labelledby="unusual-heading">
           <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unusual spending</p>
+            <h2 id="unusual-heading" className="text-sm font-semibold">Unusual spending this month</h2>
             {anomalies.length > 0 ? (
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-3">
                 {anomalies.map(anomaly => {
-                  const fmt = (v: number) =>
-                    (v / (jpy ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })
+                  const fmt = (v: number) => `${symbol}${(v / (jpy ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                   return (
-                    <li key={anomaly.name} className="flex flex-col gap-1">
-                      <div className="text-xs text-foreground flex items-center gap-2">
-                        {anomaly.icon && <span>{anomaly.icon}</span>}
-                        <span className="font-medium">{anomaly.name}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <span className="font-mono">
-                          {symbol}
-                          {fmt(anomaly.current)}
-                        </span>
-                        <span> this month · </span>
-                        <span className="text-rose-500 font-medium">{anomaly.pct}%</span>
-                        <span> above your </span>
-                        <span className="font-mono">
-                          {symbol}
-                          {fmt(anomaly.baseline)}
-                        </span>
-                        <span> average</span>
-                      </div>
+                    <li key={anomaly.name} className="flex flex-col gap-0.5">
+                      <span className="flex items-center gap-1.5 text-sm font-medium">
+                        {anomaly.icon && <span aria-hidden="true">{anomaly.icon}</span>}
+                        {anomaly.name}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        <span className="font-mono tabular-nums text-foreground">{fmt(anomaly.current)}</span>, {' '}
+                        <span className="font-medium text-destructive">{anomaly.pct}% above</span> your usual{' '}
+                        <span className="font-mono tabular-nums">{fmt(anomaly.baseline)}</span>
+                      </span>
                     </li>
                   )
                 })}
               </ul>
             ) : (
-              <p className="text-xs text-muted-foreground">
-                No unusual spending this month &mdash; you&rsquo;re tracking to your norm.
-              </p>
+              <p className="text-sm text-muted-foreground">Nothing unusual: every category is close to its normal level.</p>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Spend per period */}
-        <div className="glass rounded-2xl p-4">
-          <BarTrend data={spendSeries} symbol={symbol} jpy={jpy} label="Spend per period" />
-        </div>
-
-        {/* Income vs Spend + Net */}
-        <div className="glass rounded-2xl p-4">
-          <DualSeriesTrend spend={spendSeries} income={incomeSeries} symbol={symbol} jpy={jpy} />
-        </div>
-
-        {/* Top Movers */}
-        <div className="glass rounded-2xl p-4">
-          <MoversBars movers={movers} symbol={symbol} jpy={jpy} />
-        </div>
-
-        {/* Spending by Category */}
-        <div className="glass rounded-2xl p-4">
+        <section className={`${CARD} lg:col-span-2`} aria-label="Spending by category">
           <CategorySmallMultiples series={catSeries} periods={periods} symbol={symbol} jpy={jpy} />
-        </div>
-
-        <Link href="/app" className="text-sm text-muted-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">← Back to Lifeloom</Link>
-      </main>
-    </>
+        </section>
+      </div>
+    </PageShell>
   )
 }

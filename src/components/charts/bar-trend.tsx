@@ -1,7 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { SEQUENTIAL_HUE } from '@/lib/chart-palette'
+import { cn } from '@/lib/utils'
+import { ChartHeader, TABLE, fullMoney, tickClass } from '@/components/charts/chart-kit'
 
 interface BarTrendProps {
   data: { label: string; amount: number }[]
@@ -10,115 +12,62 @@ interface BarTrendProps {
   label: string
 }
 
+/** Single-series magnitude over time: one sequential hue, latest period emphasised, no legend (the title names it). */
 export function BarTrend({ data, symbol, jpy, label }: BarTrendProps) {
-  const [showData, setShowData] = useState(false)
+  const id = useId()
+  const [showTable, setShowTable] = useState(false)
+  const max = useMemo(() => Math.max(0, ...data.map(d => d.amount)), [data])
+  const money = (m: number) => fullMoney(m, symbol, jpy)
+  const n = data.length
 
-  const isEmpty = useMemo(() => data.length <= 1, [data])
-  const maxAmount = useMemo(() => Math.max(0, ...data.map((d) => d.amount)), [data])
-  const hasData = maxAmount > 0
-
-  const formatAmount = (amount: number) => {
-    const divisor = jpy ? 1 : 100
-    const formatted = (amount / divisor).toLocaleString('en-US', {
-      maximumFractionDigits: jpy ? 0 : 2,
-    })
-    return `${symbol}${formatted}`
-  }
-
-  if (isEmpty) {
+  if (n <= 1) {
     return (
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="text-xs text-muted-foreground italic">Not enough data yet</p>
-      </div>
+      <section aria-labelledby={id} className="flex flex-col gap-2">
+        <h2 id={id} className="text-sm font-semibold">{label}</h2>
+        <p className="text-sm text-muted-foreground">Not enough history yet. This fills in after a couple of periods.</p>
+      </section>
     )
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <button
-          onClick={() => setShowData(!showData)}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {showData ? 'Hide' : 'Show'} data
-        </button>
-      </div>
-
-      {showData ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-muted-foreground/20">
-                <th className="text-left py-2 px-2 font-semibold">Period</th>
-                <th className="text-right py-2 px-2 font-semibold">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((d) => (
-                <tr key={d.label} className="border-b border-muted-foreground/10 hover:bg-muted/30">
-                  <td className="py-2 px-2 text-foreground">{d.label}</td>
-                  <td className="py-2 px-2 text-right font-mono text-foreground">{formatAmount(d.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+    <section aria-labelledby={id} className="flex flex-col gap-3">
+      <ChartHeader id={id} title={label} showTable={showTable} onToggle={() => setShowTable(s => !s)} />
+      {showTable ? (
+        <table className={TABLE}>
+          <thead><tr><th>Period</th><th className="!text-right">Amount</th></tr></thead>
+          <tbody>
+            {data.map(d => (
+              <tr key={d.label}><td>{d.label}</td><td className="text-right font-mono tabular-nums">{money(d.amount)}</td></tr>
+            ))}
+          </tbody>
+        </table>
       ) : (
-        <svg
-          viewBox={`0 0 ${Math.max(300, data.length * 32)} 200`}
-          className="w-full h-48"
-          role="img"
-          aria-label={`${label}: ${data.map((d) => `${d.label} ${formatAmount(d.amount)}`).join(', ')}`}
-        >
-          {/* Baseline */}
-          <line x1="20" y1="160" x2={Math.max(300, data.length * 32) - 20} y2="160" stroke="currentColor" strokeWidth="1" opacity="0.2" />
-
-          {/* Max value label and gridline */}
-          {hasData && (
-            <>
-              <line x1="20" y1={20 + (1 - maxAmount / maxAmount) * 140} x2={Math.max(300, data.length * 32) - 20} y2={20 + (1 - maxAmount / maxAmount) * 140} stroke="currentColor" strokeWidth="1" opacity="0.1" strokeDasharray="2,2" />
-              <text x={Math.max(300, data.length * 32) - 25} y={15 + (1 - maxAmount / maxAmount) * 140} textAnchor="end" className="text-xs fill-muted-foreground" dy="0.3em">
-                {formatAmount(maxAmount)}
-              </text>
-            </>
-          )}
-
-          {/* Bars */}
-          {data.map((d, i) => {
-            const barWidth = 20
-            const spacing = Math.max(300, data.length * 32) / data.length
-            const x = 20 + i * spacing + spacing / 2 - barWidth / 2
-            const barHeight = hasData ? (d.amount / maxAmount) * 140 : 0
-            const y = 160 - barHeight
-            const isLatest = i === data.length - 1
-
-            return (
-              <g key={d.label}>
-                {/* Bar with rounded top */}
-                <rect
-                  x={x}
-                  y={y}
-                  width={barWidth}
-                  height={barHeight}
-                  rx="4"
-                  fill={SEQUENTIAL_HUE}
-                  opacity={isLatest ? 1 : 0.75}
-                  className="transition-opacity"
-                >
-                  <title>{`${d.label}: ${formatAmount(d.amount)}`}</title>
-                </rect>
-
-                {/* Label */}
-                <text x={x + barWidth / 2} y="175" textAnchor="middle" className="text-xs fill-muted-foreground" dy="0.3em">
-                  {d.label}
-                </text>
-              </g>
-            )
-          })}
-        </svg>
+        <figure role="img" aria-label={`${label}: ${data.map(d => `${d.label} ${money(d.amount)}`).join(', ')}`} className="flex flex-col gap-1">
+          <p className="text-right text-xs text-muted-foreground">Highest <span className="font-mono tabular-nums">{money(max)}</span></p>
+          <div className="relative flex h-40 items-end gap-0.5 border-b border-white/15">
+            <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-white/10" />
+            {data.map((d, i) => (
+              <div key={d.label} title={`${d.label}: ${money(d.amount)}`} className="group flex h-full flex-1 items-end justify-center">
+                <div
+                  className="w-full max-w-8 rounded-t-[4px] transition-[filter] group-hover:brightness-125"
+                  style={{
+                    height: d.amount > 0 && max > 0 ? `${Math.max(2, (d.amount / max) * 100)}%` : 0,
+                    backgroundColor: SEQUENTIAL_HUE,
+                    opacity: i === n - 1 ? 1 : 0.5,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-0.5" aria-hidden>
+            {data.map((d, i) => (
+              <span key={d.label} className={cn('flex-1 truncate text-center text-xs text-muted-foreground', tickClass(i, n), i === n - 1 && 'text-foreground')}>
+                {d.label}
+              </span>
+            ))}
+          </div>
+        </figure>
       )}
-    </div>
+    </section>
   )
 }

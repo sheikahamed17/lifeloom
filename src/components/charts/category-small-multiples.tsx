@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import type { CategorySeries, Period } from '@/lib/analytics'
 import { CATEGORICAL, DIVERGING } from '@/lib/chart-palette'
+import { ChartHeader, TABLE, fullMoney } from '@/components/charts/chart-kit'
 
 // Color follows the ENTITY, not its rank: hash the (stable) category name to a
 // fixed CATEGORICAL slot so a category keeps its hue when its rank changes
@@ -20,170 +21,84 @@ interface CategorySmallMultiplesProps {
   jpy: boolean
 }
 
+/**
+ * One small chart per top category on a SHARED y-scale. Each panel labels only
+ * its first and last period (the six month names used to collide, "JunJulAug…").
+ */
 export function CategorySmallMultiples({ series, periods, symbol, jpy }: CategorySmallMultiplesProps) {
-  const [showData, setShowData] = useState(false)
+  const id = useId()
+  const [showTable, setShowTable] = useState(false)
+  const money = (m: number) => fullMoney(m, symbol, jpy)
+  const max = useMemo(() => Math.max(0, ...series.flatMap(s => s.points)), [series])
 
-  const isEmpty = series.length === 0
-
-  const formatAmount = (amount: number) => {
-    const divisor = jpy ? 1 : 100
-    const formatted = (amount / divisor).toLocaleString('en-US', {
-      maximumFractionDigits: jpy ? 0 : 2,
-    })
-    return `${symbol}${formatted}`
-  }
-
-  // Compute shared y-scale: max bar value across all series and periods
-  const maxValue = useMemo(() => {
-    let max = 0
-    for (const s of series) {
-      for (const point of s.points) {
-        max = Math.max(max, point)
-      }
-    }
-    return max
-  }, [series])
-
-  const hasData = maxValue > 0
-
-  // Build flat table data for fallback
-  const tableData = useMemo(() => {
-    const rows: Array<{ categoryName: string; categoryIcon: string | null; periodLabel: string; amount: number }> = []
-    for (const s of series) {
-      for (let i = 0; i < periods.length; i++) {
-        rows.push({
-          categoryName: s.name,
-          categoryIcon: s.icon,
-          periodLabel: periods[i].label,
-          amount: s.points[i],
-        })
-      }
-    }
-    return rows
-  }, [series, periods])
-
-  if (isEmpty) {
+  if (series.length === 0) {
     return (
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Spending by Category</p>
-        <p className="text-xs text-muted-foreground italic">No data yet</p>
-      </div>
+      <section aria-labelledby={id} className="flex flex-col gap-2">
+        <h2 id={id} className="text-sm font-semibold">Spending by category</h2>
+        <p className="text-sm text-muted-foreground">No categorised spending in this range yet.</p>
+      </section>
     )
   }
 
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Spending by Category</p>
-        <button
-          onClick={() => setShowData(!showData)}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {showData ? 'Hide' : 'Show'} data
-        </button>
-      </div>
+  const first = periods[0]?.label
+  const last = periods[periods.length - 1]?.label
 
-      {showData ? (
+  return (
+    <section aria-labelledby={id} className="flex flex-col gap-3">
+      <ChartHeader id={id} title="Spending by category" showTable={showTable} onToggle={() => setShowTable(s => !s)} />
+      {showTable ? (
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-muted-foreground/20">
-                <th className="text-left py-2 px-2 font-semibold">Category</th>
-                <th className="text-left py-2 px-2 font-semibold">Period</th>
-                <th className="text-right py-2 px-2 font-semibold">Amount</th>
-              </tr>
-            </thead>
+          <table className={TABLE}>
+            <thead><tr><th>Category</th>{periods.map(p => <th key={p.label} className="!text-right">{p.label}</th>)}</tr></thead>
             <tbody>
-              {tableData.map((row, idx) => (
-                <tr key={`${row.categoryName}-${row.periodLabel}-${idx}`} className="border-b border-muted-foreground/10 hover:bg-muted/30">
-                  <td className="py-2 px-2 text-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      {row.categoryIcon && <span>{row.categoryIcon}</span>}
-                      {row.categoryName}
-                    </span>
-                  </td>
-                  <td className="py-2 px-2 text-foreground text-muted-foreground">{row.periodLabel}</td>
-                  <td className="py-2 px-2 text-right font-mono text-foreground">{formatAmount(row.amount)}</td>
+              {series.map(s => (
+                <tr key={s.name}>
+                  <td className="whitespace-nowrap">{s.icon && <span aria-hidden="true">{s.icon} </span>}{s.name}</td>
+                  {s.points.map((v, i) => <td key={i} className="text-right font-mono tabular-nums">{money(v)}</td>)}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <div className="grid gap-4 min-w-min" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(140px, 1fr))` }}>
-            {series.map((s) => {
+        <>
+          <p className="text-xs text-muted-foreground">Same scale in every panel. Tallest bar {money(max)}.</p>
+          <ul className="grid gap-x-4 gap-y-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(9.5rem, 1fr))' }}>
+            {series.map(s => {
               const color = s.name === 'Other' ? DIVERGING.neutral : categoricalColor(s.name)
-              const seriesTotal = s.points.reduce((sum, p) => sum + p, 0)
-
+              const total = s.points.reduce((sum, v) => sum + v, 0)
               return (
-                <svg
-                  key={s.name}
-                  viewBox={`0 0 140 180`}
-                  className="w-full h-auto"
-                  style={{ minWidth: '140px', minHeight: '180px' }}
-                  role="img"
-                  aria-label={`${s.name}: ${formatAmount(seriesTotal)} total`}
-                >
-                  {/* Title with icon and total */}
-                  <text x="70" y="12" textAnchor="middle" className="text-xs font-semibold fill-foreground" dy="0.3em">
-                    {s.icon && <tspan>{s.icon} </tspan>}
-                    {s.name}
-                  </text>
-                  <text x="70" y="26" textAnchor="middle" className="text-xs fill-muted-foreground" dy="0.3em">
-                    {formatAmount(seriesTotal)}
-                  </text>
-
-                  {/* Baseline */}
-                  <line x1="15" y1="140" x2="125" y2="140" stroke="currentColor" strokeWidth="1" opacity="0.2" />
-
-                  {/* Bars */}
-                  {s.points.map((point, barIdx) => {
-                    const barWidth = 100 / s.points.length - 2
-                    const barX = 15 + barIdx * (100 / s.points.length) + (100 / s.points.length - barWidth) / 2
-                    const barHeight = hasData ? (point / maxValue) * 110 : 0
-                    const barY = 140 - barHeight
-
-                    return (
-                      <g key={`${s.name}-${barIdx}`}>
-                        <rect
-                          x={barX}
-                          y={barY}
-                          width={barWidth}
-                          height={barHeight}
-                          rx="4"
-                          fill={color}
-                          opacity="0.85"
-                        >
-                          <title>{`${periods[barIdx].label}: ${formatAmount(point)}`}</title>
-                        </rect>
-                      </g>
-                    )
-                  })}
-
-                  {/* Period labels */}
-                  {s.points.map((_, barIdx) => {
-                    const barWidth = 100 / s.points.length - 2
-                    const barX = 15 + barIdx * (100 / s.points.length) + (100 / s.points.length - barWidth) / 2
-                    return (
-                      <text
-                        key={`label-${barIdx}`}
-                        x={barX + barWidth / 2}
-                        y="158"
-                        textAnchor="middle"
-                        className="text-xs fill-muted-foreground"
-                        dy="0.3em"
-                      >
-                        {periods[barIdx].label}
-                      </text>
-                    )
-                  })}
-                </svg>
+                <li key={s.name} className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      {s.icon && <span aria-hidden="true">{s.icon}</span>}
+                      <span className="truncate">{s.name}</span>
+                    </span>
+                    <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">{money(total)}</span>
+                  </div>
+                  <figure
+                    role="img"
+                    aria-label={`${s.name}: ${s.points.map((v, i) => `${periods[i]?.label} ${money(v)}`).join(', ')}`}
+                    className="flex h-16 items-end gap-0.5 border-b border-white/15"
+                  >
+                    {s.points.map((v, i) => (
+                      <div key={i} title={`${s.name}, ${periods[i]?.label}: ${money(v)}`} className="group flex h-full flex-1 items-end">
+                        <div
+                          className="w-full rounded-t-[4px] transition-[filter] group-hover:brightness-125"
+                          style={{ height: v > 0 && max > 0 ? `${Math.max(3, (v / max) * 100)}%` : 0, backgroundColor: color }}
+                        />
+                      </div>
+                    ))}
+                  </figure>
+                  <div className="flex justify-between text-xs text-muted-foreground" aria-hidden>
+                    <span>{first}</span><span>{last}</span>
+                  </div>
+                </li>
               )
             })}
-          </div>
-        </div>
+          </ul>
+        </>
       )}
-    </div>
+    </section>
   )
 }

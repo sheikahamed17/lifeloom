@@ -1,8 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import type { Mover } from '@/lib/analytics'
 import { DIVERGING } from '@/lib/chart-palette'
+import { ChartHeader, TABLE, fullMoney } from '@/components/charts/chart-kit'
 
 interface MoversBarsProps {
   movers: Mover[]
@@ -11,146 +13,83 @@ interface MoversBarsProps {
   limit?: number
 }
 
+/**
+ * Categories that moved most against the previous period, as diverging bars from
+ * a zero line (more spend → right, red; less → left, green). Figures sit in text
+ * ink at full size in their own column, so they stay readable on a phone.
+ */
 export function MoversBars({ movers, symbol, jpy, limit = 8 }: MoversBarsProps) {
-  const [showData, setShowData] = useState(false)
+  const id = useId()
+  const [showTable, setShowTable] = useState(false)
+  const top = useMemo(() => movers.slice(0, limit), [movers, limit])
+  const maxDelta = useMemo(() => Math.max(0, ...top.map(m => Math.abs(m.delta))), [top])
+  const signed = (m: number) => `${m > 0 ? '+' : ''}${fullMoney(m, symbol, jpy)}`
+  const pct = (m: Mover) => (m.deltaPct === null ? 'new' : `${m.deltaPct > 0 ? '+' : ''}${m.deltaPct.toFixed(0)}%`)
 
-  const topMovers = useMemo(() => movers.slice(0, limit), [movers, limit])
-
-  const formatSigned = (amount: number) => {
-    const divisor = jpy ? 1 : 100
-    const value = amount / divisor
-    const sign = value >= 0 ? '+' : ''
-    const formatted = value.toLocaleString('en-US', {
-      maximumFractionDigits: jpy ? 0 : 2,
-    })
-    return `${sign}${symbol}${formatted}`
-  }
-
-  const isEmpty = topMovers.length === 0
-  const maxDelta = useMemo(() => Math.max(0, ...topMovers.map((m) => Math.abs(m.delta))), [topMovers])
-  const hasDelta = maxDelta > 0
-
-  if (isEmpty) {
+  if (top.length === 0) {
     return (
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Movers</p>
-        <p className="text-xs text-muted-foreground italic">No data yet</p>
-      </div>
+      <section aria-labelledby={id} className="flex flex-col gap-2">
+        <h2 id={id} className="text-sm font-semibold">Biggest changes</h2>
+        <p className="text-sm text-muted-foreground">Nothing to compare yet. This needs two periods of spending.</p>
+      </section>
     )
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Movers</p>
-        <button
-          onClick={() => setShowData(!showData)}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {showData ? 'Hide' : 'Show'} data
-        </button>
-      </div>
-
-      {showData ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-muted-foreground/20">
-                <th className="text-left py-2 px-2 font-semibold">Category</th>
-                <th className="text-right py-2 px-2 font-semibold">Delta</th>
-                <th className="text-right py-2 px-2 font-semibold">% Change</th>
+    <section aria-labelledby={id} className="flex flex-col gap-3">
+      <ChartHeader id={id} title="Biggest changes vs last period" showTable={showTable} onToggle={() => setShowTable(s => !s)} />
+      {showTable ? (
+        <table className={TABLE}>
+          <thead><tr><th>Category</th><th className="!text-right">Change</th><th className="!text-right">%</th></tr></thead>
+          <tbody>
+            {top.map(m => (
+              <tr key={m.name}>
+                <td>{m.icon && <span aria-hidden="true">{m.icon} </span>}{m.name}</td>
+                <td className="text-right font-mono tabular-nums">{signed(m.delta)}</td>
+                <td className="text-right font-mono tabular-nums">{pct(m)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {topMovers.map((m) => (
-                <tr key={m.name} className="border-b border-muted-foreground/10 hover:bg-muted/30">
-                  <td className="py-2 px-2 text-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      {m.icon && <span>{m.icon}</span>}
-                      {m.name}
-                    </span>
-                  </td>
-                  <td className="py-2 px-2 text-right font-mono text-foreground">{formatSigned(m.delta)}</td>
-                  <td
-                    className="py-2 px-2 text-right font-mono"
-                    style={{ color: m.deltaPct === null ? DIVERGING.neutral : m.delta > 0 ? DIVERGING.negative : DIVERGING.positive }}
-                  >
-                    {m.deltaPct === null ? '−' : `${m.delta > 0 ? '+' : ''}${m.deltaPct.toFixed(1)}%`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       ) : (
-        <svg
-          viewBox={`0 0 600 ${Math.max(200, topMovers.length * 40)}`}
-          className="w-full h-auto"
-          style={{ minHeight: `${Math.max(200, topMovers.length * 40)}px` }}
-          role="img"
-          aria-label={`Top movers: ${topMovers.map((m) => `${m.name} ${formatSigned(m.delta)}`).join(', ')}`}
-        >
-          {/* Center line (zero) */}
-          <line x1="150" y1="0" x2="150" y2={topMovers.length * 40} stroke="currentColor" strokeWidth="1" opacity="0.2" />
-
-          {topMovers.map((m, i) => {
-            const y = i * 40 + 20
-            const barLength = hasDelta ? (Math.abs(m.delta) / maxDelta) * 130 : 0
-            const barColor = m.delta > 0 ? DIVERGING.negative : DIVERGING.positive
-            const barStartX = m.delta > 0 ? 150 : 150 - barLength
-            const isIncrease = m.delta > 0
-
-            const arrowChar = isIncrease ? '↑' : '↓'
-
+        <ul className="flex flex-col" aria-label="Biggest changes">
+          {top.map(m => {
+            const share = maxDelta > 0 ? (Math.abs(m.delta) / maxDelta) * 50 : 0
+            const up = m.delta > 0
             return (
-              <g key={m.name}>
-                {/* Bar */}
-                {barLength > 0 && (
-                  <rect
-                    x={barStartX}
-                    y={y - 6}
-                    width={barLength}
-                    height={12}
-                    rx="4"
-                    fill={barColor}
-                    opacity="0.8"
-                  >
-                    <title>{`${m.name}: ${formatSigned(m.delta)} (${m.deltaPct === null ? '−' : `${m.delta > 0 ? '+' : ''}${m.deltaPct.toFixed(1)}%`})`}</title>
-                  </rect>
-                )}
-
-                {/* Left label: arrow + icon + name */}
-                <text x="8" y={y} textAnchor="start" className="text-xs fill-muted-foreground font-mono" dy="0.3em">
-                  {arrowChar}
-                </text>
-                {m.icon && (
-                  <text x="22" y={y} textAnchor="start" className="text-xs" dy="0.3em">
-                    {m.icon}
-                  </text>
-                )}
-                <text x={m.icon ? '38' : '30'} y={y} textAnchor="start" className="text-xs fill-foreground" dy="0.3em">
-                  {m.name}
-                </text>
-
-                {/* Right label: amount + percent */}
-                <text x="290" y={y} textAnchor="start" className="text-xs fill-foreground font-mono" dy="0.3em">
-                  {formatSigned(m.delta)}
-                </text>
-                <text
-                  x="360"
-                  y={y}
-                  textAnchor="start"
-                  className="text-xs font-mono"
-                  style={{ fill: m.deltaPct === null ? DIVERGING.neutral : 'inherit' }}
-                  dy="0.3em"
-                >
-                  ({m.deltaPct === null ? '−' : `${m.delta > 0 ? '+' : ''}${m.deltaPct.toFixed(1)}%`})
-                </text>
-              </g>
+              <li
+                key={m.name}
+                title={`${m.name}: ${signed(m.delta)} (${pct(m)})`}
+                className="grid min-h-10 grid-cols-[minmax(0,8rem)_1fr_auto] items-center gap-3 text-sm"
+              >
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {m.icon && <span aria-hidden="true">{m.icon}</span>}
+                  <span className="truncate">{m.name}</span>
+                </span>
+                <span className="relative h-3" aria-hidden>
+                  <span className="absolute inset-y-[-4px] left-1/2 w-px bg-white/20" />
+                  {share > 0 && (
+                    <span
+                      className={`absolute inset-y-0 ${up ? 'rounded-r-[4px]' : 'rounded-l-[4px]'}`}
+                      style={{
+                        left: up ? '50%' : `${50 - share}%`,
+                        width: `${share}%`,
+                        backgroundColor: up ? DIVERGING.negative : DIVERGING.positive,
+                      }}
+                    />
+                  )}
+                </span>
+                <span className="flex items-center justify-end gap-1 whitespace-nowrap font-mono text-xs tabular-nums">
+                  {up ? <ArrowUp className="size-3.5 text-destructive" aria-hidden /> : <ArrowDown className="size-3.5 text-income" aria-hidden />}
+                  {signed(m.delta)}
+                  <span className="text-muted-foreground">{pct(m)}</span>
+                  <span className="sr-only">{up ? 'more' : 'less'} than last period</span>
+                </span>
+              </li>
             )
           })}
-        </svg>
+        </ul>
       )}
-    </div>
+    </section>
   )
 }

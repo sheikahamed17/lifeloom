@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { SEQUENTIAL_HUE, DIVERGING } from '@/lib/chart-palette'
+import { useId, useMemo, useState } from 'react'
+import { SEQUENTIAL_HUE } from '@/lib/chart-palette'
+import { ChartHeader, TABLE, useMeasuredWidth } from '@/components/charts/chart-kit'
 
 interface NetWorthLineProps {
   data: { label: string; net: number }[]
@@ -11,6 +12,9 @@ interface NetWorthLineProps {
 
 export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
   const [showData, setShowData] = useState(false)
+  const id = useId()
+  // Draw at the card's real width so 12 px labels stay 12 px and the line fills the card.
+  const [wrapRef, measured] = useMeasuredWidth<HTMLDivElement>()
 
   const isEmpty = useMemo(() => data.length <= 1, [data])
 
@@ -39,7 +43,7 @@ export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
 
   // SVG layout constants
   const padding = { top: 20, right: 25, bottom: 40, left: 30 }
-  const width = Math.max(300, data.length * 40)
+  const width = Math.max(240, measured || 320)
   const height = 240
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
@@ -87,54 +91,36 @@ export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
 
   if (isEmpty) {
     return (
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Net worth</p>
-        <p className="text-xs text-muted-foreground italic">Not enough history yet</p>
-      </div>
+      <section aria-labelledby={id} className="flex flex-col gap-2">
+        <h2 id={id} className="text-sm font-semibold">Net worth</h2>
+        <p className="text-sm text-muted-foreground">Not enough history yet. This fills in as your accounts age.</p>
+      </section>
     )
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Net worth</p>
-        <button
-          onClick={() => setShowData(!showData)}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {showData ? 'Hide' : 'Show'} data
-        </button>
-      </div>
+    <section aria-labelledby={id} className="flex flex-col gap-3">
+      <ChartHeader id={id} title="Net worth" showTable={showData} onToggle={() => setShowData(s => !s)} />
 
       {showData ? (
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-muted-foreground/20">
-                <th className="text-left py-2 px-2 font-semibold">Period</th>
-                <th className="text-right py-2 px-2 font-semibold">Net worth</th>
-              </tr>
-            </thead>
+          <table className={TABLE}>
+            <thead><tr><th>Period</th><th className="!text-right">Net worth</th></tr></thead>
             <tbody>
               {data.map((d) => (
-                <tr key={d.label} className="border-b border-muted-foreground/10 hover:bg-muted/30">
-                  <td className="py-2 px-2 text-foreground">{d.label}</td>
-                  <td
-                    className="py-2 px-2 text-right font-mono"
-                    style={{ color: d.net >= 0 ? DIVERGING.positive : DIVERGING.negative }}
-                  >
-                    {formatNet(d.net)}
-                  </td>
+                <tr key={d.label}>
+                  <td>{d.label}</td>
+                  <td className="text-right font-mono tabular-nums">{formatNet(d.net)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div ref={wrapRef}>
           <svg
             viewBox={`0 0 ${width} ${height}`}
-            className="w-full h-64 min-w-max"
+            className="block h-60 w-full"
             role="img"
             aria-label={`Net worth trend: ${data.map((d) => `${d.label} ${formatNet(d.net)}`).join(', ')}`}
           >
@@ -210,13 +196,12 @@ export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
                 key={p.index}
                 cx={p.x}
                 cy={p.y}
-                r={p.index === points.length - 1 ? 5 : 2.5}
+                r={p.index === points.length - 1 ? 5 : 4}
                 fill={SEQUENTIAL_HUE}
-                opacity={p.index === points.length - 1 ? 1 : 0.6}
-                className="transition-all"
-              >
-                <title>{`${p.label}: ${formatNet(p.net)}`}</title>
-              </circle>
+                stroke="var(--background)"
+                strokeWidth="2"
+                opacity={p.index === points.length - 1 ? 1 : 0.7}
+              />
             ))}
 
             {/* Last point marker (emphasized) */}
@@ -231,6 +216,13 @@ export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
                 opacity="0.4"
               />
             )}
+
+            {/* Hover targets larger than the marks */}
+            {points.map((p) => (
+              <circle key={`hit-${p.index}`} cx={p.x} cy={p.y} r={14} fill="transparent">
+                <title>{`${p.label}: ${formatNet(p.net)}`}</title>
+              </circle>
+            ))}
 
             {/* X-axis labels */}
             {xLabels.map((item) => {
@@ -251,6 +243,6 @@ export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
           </svg>
         </div>
       )}
-    </div>
+    </section>
   )
 }

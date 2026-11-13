@@ -15,14 +15,14 @@ function subscribe(cb: () => void) {
 }
 const isDesktop = () => window.matchMedia(DESKTOP).matches
 
-// Dark-only app (PRODUCT.md): the toaster never follows a system or theme switch.
+// Light-only app: the toaster never follows a system or theme switch.
 const Toaster = ({ ...props }: ToasterProps) => {
   const desktop = useSyncExternalStore(subscribe, isDesktop, () => true)
   const offset = desktop ? 24 : DOCK_OFFSET
 
   return (
     <Sonner
-      theme="dark"
+      theme="light"
       position="bottom-center"
       offset={{ bottom: offset, left: 12, right: 12 }}
       mobileOffset={{ bottom: offset, left: 12, right: 12 }}

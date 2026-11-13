@@ -129,7 +129,7 @@ function CategoriesPageInner() {
   if (!userId) {
     return (
       <PageShell title="Categories" back={BACK}>
-        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
+        <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -241,7 +241,7 @@ function CategorySection({
 
   return (
     <SettingsCard title={title} contentClassName="gap-2">
-      <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+      <ul className="glass-soft divide-y divide-border rounded-lg">
         {categories.length === 0 && <li><Empty className="p-3"><EmptyDescription>No {title.toLowerCase()} categories.</EmptyDescription></Empty></li>}
         {categories.map(c => {
           const sameKindActive = allCategories.filter(cat => cat.kind === c.kind)
@@ -340,7 +340,7 @@ function ArchivedSection({
 }) {
   return (
     <ArchivedCollapsible count={archived.length}>
-      <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+      <ul className="glass-soft divide-y divide-border rounded-lg">
         {archived.map(c => (
           <li key={c.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
             <span className="min-w-0 truncate text-sm">

@@ -20,7 +20,7 @@ export function TodayNudge({ userId, onGoToTasks }: { userId: string; onGoToTask
       variant="outline"
       onClick={onGoToTasks}
       aria-label={`${copy}. Go to Tasks`}
-      className="glass-soft h-12 w-full justify-start gap-2 rounded-2xl px-4 font-normal"
+      className="glass-soft h-12 w-full justify-start gap-2 rounded-xl px-4 font-normal"
     >
       <Clock className="size-4 shrink-0 text-warning" aria-hidden />
       <span className="flex-1 text-left font-medium">{copy}</span>

@@ -141,7 +141,7 @@ export function MoneyControls({ userId, filter, sort, onFilter, onSort }: Props)
             <ToggleGroupItem
               key={d}
               value={d}
-              className="h-10 flex-1 text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-white/10 aria-pressed:text-foreground"
+              className="h-10 flex-1 text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-accent aria-pressed:text-foreground"
             >
               {label}
             </ToggleGroupItem>

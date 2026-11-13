@@ -38,10 +38,10 @@ const FIELD_PILL = 'h-10 px-3 font-normal'
 const ACTION_PILL = 'h-10 border-accent-2/40 bg-transparent px-3 font-normal text-accent-2 hover:bg-accent-2/10'
 const CHIP_LINK = 'h-10 px-2 font-normal text-muted-foreground hover:text-foreground'
 // A shadcn NativeSelect dressed as a field pill (the wrapper takes the class, the select is targeted).
-const SELECT_PILL = 'w-fit [&_select]:h-10 [&_select]:border-white/15 [&_select]:bg-white/5 [&_select]:pl-3 [&_select]:pr-9 [&_select]:hover:bg-white/10'
-const SELECT_ROW = 'min-w-0 flex-1 [&_select]:h-10 [&_select]:border-white/15 [&_select]:bg-white/5'
+const SELECT_PILL = 'w-fit [&_select]:h-10 [&_select]:border-border [&_select]:bg-muted [&_select]:pl-3 [&_select]:pr-9 [&_select]:hover:bg-accent'
+const SELECT_ROW = 'min-w-0 flex-1 [&_select]:h-10 [&_select]:border-border [&_select]:bg-muted'
 // A tag chip: a pill label with a remove button.
-const TAG_CHIP = 'h-10 gap-1 border-white/15 bg-white/5 pr-0 pl-3 text-sm font-normal text-foreground'
+const TAG_CHIP = 'h-10 gap-1 border-border bg-muted pr-0 pl-3 text-sm font-normal text-foreground'
 // A click-to-edit text block (the display state of an inline field).
 const EDIT_BLOCK = 'h-auto min-h-11 w-full justify-start whitespace-pre-wrap px-2 py-2 text-left font-normal'
 
@@ -175,7 +175,7 @@ function ConfirmationChipMoney({
   }
 
   return (
-    <div className="glass rounded-2xl p-4 sm:p-5" role="group" aria-label={isEdit ? 'Edit entry' : 'New entry'}>
+    <div className="glass rounded-xl p-4 sm:p-5" role="group" aria-label={isEdit ? 'Edit entry' : 'New entry'}>
       <div className="mb-2 flex items-center justify-between">
         <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', d.direction === 'out' ? 'text-destructive' : 'text-income')}>
           {d.direction === 'out' ? <ArrowUpRight className="size-4" aria-hidden /> : <ArrowDownLeft className="size-4" aria-hidden />}
@@ -284,7 +284,7 @@ function ConfirmationChipMoney({
       </div>
 
       {editingField === 'category' && (
-        <div className="glass-soft mb-3 rounded-2xl p-2">
+        <div className="glass-soft mb-3 rounded-xl p-2">
           <CategoryPicker
             userId={userId}
             kind={d.direction === 'out' ? 'spend' : 'income'}
@@ -295,7 +295,7 @@ function ConfirmationChipMoney({
       )}
 
       {splitMode && (
-        <div className="glass-soft mb-3 flex flex-col gap-2 rounded-2xl p-3">
+        <div className="glass-soft mb-3 flex flex-col gap-2 rounded-xl p-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Split across categories</span>
             <Button variant="ghost" size="sm" onClick={() => setSplitMode(false)} className="h-10 px-2 text-xs font-normal text-muted-foreground hover:text-foreground">
@@ -350,7 +350,7 @@ function ConfirmationChipMoney({
       )}
 
       {sharesActive && (
-        <div className="glass-soft mb-3 flex flex-col gap-2 rounded-2xl p-3" role="group" aria-label="Shared with">
+        <div className="glass-soft mb-3 flex flex-col gap-2 rounded-xl p-3" role="group" aria-label="Shared with">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Shared with</span>
             {!shareRows.some(r => r.settled) && (
@@ -432,7 +432,7 @@ function ConfirmationChipMoney({
 
       <Collapsible open={moreOpen} onOpenChange={setMoreOpen}>
       <CollapsibleTrigger
-        render={<Button variant="ghost" className="mb-3 h-11 w-full justify-start gap-2 rounded-none border-x-0 border-b-0 border-t border-white/10 px-0 text-left font-normal hover:bg-transparent aria-expanded:bg-transparent" />}
+        render={<Button variant="ghost" className="mb-3 h-11 w-full justify-start gap-2 rounded-none border-x-0 border-b-0 border-t border-border px-0 text-left font-normal hover:bg-transparent aria-expanded:bg-transparent" />}
       >
         <span className="font-medium">More details</span>
         <span className="min-w-0 flex-1 truncate text-muted-foreground">{moreSummary}</span>
@@ -513,7 +513,7 @@ function ConfirmationChipMoney({
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy || d.amount === 0 || (splitMode && !splitReady) || (sharesActive && !sharesReady)}>
+        <Button className="flex-[2]" onClick={handleConfirm} disabled={busy || d.amount === 0 || (splitMode && !splitReady) || (sharesActive && !sharesReady)}>
           {splitMode ? `${isEdit ? 'Save' : 'Confirm'} split (${splitRows.length})`
             : isEdit ? 'Save changes'
             : sharesActive ? `Confirm ${symbol}${major} · you ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
@@ -585,7 +585,7 @@ function ConfirmationChipTask({
     : 'no due date'
 
   return (
-    <div className="glass rounded-2xl p-5">
+    <div className="glass rounded-xl p-5">
       <div className="mb-3 flex items-center justify-between text-xs">
         <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
           <CheckSquare className="size-4" aria-hidden /> Task
@@ -684,7 +684,7 @@ function ConfirmationChipTask({
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy || !d.title.trim()}>
+        <Button className="flex-[2]" onClick={handleConfirm} disabled={busy || !d.title.trim()}>
           {isEdit ? 'Save changes' : 'Confirm task'}
         </Button>
       </div>
@@ -732,7 +732,7 @@ function ConfirmationChipLearning({
   }
 
   return (
-    <div className="glass rounded-2xl p-5">
+    <div className="glass rounded-xl p-5">
       <div className="mb-3 flex items-center justify-between text-xs">
         <span className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-2">
           <BookOpen className="size-4" aria-hidden /> Learning
@@ -830,7 +830,7 @@ function ConfirmationChipLearning({
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy || !d.text.trim()}>
+        <Button className="flex-[2]" onClick={handleConfirm} disabled={busy || !d.text.trim()}>
           {isEdit ? 'Save changes' : 'Confirm learning'}
         </Button>
       </div>
@@ -878,7 +878,7 @@ function ConfirmationChipNote({
   }
 
   return (
-    <div className="glass rounded-2xl p-5">
+    <div className="glass rounded-xl p-5">
       <div className="mb-3 flex items-center justify-between text-xs">
         <span className="inline-flex items-center gap-1.5 text-sm font-medium text-warning">
           <NotebookPen className="size-4" aria-hidden /> Note
@@ -977,7 +977,7 @@ function ConfirmationChipNote({
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy || !d.body.trim()}>
+        <Button className="flex-[2]" onClick={handleConfirm} disabled={busy || !d.body.trim()}>
           {isEdit ? 'Save changes' : 'Confirm note'}
         </Button>
       </div>
@@ -1007,7 +1007,7 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
   }
 
   return (
-    <div className="glass rounded-2xl p-4 flex flex-col gap-3">
+    <div className="glass rounded-xl p-4 flex flex-col gap-3">
       <div className="inline-flex items-center gap-1.5 text-sm font-medium text-income"><Users className="size-4" aria-hidden /> Paid back</div>
       <p className="text-sm">
         <span className="font-medium">{draft.person_name}</span> paid{' '}
@@ -1029,7 +1029,7 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
       <p className="text-xs text-muted-foreground">This clears the debt and tops up the account. It isn’t counted as income.</p>
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy}>
+        <Button className="flex-[2]" onClick={handleConfirm} disabled={busy}>
           Mark paid
         </Button>
       </div>
@@ -1054,7 +1054,7 @@ function ConfirmationChipBudget({ draft, onConfirm, onCancel }: {
   }
 
   return (
-    <div className="glass-soft rounded-2xl p-3 flex items-center justify-between gap-3">
+    <div className="glass-soft rounded-xl p-3 flex items-center justify-between gap-3">
       <span className="text-sm">
         Budget · <span className="font-medium">{draft.category_name}</span> ·{' '}
         <span className="font-mono tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>/mo

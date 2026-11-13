@@ -23,7 +23,7 @@ const PERIODS: { value: Period; label: string }[] = [
 export function PeriodPicker({ period, intervalCount, onChange }: Props) {
   const id = useId()
   return (
-    <div className="glass-soft flex flex-col gap-2 rounded-2xl p-2">
+    <div className="glass-soft flex flex-col gap-2 rounded-xl p-2">
       <ToggleGroup
         aria-label="Repeat period"
         spacing={1}

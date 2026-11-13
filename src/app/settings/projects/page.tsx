@@ -83,7 +83,7 @@ function ProjectsPageInner() {
   if (!userId) {
     return (
       <PageShell title="Projects" back={BACK}>
-        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
+        <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -100,7 +100,7 @@ function ProjectsPageInner() {
       </SettingsCard>
 
       <SettingsCard title="Your projects" contentClassName="gap-2">
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+        <ul className="glass-soft divide-y divide-border rounded-lg">
           {projects.length === 0 && <li><Empty className="p-3"><EmptyDescription>No projects yet.</EmptyDescription></Empty></li>}
           {projects.map(p => (
             <ProjectRowItem

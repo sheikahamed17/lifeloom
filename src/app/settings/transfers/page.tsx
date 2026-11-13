@@ -158,7 +158,7 @@ function TransfersPageInner() {
   if (!userId) {
     return (
       <PageShell title="Transfers" back={BACK}>
-        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
+        <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -234,7 +234,7 @@ function TransfersPageInner() {
           aria-label="Transfer note"
         />
 
-        <Field orientation="horizontal" className="min-h-11 items-center justify-between gap-3 rounded-lg bg-white/5 px-3">
+        <Field orientation="horizontal" className="min-h-11 items-center justify-between gap-3 rounded-lg bg-muted px-3">
           <FieldLabel htmlFor="transfer-repeat" className="text-sm font-normal text-foreground">Repeat</FieldLabel>
           <Switch
             id="transfer-repeat"

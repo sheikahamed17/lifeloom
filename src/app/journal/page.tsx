@@ -169,7 +169,7 @@ export default function JournalPage() {
             <EmptyHeader><EmptyDescription>No journal entries yet. Write your first above.</EmptyDescription></EmptyHeader>
           </Empty>
         )}
-        <ul className="divide-y divide-white/10">
+        <ul className="divide-y divide-border">
           {entries.map(e => {
             const day = formatDay(e.occurred_at, prefs.tz)
             const entryMood = findMood(e.mood)

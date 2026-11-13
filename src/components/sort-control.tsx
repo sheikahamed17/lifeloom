@@ -11,7 +11,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 export const FIELD_SELECT = 'min-h-11 w-full rounded-lg border border-input glass-soft px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-accent-2 md:text-sm'
 
 /** Class for the shadcn NativeSelect wrapper: full width, 44 px tall, readable text. */
-export const FIELD_NATIVE_SELECT = 'w-full [&_select]:h-11 [&_select]:bg-white/5 [&_select]:text-base md:[&_select]:text-sm'
+export const FIELD_NATIVE_SELECT = 'w-full [&_select]:h-11 [&_select]:bg-muted [&_select]:text-base md:[&_select]:text-sm'
 
 /** Generic labelled sort control. */
 export function SortControl<T extends string>({

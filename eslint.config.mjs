@@ -38,7 +38,7 @@ const eslintConfig = defineConfig([
   // UI discipline (UX pass, 13 Nov 2026):
   //  1. Colours come from the theme tokens (destructive, income, warning, accent-2,
   //     primary, muted-foreground…), never raw Tailwind palette classes such as
-  //     text-rose-500 or bg-blue-50: the app is dark-only and every colour has a meaning.
+  //     text-rose-500 or bg-blue-50: every colour has a meaning.
   //  2. Every interactive or form control comes from shadcn (src/components/ui).
   //     Raw <button>, <input>, <select>, <textarea>, <table>, <dialog> … are only
   //     allowed inside src/components/ui itself.

@@ -61,7 +61,7 @@ export function CardsSection({ userId }: Props) {
       <h2 id="cards-heading" className="text-sm font-semibold">Cards &amp; debts</h2>
       <ul className="flex flex-col gap-2">
         {summaries.map(({ acct, s }) => (
-          <li key={acct.id} className="border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
+          <li key={acct.id} className="border-t border-border pt-2 first:border-t-0 first:pt-0">
             <Item size="xs" className="flex-nowrap items-start p-0">
               <ItemContent className="min-w-0 gap-1">
                 <ItemTitle className="max-w-full text-sm font-normal">

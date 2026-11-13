@@ -27,8 +27,8 @@ export const DOCK_CLEARANCE = 'pb-[calc(6rem_+_env(safe-area-inset-bottom))]'
 // One active-tab language on every screen size: a quiet pill, cyan icon, full-strength label. No glow.
 const LIST = 'group-data-horizontal/tabs:h-auto w-full gap-1 bg-transparent p-0'
 const TRIGGER =
-  'rounded-lg text-muted-foreground hover:bg-white/5 hover:text-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-accent-2 ' +
-  'data-active:bg-white/10 data-active:text-foreground data-active:shadow-none data-active:[&_svg]:text-accent-2'
+  'rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-accent-2 ' +
+  'data-active:bg-accent data-active:text-foreground data-active:shadow-none data-active:[&_svg]:text-accent-2'
 
 export function TabBar({ active, onChange, taskBadgeCount, variant }: Props) {
   const badge = taskBadgeCount !== undefined && taskBadgeCount > 0 ? (taskBadgeCount > 9 ? '9+' : String(taskBadgeCount)) : null
@@ -39,7 +39,7 @@ export function TabBar({ active, onChange, taskBadgeCount, variant }: Props) {
       value={active}
       onValueChange={v => onChange(v as Tab)}
       className={cn(
-        'glass rounded-2xl',
+        'glass rounded-xl',
         dock ? 'fixed bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] left-3 right-3 z-40 p-1.5' : 'p-1',
       )}
     >

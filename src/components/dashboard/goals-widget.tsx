@@ -112,7 +112,7 @@ export function GoalsWidget({ userId }: Props) {
             <Progress
               value={Math.min(p.pct, 100)}
               aria-label={`${goal.name} progress ${pctDisplay}%`}
-              className="[&_[data-slot=progress-indicator]]:bg-accent-2 [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-white/10"
+              className="[&_[data-slot=progress-indicator]]:bg-accent-2 [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-accent"
             />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{pctDisplay}%</span>

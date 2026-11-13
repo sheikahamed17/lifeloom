@@ -225,7 +225,7 @@ function AssistantPageInner() {
             >
               {turn.role === 'user' ? (
                 // User bubble — right-aligned
-                <div className="max-w-xs lg:max-w-md bg-accent-2/20 rounded-2xl px-4 py-3 text-sm">
+                <div className="max-w-xs lg:max-w-md bg-accent-2/20 rounded-xl px-4 py-3 text-sm">
                   {turn.text}
                 </div>
               ) : turn.intent === 'query_money' && isMoneyPlan(turn.payload) ? (
@@ -270,7 +270,7 @@ function AssistantPageInner() {
                 </div>
               ) : (
                 // Text bubble for chat/log/error/unknown
-                <div className="max-w-xs lg:max-w-md bg-white/5 rounded-2xl px-4 py-3 text-sm text-muted-foreground">
+                <div className="max-w-xs lg:max-w-md bg-muted rounded-xl px-4 py-3 text-sm text-muted-foreground">
                   {turn.intent === 'chat' || turn.intent === null
                     ? "I can answer questions about your money, tasks, learning, and notes — e.g. 'How much did I spend on food this month?'"
                     : turn.intent?.startsWith('log_') || turn.intent === 'set_budget'
@@ -281,7 +281,7 @@ function AssistantPageInner() {
             </div>
           ))}
           {busy && (
-            <div role="status" className="flex w-fit items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm text-muted-foreground">
+            <div role="status" className="flex w-fit items-center gap-2 rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">
               <Spinner className="motion-reduce:animate-none" aria-hidden />
               Thinking…
             </div>
@@ -293,7 +293,7 @@ function AssistantPageInner() {
       {/* Ask bar: floating chrome, so it is the one glass layer here. */}
       <form
         onSubmit={handleSubmit}
-        className="glass sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 flex items-end gap-2 rounded-2xl p-2"
+        className="glass sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 flex items-end gap-2 rounded-xl p-2"
       >
         <InputGroup className="h-11 flex-1">
           <InputGroupInput

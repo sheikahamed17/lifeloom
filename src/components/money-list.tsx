@@ -38,7 +38,7 @@ import type { MoneyFilter, MoneySort } from '@/lib/money-filter-sort'
 type Props = { userId: string; onEdit?: (row: MoneyEntryRow) => void; filter?: MoneyFilter; sort?: MoneySort }
 
 // Small metadata chips under an entry: one shape, one size (12 px), Lucide icons only.
-const META = 'h-auto min-h-6 overflow-visible border-white/15 px-2 font-normal text-muted-foreground'
+const META = 'h-auto min-h-6 overflow-visible border-border px-2 font-normal text-muted-foreground'
 
 /** "−₹120" / "+₹85,000" (JPY whole), the same signed form the save toast uses. */
 function formatAmount(e: MoneyEntryRow): string {
@@ -128,7 +128,7 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
           const open = expandedGroups.has(g.groupId)
           const first = g.parts[0]
           return (
-            <li key={g.groupId} id={`pulse-row-${g.groupId}`} className="glass-soft rounded-2xl p-3 text-sm">
+            <li key={g.groupId} id={`pulse-row-${g.groupId}`} className="glass-soft rounded-xl p-3 text-sm">
               <Collapsible open={open} onOpenChange={() => toggleGroup(g.groupId)}>
                 <div className="flex items-start justify-between gap-3">
                   <CollapsibleTrigger
@@ -206,7 +206,7 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
               onLongPress={() => setMenuFor(e.id)}
               onDelete={() => deleteEntry(e)}
               deleteLabel={`Delete ${title} ${formatAmount(e)}`}
-              className="glass-soft flex items-start justify-between gap-3 rounded-2xl p-3 text-sm transition-colors hover:bg-white/8"
+              className="glass-soft flex items-start justify-between gap-3 rounded-xl p-3 text-sm transition-colors hover:bg-accent"
             >
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="text-sm font-medium text-foreground md:text-base">{title}</p>

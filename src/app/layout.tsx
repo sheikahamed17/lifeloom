@@ -12,11 +12,11 @@ export const metadata: Metadata = {
   title: 'Lifeloom',
   description: 'Your money, tasks, notes and learning in one private, local-first app',
   manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, title: 'Lifeloom', statusBarStyle: 'black-translucent' },
+  appleWebApp: { capable: true, title: 'Lifeloom', statusBarStyle: 'default' },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0a0b16',
+  themeColor: '#ffffff',
   // Allow pinch-zoom: never disable user scaling (WCAG 1.4.4) — it also lets the
   // user shrink the view if the app feels too large on their device. Mobile inputs
   // are 16px (text-base), so re-enabling zoom does NOT reintroduce iOS's

@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { setupStage, type SetupStage } from '@/lib/setup'
-import { AuroraBackground } from '@/components/aurora-background'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
@@ -22,7 +21,6 @@ const TOTAL_STEPS = 5
 function Shell({ children, step }: { children: React.ReactNode; step?: number }) {
   return (
     <>
-      <AuroraBackground />
       <main className="flex min-h-[calc(100dvh_-_env(safe-area-inset-top))] items-center justify-center p-4">
         <Card className="w-full max-w-sm">
           <CardContent className="flex flex-col gap-5 pt-6">

@@ -116,7 +116,7 @@ export default function PreferencesPage() {
   if (!userId) {
     return (
       <PageShell title="Preferences" back={BACK}>
-        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
+        <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -196,7 +196,7 @@ export default function PreferencesPage() {
               onClick={() => { setState(s => ({ ...s, tz: z })); setTzQuery(''); setDirty(true); setSaveError(null) }}
               className={cn(
                 'h-10 w-full justify-between rounded-none px-3 text-left font-normal',
-                state.tz === z && 'bg-white/10 font-medium',
+                state.tz === z && 'bg-accent font-medium',
               )}
             >
               <span>{z}</span>

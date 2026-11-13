@@ -44,8 +44,8 @@ export default function InsightsPage() {
     <PageShell
       title="Insights"
       actions={
-        // The page's one primary action, so it is the one thing that glows.
-        <Button onClick={generate} disabled={generating || !userId} aria-busy={generating} className="glow-cta">
+        // The page's one primary action.
+        <Button onClick={generate} disabled={generating || !userId} aria-busy={generating} className="">
           {generating
             ? <Spinner className="motion-reduce:animate-none" aria-hidden />
             : <Sparkles className="size-4" aria-hidden />}
@@ -65,7 +65,7 @@ export default function InsightsPage() {
         <ul className="flex flex-col gap-3">
           {insights.map(i => (
             <li key={i.id}>
-              <Link href={`/insights/${i.id}`} className="block rounded-2xl outline-none transition-shadow hover:ring-1 hover:ring-white/20 focus-visible:ring-2 focus-visible:ring-accent-2">
+              <Link href={`/insights/${i.id}`} className="block rounded-xl outline-none transition-shadow hover:ring-1 hover:ring-border focus-visible:ring-2 focus-visible:ring-accent-2">
                 <InsightCard insight={i} variant="card" />
               </Link>
             </li>

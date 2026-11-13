@@ -166,7 +166,7 @@ export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled
         <Button
           disabled={disabled || busy}
           onClick={state === 'recording' ? stop : start}
-          className="size-16 rounded-full glow-cta focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="size-16 rounded-full focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label={state === 'recording' ? 'Stop recording' : 'Start recording'}
         >
           {busy ? <Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden /> : <Mic className="size-6" aria-hidden />}

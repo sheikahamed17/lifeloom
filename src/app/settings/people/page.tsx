@@ -145,7 +145,7 @@ function PeoplePageInner() {
   if (!userId) {
     return (
       <PageShell title="People" back={BACK}>
-        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
+        <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -206,7 +206,7 @@ function PeoplePageInner() {
 
       {archived.length > 0 && (
         <SettingsCard title={`Archived (${archived.length})`} contentClassName="gap-2">
-          <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+          <ul className="glass-soft divide-y divide-border rounded-lg">
             {archived.map(p => (
               <li key={p.id} id={p.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1 text-sm">
                 <span className="min-w-0">{p.name}{owedFor.get(p.id) ? ` · still owes ${Object.entries(owedFor.get(p.id)!.byCurrency).map(([c, a]) => fmt(a, c)).join(', ')}` : ''}</span>
@@ -304,7 +304,7 @@ function PersonCard({
               </Button>
             )}
           </div>
-          <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+          <ul className="glass-soft divide-y divide-border rounded-lg">
             {outstanding.map(s => (
               <li key={s.shareId} className="flex items-center justify-between gap-2 p-3 text-sm">
                 <div className="min-w-0 flex-1">
@@ -330,7 +330,7 @@ function PersonCard({
             <ChevronDown className={cn('size-4 transition-transform', historyOpen && 'rotate-180')} aria-hidden />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+            <ul className="glass-soft divide-y divide-border rounded-lg">
               {settled.map(s => {
                 const e = entryById.get(s.money_entry_id)!
                 const acc = accounts.find(a => a.id === s.settled_account_id)

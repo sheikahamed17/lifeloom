@@ -42,8 +42,8 @@ export function BarTrend({ data, symbol, jpy, label }: BarTrendProps) {
       ) : (
         <figure role="img" aria-label={`${label}: ${data.map(d => `${d.label} ${money(d.amount)}`).join(', ')}`} className="flex flex-col gap-1">
           <p className="text-right text-xs text-muted-foreground">Highest <span className="font-mono tabular-nums">{money(max)}</span></p>
-          <div className="relative flex h-40 items-end gap-0.5 border-b border-white/15">
-            <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-white/10" />
+          <div className="relative flex h-40 items-end gap-0.5 border-b border-border">
+            <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border" />
             {data.map((d, i) => (
               <div key={d.label} title={`${d.label}: ${money(d.amount)}`} className="group flex h-full flex-1 items-end justify-center">
                 <div

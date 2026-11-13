@@ -51,59 +51,49 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root{
-  --background: oklch(0.13 0.03 275);      /* #0a0b16, indigo-biased near-black */
-  --foreground: oklch(0.93 0.02 275);
-  --card: oklch(0.20 0.03 275 / 40%);
-  --card-foreground: oklch(0.93 0.02 275);
-  --popover: oklch(0.17 0.03 275 / 92%);
-  --popover-foreground: oklch(0.93 0.02 275);
-  --primary: oklch(0.64 0.19 274);         /* indigo #6f7bff */
-  --primary-foreground: oklch(0.14 0.03 265);
-  --accent-2: oklch(0.82 0.14 210);        /* cyan #34e6ff */
-  --secondary: oklch(1 0 0 / 8%);
-  --secondary-foreground: oklch(0.93 0.02 275);
-  --muted: oklch(1 0 0 / 6%);
-  --muted-foreground: oklch(0.68 0.03 275);  /* #8a90ab */
-  --accent: oklch(1 0 0 / 8%);
-  --accent-foreground: oklch(0.93 0.02 275);
-  --destructive: oklch(0.68 0.19 12);      /* spend/delete #ff5c7a */
-  --income: oklch(0.80 0.16 165);          /* #34e0a1 */
-  --warning: oklch(0.82 0.16 75);          /* #ffb020 */
-  --border: oklch(1 0 0 / 11%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.82 0.14 210);
-  --radius: 1rem;
+/* Light, minimal, shadcn "neutral" tokens (14 Nov 2026; replaces the dark aurora theme). */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --accent-2: oklch(0.5 0.2 262);          /* blue: links, selected state, focus accents */
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.51 0.22 27); /* spend / delete */
+  --income: oklch(0.5 0.14 150);
+  --warning: oklch(0.55 0.14 65);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
 }
 
+/* Surfaces. Plain shadcn look: white card, hairline border, barely-there shadow.
+   (The old frosted-glass utilities keep their names so call sites didn't change.) */
 @utility glass {
-  background: linear-gradient(160deg, rgb(255 255 255 / .085), rgb(255 255 255 / .055));
-  /* Write ONLY the unprefixed property: LightningCSS emits -webkit- for Safari
-     itself, but when both are written it keeps only the prefixed one and
-     Chromium renders no blur at all (critique, 10 Nov 2026). */
-  backdrop-filter: blur(22px) saturate(150%);
-  border: 1px solid rgb(255 255 255 / .11);
-  box-shadow: 0 10px 34px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 255 255 / .09);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .05);
 }
 @utility glass-soft {
-  background: rgb(255 255 255 / .05);
-  border: 1px solid rgb(255 255 255 / .07);
+  background: var(--muted);
+  border: 1px solid transparent;
 }
 @utility glass-accent {
-  background: linear-gradient(150deg, rgb(111 123 255 / .16), rgb(52 230 255 / .07));
-  border: 1px solid rgb(120 160 255 / .28);
-  backdrop-filter: blur(18px) saturate(140%);
+  background: var(--muted);
+  border: 1px solid var(--border);
 }
-/* Glow has one job: the primary action on a screen (UX pass rule). Opt in per
-   element; nothing glows by default. Disabled actions don't glow. */
-@utility glow-cta {
-  box-shadow: 0 0 24px rgb(52 230 255 / .35);
-  &:hover { box-shadow: 0 0 32px rgb(52 230 255 / .5); }
-  &:disabled, &[aria-disabled="true"], &[data-disabled] { box-shadow: none; }
-}
-@keyframes aurora-drift { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(3vw,3vw) scale(1.1)} }
 @keyframes pulse-flash { 0% { box-shadow: 0 0 0 2px var(--accent-2) } 100% { box-shadow: 0 0 0 2px transparent } }
-.pulse-flash { animation: pulse-flash 1.2s ease-out; border-radius: 1rem; }
+.pulse-flash { animation: pulse-flash 1.2s ease-out; border-radius: var(--radius-xl); }
 @media (prefers-reduced-motion: reduce) { .pulse-flash { animation: none; box-shadow: 0 0 0 2px var(--accent-2) } }
 
 body {

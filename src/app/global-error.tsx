@@ -27,7 +27,7 @@ export default function GlobalError({
     <html lang="en">
       <body
         className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground antialiased"
-        style={{ background: '#0a0b16', color: '#e5e7eb', fontFamily: 'system-ui, -apple-system, sans-serif' }}
+        style={{ background: '#ffffff', color: '#0a0a0a', fontFamily: 'system-ui, -apple-system, sans-serif' }}
       >
         <Card className="w-full max-w-sm p-2">
           <CardHeader className="text-center">

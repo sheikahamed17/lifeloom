@@ -1,22 +1,22 @@
 /**
  * Chart color palette.
- * Validated against dataviz reference palette with dark surface #1a1a19.
+ * Validated against the dataviz reference palette on the light surface (white background).
  * Categorical order is CVD-safe; never cycle or reorder.
  */
 
-/** Single-series magnitude (sequential) — app accent cyan */
-export const SEQUENTIAL_HUE = 'rgb(52 230 255)'
+/** Single-series magnitude (sequential): the app accent blue (5:1 on white) */
+export const SEQUENTIAL_HUE = 'rgb(37 99 235)'
 
 /** Diverging pair: positive/income, negative/spend, neutral */
 export const DIVERGING = {
   positive: '#0ca30c', // success/income
-  negative: '#e66767', // spend/critical (red from dark palette)
-  neutral: '#383835', // gray midpoint
+  negative: '#e66767', // spend/critical
+  neutral: '#d4d4d8', // gray midpoint
 }
 
 /** Series colors for dual-series charts (not in CATEGORICAL, reserved for small multiples) */
 export const SPEND_COLOR = '#e66767' // critical red, matches DIVERGING.negative
-export const INCOME_COLOR = '#34dcef' // cyan, distinct from spend and CATEGORICAL hues
+export const INCOME_COLOR = '#0891b2' // cyan, distinct from spend and CATEGORICAL hues
 
 /**
  * Categorical colors (fixed order, CVD-safe adjacent pairs).

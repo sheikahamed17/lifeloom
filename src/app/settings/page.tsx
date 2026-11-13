@@ -45,7 +45,7 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
   },
 ]
 
-const ROW = 'min-h-14 rounded-none px-4 py-3 hover:bg-white/5 focus-visible:bg-white/5 focus-visible:ring-inset focus-visible:ring-accent-2'
+const ROW = 'min-h-14 rounded-none px-4 py-3 hover:bg-accent focus-visible:bg-accent focus-visible:ring-inset focus-visible:ring-accent-2'
 
 function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (

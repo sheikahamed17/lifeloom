@@ -78,7 +78,7 @@ export function NotesList({ userId, selectedTag, searchQuery = '', sort = 'newes
             onLongPress={() => setMenuFor(e.id)}
             onDelete={() => deleteNote(e)}
             deleteLabel={`Delete note: ${(e.title || e.body).slice(0, 30)}${(e.title || e.body).length > 30 ? '…' : ''}`}
-            className="glass-soft rounded-2xl flex flex-col gap-2 p-3"
+            className="glass-soft rounded-xl flex flex-col gap-2 p-3"
           >
             <div className="flex items-start gap-2">
               <p className="flex-1 text-sm md:text-base font-medium">{e.title || truncatePreview(e.body)}</p>
@@ -103,7 +103,7 @@ export function NotesList({ userId, selectedTag, searchQuery = '', sort = 'newes
                   <Badge
                     key={tag}
                     variant="outline"
-                    className={cn(selectedTag === tag ? 'border-accent-2/50 bg-accent-2/30 text-accent-2' : 'bg-white/10 text-muted-foreground')}
+                    className={cn(selectedTag === tag ? 'border-accent-2/50 bg-accent-2/30 text-accent-2' : 'bg-accent text-muted-foreground')}
                   >
                     {tag}
                   </Badge>

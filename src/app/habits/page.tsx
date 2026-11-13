@@ -202,7 +202,7 @@ export default function HabitsPage() {
             <EmptyHeader><EmptyDescription>No habits yet. Add your first one below.</EmptyDescription></EmptyHeader>
           </Empty>
         )}
-        <ul className="divide-y divide-white/10">
+        <ul className="divide-y divide-border">
           {habits.map(h => {
             const habitLogs = logs.filter(l => l.habit_id === h.id && !l.deleted_at)
             const days = habitLogs.map(l => l.day)
@@ -358,7 +358,7 @@ function ArchivedSection({
         </CardHeader>
         <CollapsibleContent id="habits-archived">
           <CardContent>
-            <ul className="divide-y divide-white/10">
+            <ul className="divide-y divide-border">
               {archived.map(h => (
                 <li key={h.id} className="flex items-center justify-between gap-2 py-2">
                   <span className="min-w-0 truncate text-sm">

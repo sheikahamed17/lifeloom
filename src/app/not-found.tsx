@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { AuroraBackground } from '@/components/aurora-background'
 import { PulseLogo } from '@/components/pulse-logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 export default function NotFound() {
   return (
     <>
-      <AuroraBackground />
       <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
         <Card className="w-full max-w-sm p-2">
           <CardHeader className="items-center justify-items-center text-center">
@@ -20,7 +18,7 @@ export default function NotFound() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
-            <Button size="lg" nativeButton={false} render={<Link href="/app" />} className="glow-cta gap-2">
+            <Button size="lg" nativeButton={false} render={<Link href="/app" />} className="gap-2">
               <ArrowLeft className="size-4" aria-hidden />
               Back to Lifeloom
             </Button>

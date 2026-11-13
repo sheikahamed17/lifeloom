@@ -85,7 +85,7 @@ function RecurringSettingsPageInner() {
   if (!userId) {
     return (
       <PageShell title="Recurring rules" back={BACK}>
-        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
+        <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }

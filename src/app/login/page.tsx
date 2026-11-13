@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AuroraBackground } from '@/components/aurora-background'
 import { authClient } from '@/lib/auth-client'
 import { useDemo } from '@/hooks/use-demo'
 import { PulseLogo } from '@/components/pulse-logo'
@@ -57,7 +56,6 @@ export default function LoginPage() {
 
   return (
     <>
-      <AuroraBackground />
       <main className="flex min-h-[calc(100dvh_-_env(safe-area-inset-top))] items-center justify-center p-4">
         <Card className="w-full max-w-sm">
           <CardHeader className="items-center gap-2">

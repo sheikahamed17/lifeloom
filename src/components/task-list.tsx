@@ -137,7 +137,7 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
           onLongPress={() => setMenuFor(t.id)}
           onDelete={() => deleteTask(t)}
           deleteLabel={`Delete task: ${t.title.slice(0, 30)}${t.title.length > 30 ? '…' : ''}`}
-          className="glass-soft flex items-start justify-between gap-3 rounded-2xl p-3"
+          className="glass-soft flex items-start justify-between gap-3 rounded-xl p-3"
         >
           {/* The circle completes the task; a tap anywhere else on the row opens the editor. */}
           {/* A parent's circle is read-only: it reflects its sub-tasks. */}

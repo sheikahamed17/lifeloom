@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Kbd } from '@/components/ui/kbd'
-import { AuroraBackground } from '@/components/aurora-background'
 import { ConfirmationChip, type ChipDraft } from '@/components/confirmation-chip'
 import { QueryAnswerCard } from '@/components/query-answer-card'
 import { QueryTaskListAnswer, QueryLearningListAnswer, QueryNotesListAnswer } from '@/components/query-answers'
@@ -740,7 +739,6 @@ function AppPageInner() {
 
   return (
     <>
-      <AuroraBackground />
       <main className={`mx-auto grid w-full max-w-6xl content-start gap-4 p-4 sm:p-6 md:gap-x-8 md:gap-y-5 md:p-8 lg:grid-cols-[1fr_380px] lg:pb-8 ${DOCK_CLEARANCE}`}>
         {/* Full width on desktop so every destination fits beside the name. */}
         <div className="lg:col-span-2">
@@ -752,7 +750,7 @@ function AppPageInner() {
               Sticky, so capture is one tap away from anywhere in the list. */}
           <form
             onSubmit={(e) => { e.preventDefault(); parseText() }}
-            className="glass sticky top-[calc(0.5rem_+_env(safe-area-inset-top))] z-30 flex flex-col gap-1 rounded-2xl p-2"
+            className="glass sticky top-[calc(0.5rem_+_env(safe-area-inset-top))] z-30 flex flex-col gap-1 rounded-xl p-2"
           >
             <Label htmlFor="capture-input" className="sr-only">Capture a note, task or spend</Label>
             <div className="relative">
@@ -819,7 +817,7 @@ function AppPageInner() {
               {!online && (
                 <span role="status" className="mr-2 text-xs text-warning">Offline: saved on this device</span>
               )}
-              <Button type="submit" className={cn('h-10 px-5', text.trim() && !captureBusy && 'glow-cta')} disabled={captureBusy || !text.trim()}>
+              <Button type="submit" className={cn('h-10 px-5', text.trim() && !captureBusy && '')} disabled={captureBusy || !text.trim()}>
                 {parsing ? 'Adding…' : 'Add'}
               </Button>
             </div>
@@ -827,7 +825,7 @@ function AppPageInner() {
 
           <div ref={captureResultRef} className="flex scroll-mt-36 flex-col gap-4 empty:hidden md:gap-5">
           {captureNotice && !draft && (
-            <Alert className="glass-soft flex flex-col gap-2 rounded-2xl p-3 sm:flex-row sm:items-center">
+            <Alert className="glass-soft flex flex-col gap-2 rounded-xl p-3 sm:flex-row sm:items-center">
               <AlertDescription className="flex-1 text-foreground">
                 {captureNotice === 'unplaced' ? 'I couldn’t tell what that is.' : 'Couldn’t reach the AI just now.'}{' '}
                 <span className="text-muted-foreground">Try “spent 80 on chai”, “remind me to call mom at 6” or “note: the wifi password is on the router”.</span>
@@ -886,7 +884,7 @@ function AppPageInner() {
           </div>
 
           {showPushNudge && (
-            <Alert role="status" className="glass-soft flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-2">
+            <Alert role="status" className="glass-soft flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2">
               <AlertDescription className="text-foreground">Get a notification when a task is due?</AlertDescription>
               <div className="flex gap-1">
                 <Button

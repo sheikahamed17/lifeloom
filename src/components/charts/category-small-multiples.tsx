@@ -75,7 +75,7 @@ export function CategorySmallMultiples({ series, periods, symbol, jpy }: Categor
                   <figure
                     role="img"
                     aria-label={`${s.name}: ${s.points.map((v, i) => `${periods[i]?.label} ${money(v)}`).join(', ')}`}
-                    className="flex h-16 items-end gap-0.5 border-b border-white/15"
+                    className="flex h-16 items-end gap-0.5 border-b border-border"
                   >
                     {s.points.map((v, i) => (
                       <div key={i} title={`${s.name}, ${periods[i]?.label}: ${money(v)}`} className="group flex h-full flex-1 items-end">

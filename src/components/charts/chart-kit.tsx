@@ -106,4 +106,4 @@ export function fullMoney(minor: number, symbol: string, jpy: boolean): string {
 }
 
 /** @deprecated charts now use the shadcn Table; kept for compatibility. */
-export const TABLE = 'w-full text-sm [&_td]:px-2 [&_td]:py-2 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:font-medium [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-white/10'
+export const TABLE = 'w-full text-sm [&_td]:px-2 [&_td]:py-2 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:font-medium [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border'

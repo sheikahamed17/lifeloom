@@ -116,7 +116,7 @@ function GoalsPageInner() {
   if (!userId) {
     return (
       <PageShell title="Goals" back={BACK}>
-        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
+        <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -193,7 +193,7 @@ function GoalsPageInner() {
       </SettingsCard>
 
       <SettingsCard title="Active goals" contentClassName="gap-2">
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+        <ul className="glass-soft divide-y divide-border rounded-lg">
           {goals.length === 0 && <li><Empty className="p-3"><EmptyDescription>Add your first goal.</EmptyDescription></Empty></li>}
           {goals.map(g => (
             <GoalRowItem
@@ -354,7 +354,7 @@ function ArchivedSection({
 }) {
   return (
     <ArchivedCollapsible count={archived.length}>
-      <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+      <ul className="glass-soft divide-y divide-border rounded-lg">
         {archived.map(g => (
           <li key={g.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
             <span className="min-w-0 truncate text-sm">

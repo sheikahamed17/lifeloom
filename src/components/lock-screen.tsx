@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Lock } from 'lucide-react'
 import { verifyPin } from '@/lib/pin-lock'
-import { AuroraBackground } from '@/components/aurora-background'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,7 +25,6 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 
   return (
     <>
-      <AuroraBackground />
       <main className="flex min-h-[calc(100dvh_-_env(safe-area-inset-top))] items-center justify-center p-4">
         <Card className="w-full max-w-xs p-2">
           <CardHeader className="items-center justify-items-center text-center">

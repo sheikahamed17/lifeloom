@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { AuroraBackground } from '@/components/aurora-background'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +19,6 @@ type Props = {
 export function PageShell({ title, back = { href: '/app', label: 'Lifeloom' }, actions, width = 'narrow', children }: Props) {
   return (
     <>
-      <AuroraBackground />
       <main className={cn('mx-auto flex w-full flex-col gap-4 p-4 pb-12 sm:p-6', width === 'narrow' ? 'max-w-2xl' : 'max-w-5xl')}>
         <header className="flex flex-col gap-1">
           <Button

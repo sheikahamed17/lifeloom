@@ -135,7 +135,7 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
             <ToggleGroupItem
               key={p}
               value={p}
-              className="h-9 rounded-md px-3 text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-white/10 aria-pressed:text-foreground"
+              className="h-9 rounded-md px-3 text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-accent aria-pressed:text-foreground"
             >
               {p === 'week' ? 'Week' : 'Month'}
             </ToggleGroupItem>
@@ -219,7 +219,7 @@ function WeeklyBars({ values, symbol, jpy }: { values: number[]; symbol: string;
             <div
               key={i}
               title={`${weeksAgo === 0 ? 'This week' : `${weeksAgo} wk ago`}: ${fmt(v)}`}
-              className={`flex-1 rounded-t ${i === last ? 'bg-accent-2' : 'bg-white/20'}`}
+              className={`flex-1 rounded-t ${i === last ? 'bg-accent-2' : 'bg-accent'}`}
               style={{ height: `${pct}%` }}
             />
           )

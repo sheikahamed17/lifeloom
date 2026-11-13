@@ -143,7 +143,7 @@ function AccountsPageInner() {
   if (!userId) {
     return (
       <PageShell title="Accounts" back={BACK}>
-        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
+        <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -213,7 +213,7 @@ function AccountsPageInner() {
       </SettingsCard>
 
       <SettingsCard title="Active accounts" contentClassName="gap-2">
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+        <ul className="glass-soft divide-y divide-border rounded-lg">
           {accounts.length === 0 && <li><Empty className="p-3"><EmptyDescription>Add your first account.</EmptyDescription></Empty></li>}
           {accounts.map(a => (
             <AccountRowItem
@@ -397,7 +397,7 @@ function ArchivedSection({
 }) {
   return (
     <ArchivedCollapsible count={archived.length}>
-      <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+      <ul className="glass-soft divide-y divide-border rounded-lg">
         {archived.map(a => (
           <li key={a.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1">
             <div className="min-w-0 flex-1">

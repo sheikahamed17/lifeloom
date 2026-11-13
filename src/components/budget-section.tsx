@@ -153,7 +153,7 @@ export function BudgetSection({ userId }: Props) {
                 <Progress
                   value={Math.min(p.pct, 100)}
                   aria-label={`${cat?.name ?? 'Category'} budget ${p.pct}%`}
-                  className={cn('[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-white/10', STATE_CLASS[p.state])}
+                  className={cn('[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-accent', STATE_CLASS[p.state])}
                 />
               </li>
             )

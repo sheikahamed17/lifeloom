@@ -92,7 +92,7 @@ export function SwipeRow({ onDelete, onTap, onLongPress, deleteLabel, isOpen, on
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl focus-within:ring-2 focus-within:ring-accent-2">
+    <div className="relative overflow-hidden rounded-xl focus-within:ring-2 focus-within:ring-accent-2">
       {state.translateX < 0 && (
         <Button
           variant="destructive"

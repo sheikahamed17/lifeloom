@@ -173,7 +173,7 @@ export default function DataPage() {
   if (!userId) {
     return (
       <PageShell title="Data & backup" back={BACK}>
-        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
+        <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -217,7 +217,7 @@ export default function DataPage() {
             accept=".json,application/json"
             onChange={handleImportFile}
             disabled={isImporting}
-            className="h-auto py-1.5 text-sm text-muted-foreground file:mr-3 file:h-8 file:rounded-lg file:bg-white/10 file:px-4 file:text-sm file:font-medium file:text-foreground hover:file:bg-white/15"
+            className="h-auto py-1.5 text-sm text-muted-foreground file:mr-3 file:h-8 file:rounded-lg file:bg-accent file:px-4 file:text-sm file:font-medium file:text-foreground hover:file:bg-accent"
           />
         </Field>
 

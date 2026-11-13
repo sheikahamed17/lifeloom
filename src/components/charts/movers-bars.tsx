@@ -65,7 +65,7 @@ export function MoversBars({ movers, symbol, jpy, limit = 8 }: MoversBarsProps) 
                   <span className="truncate">{m.name}</span>
                 </span>
                 <span className="relative h-3" aria-hidden>
-                  <span className="absolute inset-y-[-4px] left-1/2 w-px bg-white/20" />
+                  <span className="absolute inset-y-[-4px] left-1/2 w-px bg-border" />
                   {share > 0 && (
                     <span
                       className={`absolute inset-y-0 ${up ? 'rounded-r-[4px]' : 'rounded-l-[4px]'}`}

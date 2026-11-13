@@ -36,7 +36,7 @@ export function LearningTagFilter({ userId, selectedTag, onChange }: Props) {
             key={tag}
             value={tag}
             variant="outline"
-            className="min-h-11 rounded-full px-3 text-xs text-muted-foreground aria-pressed:border-accent-2/50 aria-pressed:bg-accent-2/15 aria-pressed:text-accent-2"
+            className="min-h-11 rounded-lg px-3 text-xs text-muted-foreground aria-pressed:border-accent-2/50 aria-pressed:bg-accent-2/15 aria-pressed:text-accent-2"
           >
             {tag}
             {selectedTag === tag && <X className="size-3" aria-hidden />}

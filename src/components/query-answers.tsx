@@ -42,7 +42,7 @@ export function QueryTaskListAnswer({ userId, plan, onDismiss, onResult }: { use
           return (
             <li
               key={t.id}
-              className="glass-soft rounded-2xl relative flex items-start justify-between gap-3 p-3"
+              className="glass-soft rounded-xl relative flex items-start justify-between gap-3 p-3"
             >
               <div className="flex flex-1 items-start gap-2 text-left">
                 {isCompleted ? (
@@ -101,13 +101,13 @@ export function QueryLearningListAnswer({ userId, plan, onDismiss, onResult }: {
         {filtered.map(l => (
           <li
             key={l.id}
-            className="glass-soft rounded-2xl relative flex flex-col gap-2 p-3"
+            className="glass-soft rounded-xl relative flex flex-col gap-2 p-3"
           >
             <p className="text-sm">{l.text}</p>
             {l.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {l.tags.map(tag => (
-                  <Badge key={tag} variant="outline" className="border-white/20 bg-white/10 text-muted-foreground">
+                  <Badge key={tag} variant="outline" className="border-border bg-accent text-muted-foreground">
                     {tag}
                   </Badge>
                 ))}
@@ -154,14 +154,14 @@ export function QueryNotesListAnswer({ userId, plan, onDismiss, onResult }: { us
         {filtered.map(n => (
           <li
             key={n.id}
-            className="glass-soft rounded-2xl relative flex flex-col gap-2 p-3"
+            className="glass-soft rounded-xl relative flex flex-col gap-2 p-3"
           >
             <p className="text-sm">{n.title || n.body}</p>
             {n.title && <p className="text-xs text-muted-foreground line-clamp-2">{n.body}</p>}
             {n.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {n.tags.map(tag => (
-                  <Badge key={tag} variant="outline" className="border-white/20 bg-white/10 text-muted-foreground">
+                  <Badge key={tag} variant="outline" className="border-border bg-accent text-muted-foreground">
                     {tag}
                   </Badge>
                 ))}

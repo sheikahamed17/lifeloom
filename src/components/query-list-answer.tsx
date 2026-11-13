@@ -20,7 +20,7 @@ export function QueryListAnswer({ title, count, onDismiss, children }: Props) {
   }, [onDismiss])
 
   return (
-    <div className="glass rounded-2xl p-5">
+    <div className="glass rounded-xl p-5">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-accent-2">
           {title}

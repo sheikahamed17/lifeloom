@@ -3,18 +3,17 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-// Dark-only app (PRODUCT.md): no `dark:` variants. Glow is NOT a default: the one
-// primary action on a screen opts in with the `glow-cta` utility.
+// Light, minimal shadcn look: solid primary, no gradients, no glow.
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 focus-visible:ring-accent-2 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] text-primary-foreground hover:brightness-110",
-        outline: "border-white/15 bg-white/5 hover:bg-white/10 aria-expanded:bg-white/10",
-        secondary: "bg-white/10 text-foreground hover:bg-white/15 aria-expanded:bg-white/15",
-        ghost: "hover:bg-white/10 aria-expanded:bg-white/10",
-        destructive: "bg-destructive/15 text-destructive hover:bg-destructive/25 focus-visible:ring-destructive/50",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        outline: "border-border bg-background hover:bg-accent aria-expanded:bg-accent",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary/80",
+        ghost: "hover:bg-accent aria-expanded:bg-accent",
+        destructive: "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:ring-destructive/40",
         link: "text-accent-2 underline-offset-4 hover:underline",
       },
       size: {

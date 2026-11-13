@@ -189,7 +189,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
     const major = (amount / divisor).toLocaleString(undefined, { maximumFractionDigits: prefs.primary_currency === 'JPY' ? 0 : 2 })
 
     return (
-      <div className="glass rounded-2xl p-5">
+      <div className="glass rounded-xl p-5">
         <div className="mb-2 flex items-center justify-between text-xs">
           <span className="text-sm font-semibold text-accent-2">{headerText}</span>
         </div>
@@ -222,7 +222,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
         </div>
 
         {showEntries && (
-          <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="mt-4 pt-4 border-t border-border">
             <FilteredMoneyList entries={filteredEntries} categories={categories} prefs={prefs} rates={rates} />
           </div>
         )}
@@ -235,7 +235,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
     const max = Math.max(1, ...breakdown.map(b => b.amount))
 
     return (
-      <div className="glass rounded-2xl p-5">
+      <div className="glass rounded-xl p-5">
         <div className="mb-2 text-sm font-semibold text-accent-2">{headerText}</div>
 
         {breakdown.length === 0 ? (
@@ -271,7 +271,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
         </div>
 
         {showEntries && (
-          <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="mt-4 pt-4 border-t border-border">
             <FilteredMoneyList entries={filteredEntries} categories={categories} prefs={prefs} rates={rates} />
           </div>
         )}
@@ -285,7 +285,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
     const previousMajor = (previous / divisor).toLocaleString(undefined, { maximumFractionDigits: prefs.primary_currency === 'JPY' ? 0 : 2 })
 
     return (
-      <div className="glass rounded-2xl p-5">
+      <div className="glass rounded-xl p-5">
         <div className="mb-3 text-sm font-semibold text-accent-2">{headerText}</div>
 
         <div className="mb-4 flex items-baseline justify-between gap-2">
@@ -317,7 +317,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
         </div>
 
         {showEntries && (
-          <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="mt-4 pt-4 border-t border-border">
             <FilteredMoneyList entries={filteredEntries} categories={categories} prefs={prefs} rates={rates} />
           </div>
         )}
@@ -329,7 +329,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
     const { series } = modeData
 
     return (
-      <div className="glass rounded-2xl p-5">
+      <div className="glass rounded-xl p-5">
         <div className="mb-3 text-sm font-semibold text-accent-2">{headerText}</div>
 
         {series.length > 0 && (
@@ -350,7 +350,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
         </div>
 
         {showEntries && (
-          <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="mt-4 pt-4 border-t border-border">
             <FilteredMoneyList entries={filteredEntries} categories={categories} prefs={prefs} rates={rates} />
           </div>
         )}
@@ -388,11 +388,11 @@ function FilteredMoneyList({
           return (
             <li
               key={e.id}
-              className="glass-soft relative flex items-start justify-between gap-3 rounded-2xl p-3 text-sm"
+              className="glass-soft relative flex items-start justify-between gap-3 rounded-xl p-3 text-sm"
             >
               <div className="flex flex-col flex-1 min-w-0">
                 {cat && (
-                  <div className="mb-1.5 inline-flex w-fit items-center gap-1 rounded-lg bg-white/8 px-2 py-1 text-xs">
+                  <div className="mb-1.5 inline-flex w-fit items-center gap-1 rounded-lg bg-muted px-2 py-1 text-xs">
                     {cat.icon && <span aria-hidden="true">{cat.icon}</span>}
                     <span className="text-muted-foreground">{cat.name}</span>
                   </div>
@@ -464,13 +464,13 @@ function Sparkline({ points, width = 80, height = 48, label }: { points: number[
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label={label || 'Spending sparkline'}>
       <defs>
         <linearGradient id="sparkGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style={{ stopColor: 'rgb(52 230 255)', stopOpacity: 0.3 }} />
-          <stop offset="100%" style={{ stopColor: 'rgb(52 230 255)', stopOpacity: 0.05 }} />
+          <stop offset="0%" style={{ stopColor: 'rgb(37 99 235)', stopOpacity: 0.3 }} />
+          <stop offset="100%" style={{ stopColor: 'rgb(37 99 235)', stopOpacity: 0.05 }} />
         </linearGradient>
       </defs>
-      <polyline points={pathPoints} fill="none" stroke="rgb(52 230 255)" strokeWidth="1.5" />
+      <polyline points={pathPoints} fill="none" stroke="rgb(37 99 235)" strokeWidth="1.5" />
       <path d={areaPath} fill="url(#sparkGradient)" />
-      <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="2.5" fill="rgb(52 230 255)" />
+      <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="2.5" fill="rgb(37 99 235)" />
     </svg>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, Mic, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { callVoiceApiStreaming, type VoiceStreamEvent } from '@/lib/voice-sse'
 import { enqueueVoice } from '@/lib/voice-queue'
 import { pickAudioMime } from '@/lib/audio-format'
@@ -138,20 +139,18 @@ export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled
   if (compact) {
     return (
       <div className="flex min-w-0 items-center gap-1">
-        <button
-          type="button"
+        <Button
+          variant={state === 'recording' ? 'destructive' : 'ghost'}
+          size="icon-lg"
           disabled={disabled || busy}
           onClick={state === 'recording' ? stop : start}
           aria-label={state === 'recording' ? 'Stop recording' : 'Record a voice capture'}
-          className={cn(
-            'flex size-11 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 disabled:pointer-events-none disabled:opacity-50',
-            state === 'recording' ? 'bg-destructive/15 text-destructive' : 'text-muted-foreground hover:bg-white/10 hover:text-foreground',
-          )}
+          className={cn(state !== 'recording' && 'text-muted-foreground hover:text-foreground')}
         >
           {busy ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
             : state === 'recording' ? <Square className="size-4 fill-current" aria-hidden />
             : <Mic className="size-5" aria-hidden />}
-        </button>
+        </Button>
         {status && (
           <span role="status" className={cn('min-w-0 truncate text-xs', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>
             {status}
@@ -164,15 +163,14 @@ export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative">
-        <button
-          type="button"
+        <Button
           disabled={disabled || busy}
           onClick={state === 'recording' ? stop : start}
-          className="flex size-16 items-center justify-center rounded-full bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] text-primary-foreground glow-cta transition disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-accent-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="size-16 rounded-full glow-cta focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label={state === 'recording' ? 'Stop recording' : 'Start recording'}
         >
           {busy ? <Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden /> : <Mic className="size-6" aria-hidden />}
-        </button>
+        </Button>
         {state === 'recording' && (
           // pointer-events-none: this decorative ring overlays the button; without
           // it, the ring swallows the tap and "tap again to stop" never fires stop().

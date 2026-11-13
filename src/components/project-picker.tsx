@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { Plus } from 'lucide-react'
 import { useProjects } from '@/hooks/use-projects'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 type Props = {
   userId: string
@@ -11,6 +14,9 @@ type Props = {
   onSelect: (projectId: string | null) => void
   noneLabel?: string
 }
+
+const NONE = '__none__'
+const CHIP = 'min-h-10 rounded-lg border border-input px-3 text-sm text-muted-foreground aria-pressed:border-accent-2/50 aria-pressed:bg-accent-2/20 aria-pressed:text-accent-2'
 
 export function ProjectPicker({ userId, selectedId, onSelect, noneLabel = 'No project' }: Props) {
   const projects = useProjects(userId)
@@ -31,29 +37,36 @@ export function ProjectPicker({ userId, selectedId, onSelect, noneLabel = 'No pr
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <button type="button" onClick={() => onSelect(null)}
-        className={cn('rounded-lg border px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none',
-          selectedId === null ? 'bg-accent-2/20 border-accent-2/50 text-accent-2' : 'bg-muted')}>
-        {noneLabel}
-      </button>
-      {projects.map(p => (
-        <button key={p.id} type="button" onClick={() => onSelect(p.id)}
-          className={cn('inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none',
-            selectedId === p.id ? 'bg-accent-2/20 border-accent-2/50 text-accent-2' : 'bg-muted')}>
-          {p.color && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />}
-          {p.name}
-        </button>
-      ))}
+      <ToggleGroup
+        aria-label="Project"
+        spacing={1}
+        value={[selectedId ?? NONE]}
+        onValueChange={v => { const next = v[0]; if (next) onSelect(next === NONE ? null : next) }}
+        className="flex-wrap"
+      >
+        <ToggleGroupItem value={NONE} className={CHIP}>{noneLabel}</ToggleGroupItem>
+        {projects.map(p => (
+          <ToggleGroupItem key={p.id} value={p.id} className={CHIP}>
+            {p.color && <span className="size-2 rounded-full" style={{ backgroundColor: p.color }} aria-hidden />}
+            {p.name}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
       {creating ? (
-        <input autoFocus value={name} onChange={e => setName(e.target.value)}
+        <Input
+          autoFocus
+          aria-label="New project name"
+          value={name}
+          onChange={e => setName(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); createProject() } }}
-          onBlur={createProject} placeholder="project name…"
-          className="glass-soft w-28 rounded-lg px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none" />
+          onBlur={createProject}
+          placeholder="project name…"
+          className="w-36"
+        />
       ) : (
-        <button type="button" onClick={() => setCreating(true)}
-          className="rounded-lg border bg-muted px-2 py-0.5 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none">
-          + New project
-        </button>
+        <Button variant="outline" onClick={() => setCreating(true)} className="text-muted-foreground">
+          <Plus className="size-4" aria-hidden />New project
+        </Button>
       )}
     </div>
   )

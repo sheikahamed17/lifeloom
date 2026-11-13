@@ -9,12 +9,14 @@ import {
 } from 'lucide-react'
 import { PageShell } from '@/components/page-shell'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from '@/components/ui/item'
 import { authClient } from '@/lib/auth-client'
 import { useDemo } from '@/hooks/use-demo'
 
-type Item = { href: string; title: string; description: string; icon: React.ComponentType<{ className?: string }>; hideInDemo?: boolean }
+type NavItem = { href: string; title: string; description: string; icon: React.ComponentType<{ className?: string }>; hideInDemo?: boolean }
 
-const GROUPS: { title: string; items: Item[] }[] = [
+const GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Money',
     items: [
@@ -43,14 +45,29 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ]
 
-const ROW = 'flex min-h-14 items-center gap-3 px-4 py-3 outline-none transition-colors hover:bg-white/5 focus-visible:bg-white/5 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-2'
+const ROW = 'min-h-14 rounded-none px-4 py-3 hover:bg-white/5 focus-visible:bg-white/5 focus-visible:ring-inset focus-visible:ring-accent-2'
 
 function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section aria-labelledby={`settings-${title}`} className="flex flex-col gap-2">
       <h2 id={`settings-${title}`} className="px-1 text-sm font-semibold text-muted-foreground">{title}</h2>
-      <div className="glass overflow-hidden rounded-2xl">{children}</div>
+      <Card className="gap-0 py-0">{children}</Card>
     </section>
+  )
+}
+
+function NavRow({ href, title, description, icon: Icon, muted }: { href: string; title: string; description: string; icon: React.ComponentType<{ className?: string }>; muted?: boolean }) {
+  return (
+    <Item className={ROW} render={<Link href={href} />}>
+      <ItemMedia>
+        <Icon className={muted ? 'size-5 text-muted-foreground' : 'size-5 text-accent-2'} aria-hidden />
+      </ItemMedia>
+      <ItemContent className="min-w-0">
+        <ItemTitle>{title}</ItemTitle>
+        <ItemDescription className="text-xs">{description}</ItemDescription>
+      </ItemContent>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+    </Item>
   )
 }
 
@@ -67,47 +84,40 @@ export default function SettingsPage() {
     <PageShell title="Settings">
       {GROUPS.map(group => (
         <SettingsGroup key={group.title} title={group.title}>
-          <ul className="divide-y divide-white/10">
-            {group.items.filter(i => !(demoMode && i.hideInDemo)).map(item => (
-              <li key={item.href}>
-                <Link href={item.href} className={ROW}>
-                  <item.icon className="size-5 shrink-0 text-accent-2" aria-hidden />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-sm font-medium">{item.title}</span>
-                    <span className="text-xs text-muted-foreground">{item.description}</span>
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                </Link>
-              </li>
+          <ItemGroup>
+            {group.items.filter(i => !(demoMode && i.hideInDemo)).map((item, idx) => (
+              <div key={item.href}>
+                {idx > 0 && <ItemSeparator className="my-0" />}
+                <NavRow href={item.href} title={item.title} description={item.description} icon={item.icon} />
+              </div>
             ))}
-          </ul>
+          </ItemGroup>
         </SettingsGroup>
       ))}
 
       {!demoMode && (
         <SettingsGroup title="Account">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <p className="min-w-0 text-sm">
-              <span className="block text-xs text-muted-foreground">Signed in as</span>
-              <span className="break-all">{email ?? '…'}</span>
-            </p>
+          <Item className="rounded-none px-4 py-3">
+            <ItemContent className="min-w-0">
+              <ItemDescription className="text-xs">Signed in as</ItemDescription>
+              <ItemTitle className="break-all text-sm font-normal">{email ?? '…'}</ItemTitle>
+            </ItemContent>
             <Button variant="outline" onClick={() => authClient.signOut().then(() => router.replace('/login'))}>
               <LogOut className="size-4" aria-hidden />
               Sign out
             </Button>
-          </div>
+          </Item>
         </SettingsGroup>
       )}
 
       <SettingsGroup title="Maintenance">
-        <Link href="/settings/rebuild" className={ROW}>
-          <RefreshCw className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="text-sm font-medium">Rebuild server data</span>
-            <span className="text-xs text-muted-foreground">Re-sync your history into the server tables if budgets or insights look stale. Safe to run any time.</span>
-          </span>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        </Link>
+        <NavRow
+          href="/settings/rebuild"
+          title="Rebuild server data"
+          description="Re-sync your history into the server tables if budgets or insights look stale. Safe to run any time."
+          icon={RefreshCw}
+          muted
+        />
       </SettingsGroup>
     </PageShell>
   )

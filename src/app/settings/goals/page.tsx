@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Archive, ChevronDown, Pencil } from 'lucide-react'
+import { Archive, Pencil } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useGoals } from '@/hooks/use-goals'
 import { useArchivedGoals } from '@/hooks/use-archived-goals'
@@ -14,9 +14,12 @@ import { formatMinor } from '@/lib/currency'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { ArchivedCollapsible, SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/page-shell'
 import { RowMenu } from '@/components/row-menu'
-import { FIELD_SELECT } from '@/components/sort-control'
 import { UndoProvider, useUndo } from '@/components/undo-provider'
 import type { GoalRow } from '@/lib/dexie'
 
@@ -113,15 +116,14 @@ function GoalsPageInner() {
   if (!userId) {
     return (
       <PageShell title="Goals" back={BACK}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
     <PageShell title="Goals" back={BACK}>
-      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Add a goal</h2>
+      <SettingsCard title="Add a goal">
         <div className="flex gap-2">
           <Input
             value={newName}
@@ -149,20 +151,20 @@ function GoalsPageInner() {
             className="h-11"
             aria-label="Target amount"
           />
-          <select
+          <NativeSelect
             value={newAccountId ?? 'none'}
             onChange={e => {
               const val = e.target.value
               setNewAccountId(val === 'none' ? null : val)
             }}
-            className={cn(FIELD_SELECT, 'w-auto max-w-[50%]')}
+            className={cn(SELECT_CLASS, 'w-auto max-w-[50%]')}
             aria-label="Linked account"
           >
-            <option value="none">No linked account</option>
+            <NativeSelectOption value="none">No linked account</NativeSelectOption>
             {assetAccounts.map(acc => (
-              <option key={acc.id} value={acc.id}>{acc.name}</option>
+              <NativeSelectOption key={acc.id} value={acc.id}>{acc.name}</NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         {!newAccountId && (
           <div className="flex gap-2">
@@ -175,25 +177,24 @@ function GoalsPageInner() {
               className="h-11"
               aria-label="Saved so far"
             />
-            <select
+            <NativeSelect
               value={newCurrency}
               onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
-              className={cn(FIELD_SELECT, 'w-auto')}
+              className={cn(SELECT_CLASS, 'w-auto')}
               aria-label="Currency"
             >
               {SUPPORTED_CURRENCIES.map(curr => (
-                <option key={curr} value={curr}>{curr}</option>
+                <NativeSelectOption key={curr} value={curr}>{curr}</NativeSelectOption>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         )}
         <Button onClick={addGoal} className="w-full">Add</Button>
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Active goals</h2>
+      <SettingsCard title="Active goals" contentClassName="gap-2">
         <ul className="glass-soft divide-y divide-white/10 rounded-lg">
-          {goals.length === 0 && <li className="p-3 text-sm text-muted-foreground">Add your first goal.</li>}
+          {goals.length === 0 && <li><Empty className="p-3"><EmptyDescription>Add your first goal.</EmptyDescription></Empty></li>}
           {goals.map(g => (
             <GoalRowItem
               key={g.id}
@@ -204,7 +205,7 @@ function GoalsPageInner() {
             />
           ))}
         </ul>
-      </section>
+      </SettingsCard>
 
       {archived.length > 0 && (
         <ArchivedSection archived={archived} onRestore={restoreGoal} />
@@ -351,32 +352,19 @@ function ArchivedSection({
   archived: ReturnType<typeof useArchivedGoals>
   onRestore: (id: string) => void
 }) {
-  const [isOpen, setIsOpen] = useState(false)
-
   return (
-    <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-        className="-mx-2 flex min-h-11 items-center justify-between rounded-lg px-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
-      >
-        <span>Archived ({archived.length})</span>
-        <ChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} aria-hidden />
-      </button>
-      {isOpen && (
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
-          {archived.map(g => (
-            <li key={g.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
-              <span className="min-w-0 truncate text-sm">
-                {g.icon && <span aria-hidden="true" className="mr-1.5">{g.icon}</span>}
-                {g.name}
-              </span>
-              <Button variant="ghost" onClick={() => onRestore(g.id)} aria-label={`Restore ${g.name}`}>Restore</Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <ArchivedCollapsible count={archived.length}>
+      <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+        {archived.map(g => (
+          <li key={g.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
+            <span className="min-w-0 truncate text-sm">
+              {g.icon && <span aria-hidden="true" className="mr-1.5">{g.icon}</span>}
+              {g.name}
+            </span>
+            <Button variant="ghost" onClick={() => onRestore(g.id)} aria-label={`Restore ${g.name}`}>Restore</Button>
+          </li>
+        ))}
+      </ul>
+    </ArchivedCollapsible>
   )
 }

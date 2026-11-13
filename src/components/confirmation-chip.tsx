@@ -5,6 +5,12 @@ import Image from 'next/image'
 import { ArrowDownLeft, ArrowUpRight, BookOpen, CalendarDays, CheckSquare, ChevronDown, NotebookPen, Plus, Split, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { CategoryPicker } from '@/components/category-picker'
 import { PeriodPicker, type Period } from '@/components/period-picker'
 import { ProjectPicker } from '@/components/project-picker'
@@ -28,9 +34,16 @@ import type { NotePayload } from '@/lib/op-schemas/note'
 import type { CategoryRow } from '@/lib/dexie'
 
 // One vocabulary for every chip: editable values are pills, extra actions are cyan pills.
-const FIELD_PILL = 'inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 text-sm outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2'
-const ACTION_PILL = 'inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-accent-2/40 px-3 text-sm text-accent-2 outline-none transition-colors hover:bg-accent-2/10 focus-visible:ring-2 focus-visible:ring-accent-2'
-const CHIP_LINK = 'inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2'
+const FIELD_PILL = 'h-10 px-3 font-normal'
+const ACTION_PILL = 'h-10 border-accent-2/40 bg-transparent px-3 font-normal text-accent-2 hover:bg-accent-2/10'
+const CHIP_LINK = 'h-10 px-2 font-normal text-muted-foreground hover:text-foreground'
+// A shadcn NativeSelect dressed as a field pill (the wrapper takes the class, the select is targeted).
+const SELECT_PILL = 'w-fit [&_select]:h-10 [&_select]:border-white/15 [&_select]:bg-white/5 [&_select]:pl-3 [&_select]:pr-9 [&_select]:hover:bg-white/10'
+const SELECT_ROW = 'min-w-0 flex-1 [&_select]:h-10 [&_select]:border-white/15 [&_select]:bg-white/5'
+// A tag chip: a pill label with a remove button.
+const TAG_CHIP = 'h-10 gap-1 border-white/15 bg-white/5 pr-0 pl-3 text-sm font-normal text-foreground'
+// A click-to-edit text block (the display state of an inline field).
+const EDIT_BLOCK = 'h-auto min-h-11 w-full justify-start whitespace-pre-wrap px-2 py-2 text-left font-normal'
 
 export type ChipDraft =
   | (MoneyPayload & { kind: 'money'; draftCategoryName?: string; receiptPreviewUrl?: string; draftId?: string; merchant?: string | null; tags?: string[]; account_id?: string | null; shared_with?: ShareDraftRow[] })
@@ -168,13 +181,13 @@ function ConfirmationChipMoney({
           {d.direction === 'out' ? <ArrowUpRight className="size-4" aria-hidden /> : <ArrowDownLeft className="size-4" aria-hidden />}
           {d.direction === 'out' ? 'Spend' : 'Income'}
         </span>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           className={CHIP_LINK}
           onClick={() => setD(s => ({ ...s, direction: s.direction === 'out' ? 'in' : 'out' }))}
         >
           {d.direction === 'out' ? 'It’s income' : 'It’s a spend'}
-        </button>
+        </Button>
       </div>
 
       {d.receiptPreviewUrl && (
@@ -200,36 +213,36 @@ function ConfirmationChipMoney({
           className="mb-3 font-mono text-3xl font-semibold"
         />
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => setEditingField('amount')}
           aria-label={`Amount ${symbol}${major}, edit`}
-          className="mb-3 block rounded-lg font-mono text-3xl font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-accent-2"
+          className="mb-3 h-auto min-h-11 px-2 font-mono text-3xl font-semibold tabular-nums"
         >
           {symbol}{major}
-        </button>
+        </Button>
       )}
 
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
         {!splitMode && (
           <>
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={() => setEditingField(editingField === 'category' ? null : 'category')}
               aria-expanded={editingField === 'category'}
               className={cn(FIELD_PILL, !cat && 'text-muted-foreground')}
             >
               {cat ? <>{cat.icon && <span aria-hidden="true">{cat.icon}</span>}{cat.name}</> : 'Pick a category'}
-            </button>
+            </Button>
             {shareRows.length === 0 && (
-              <button type="button" onClick={enterSplit} className={ACTION_PILL}>
+              <Button variant="outline" onClick={enterSplit} className={ACTION_PILL}>
                 <Split className="size-3.5" aria-hidden /> Split
-              </button>
+              </Button>
             )}
             {d.direction === 'out' && shareRows.length === 0 && (
-              <button type="button" onClick={addShareRow} className={ACTION_PILL}>
+              <Button variant="outline" onClick={addShareRow} className={ACTION_PILL}>
                 <Users className="size-3.5" aria-hidden /> Share with…
-              </button>
+              </Button>
             )}
           </>
         )}
@@ -244,30 +257,30 @@ function ConfirmationChipMoney({
               setD(s => ({ ...s, description: v || null }))
               setEditingField(null)
             }}
-            className="h-9 max-w-60"
+            className="max-w-60"
           />
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="outline"
             onClick={() => setEditingField('description')}
             className={cn(FIELD_PILL, !d.description && 'text-muted-foreground')}
           >
             {d.description || <><Plus className="size-3.5" aria-hidden />Description</>}
-          </button>
+          </Button>
         )}
-        <select
+        <NativeSelect
           value={accountId ?? ''}
           onChange={(e) => { const v = e.target.value; setAccountTouched(true); setD(s => ({ ...s, account_id: v || null })) }}
-          className={cn(FIELD_PILL, 'pr-1')}
+          className={SELECT_PILL}
           aria-label="Account"
         >
-          <option value="">No account</option>
+          <NativeSelectOption value="">No account</NativeSelectOption>
           {accounts.map(acc => (
-            <option key={acc.id} value={acc.id}>
+            <NativeSelectOption key={acc.id} value={acc.id}>
               {acc.name}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       </div>
 
       {editingField === 'category' && (
@@ -285,54 +298,51 @@ function ConfirmationChipMoney({
         <div className="glass-soft mb-3 flex flex-col gap-2 rounded-2xl p-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Split across categories</span>
-            <button
-              type="button"
-              onClick={() => setSplitMode(false)}
-              className="text-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setSplitMode(false)} className="h-10 px-2 text-xs font-normal text-muted-foreground hover:text-foreground">
               Cancel split
-            </button>
+            </Button>
           </div>
           {splitRows.map((row, i) => (
             <div key={row.key} className="flex items-center gap-1.5">
-              <select
+              <NativeSelect
                 value={row.category_id ?? ''}
                 onChange={e => { const v = e.target.value || null; setSplitRows(prev => prev.map((r, j) => (j === i ? { ...r, category_id: v } : r))) }}
                 aria-label={`Category for split part ${i + 1}`}
-                className="flex-1 min-w-0 rounded-lg border bg-muted px-2 py-1 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+                className={SELECT_ROW}
               >
-                <option value="">Uncategorized</option>
+                <NativeSelectOption value="">Uncategorized</NativeSelectOption>
                 {splitCats.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <NativeSelectOption key={c.id} value={c.id}>{c.name}</NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
               <Input
                 inputMode="decimal"
                 value={row.amountText}
                 onChange={e => { const v = e.currentTarget.value; setSplitRows(prev => prev.map((r, j) => (j === i ? { ...r, amountText: v } : r))) }}
                 placeholder="0"
                 aria-label={`Amount for split part ${i + 1}`}
-                className="h-7 w-20 text-xs"
+                className="w-20"
               />
               {splitRows.length > 2 && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setSplitRows(prev => prev.filter((_, j) => j !== i))}
                   aria-label={`Remove split part ${i + 1}`}
-                  className="text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+                  className="text-muted-foreground hover:text-destructive"
                 >
                   <X className="size-3.5" aria-hidden />
-                </button>
+                </Button>
               )}
             </div>
           ))}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={() => setSplitRows(prev => [...prev, { key: splitKey.current++, category_id: null, amountText: '' }])}
-            className={cn(CHIP_LINK, 'self-start text-accent-2')}
+            className={cn(CHIP_LINK, 'self-start text-accent-2 hover:text-accent-2')}
           >
             <Plus className="size-3.5" aria-hidden /> Add category
-          </button>
+          </Button>
           <div className={cn('text-xs font-mono tabular-nums', remaining === 0 ? 'text-muted-foreground' : 'text-destructive')}>
             Remaining: {symbol}{(remaining / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
@@ -344,13 +354,9 @@ function ConfirmationChipMoney({
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Shared with</span>
             {!shareRows.some(r => r.settled) && (
-              <button
-                type="button"
-                onClick={() => setShareRows([])}
-                className="relative text-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded before:absolute before:-inset-x-1 before:-inset-y-3"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShareRows([])} className="h-10 px-2 text-xs font-normal text-muted-foreground hover:text-foreground">
                 Not shared
-              </button>
+              </Button>
             )}
           </div>
           {shareRows.map((row, i) => row.settled ? (
@@ -363,7 +369,7 @@ function ConfirmationChipMoney({
               {row.shareId ? (
                 <span className="min-w-0 flex-1 truncate text-xs" title={row.name}>{row.name}</span>
               ) : (
-              <select
+              <NativeSelect
                 value={row.personId ?? '__new__'}
                 onChange={e => {
                   const v = e.target.value
@@ -371,13 +377,13 @@ function ConfirmationChipMoney({
                   setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, personId: person ? person.id : null, name: person ? person.name : '' } : r)))
                 }}
                 aria-label={`Person ${i + 1}`}
-                className="min-w-0 flex-1 rounded-lg border bg-muted px-2 py-1 text-base md:text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+                className={SELECT_ROW}
               >
-                <option value="__new__">New person…</option>
+                <NativeSelectOption value="__new__">New person…</NativeSelectOption>
                 {people.filter(p => p.id === row.personId || !shareRows.some(r => r.personId === p.id)).map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <NativeSelectOption key={p.id} value={p.id}>{p.name}</NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
               )}
               {!row.shareId && row.personId === null && (
                 <Input
@@ -387,7 +393,7 @@ function ConfirmationChipMoney({
                   onChange={e => { const v = e.currentTarget.value; setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, name: v } : r))) }}
                   placeholder="Name"
                   aria-label={`Name of person ${i + 1}`}
-                  className="h-7 w-24 text-base md:text-xs"
+                  className="w-24"
                 />
               )}
               <Input
@@ -396,25 +402,26 @@ function ConfirmationChipMoney({
                 onChange={e => { const v = e.currentTarget.value; setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, amountText: v } : r))) }}
                 placeholder="0"
                 aria-label={`Amount owed by person ${i + 1}`}
-                className="h-7 w-20 text-base md:text-xs"
+                className="w-20"
               />
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShareRows(prev => prev.filter((_, j) => j !== i))}
                 aria-label={`Remove person ${i + 1}`}
-                className="relative text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded before:absolute before:-inset-2"
+                className="text-muted-foreground hover:text-destructive"
               >
                 <X className="size-3.5" aria-hidden />
-              </button>
+              </Button>
             </div>
           ))}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={addShareRow}
-            className={cn(CHIP_LINK, 'self-start text-accent-2')}
+            className={cn(CHIP_LINK, 'self-start text-accent-2 hover:text-accent-2')}
           >
             <Plus className="size-3.5" aria-hidden /> Add person
-          </button>
+          </Button>
           <div className={cn('text-xs font-mono tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
             {sharesTotalMinor <= d.amount
               ? `Your share: ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
@@ -423,19 +430,16 @@ function ConfirmationChipMoney({
         </div>
       )}
 
-      <button
-        type="button"
-        aria-expanded={moreOpen}
-        aria-controls="chip-more"
-        onClick={() => setMoreOpen(o => !o)}
-        className="mb-3 flex min-h-11 w-full items-center gap-2 rounded-lg border-t border-white/10 pt-1 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-accent-2"
+      <Collapsible open={moreOpen} onOpenChange={setMoreOpen}>
+      <CollapsibleTrigger
+        render={<Button variant="ghost" className="mb-3 h-11 w-full justify-start gap-2 rounded-none border-x-0 border-b-0 border-t border-white/10 px-0 text-left font-normal hover:bg-transparent aria-expanded:bg-transparent" />}
       >
         <span className="font-medium">More details</span>
         <span className="min-w-0 flex-1 truncate text-muted-foreground">{moreSummary}</span>
         <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none', moreOpen && 'rotate-180')} aria-hidden />
-      </button>
+      </CollapsibleTrigger>
 
-      {moreOpen && (
+      <CollapsibleContent>
         <div id="chip-more" className="mb-3 flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-1.5">
             {editingField === 'merchant' ? (
@@ -449,13 +453,13 @@ function ConfirmationChipMoney({
                   setD(s => ({ ...s, merchant: v || null }))
                   setEditingField(null)
                 }}
-                className="h-9 max-w-60"
+                className="max-w-60"
                 placeholder="Merchant or payee"
               />
             ) : (
-              <button type="button" onClick={() => setEditingField('merchant')} className={cn(FIELD_PILL, !d.merchant && 'text-muted-foreground')}>
+              <Button variant="outline" onClick={() => setEditingField('merchant')} className={cn(FIELD_PILL, !d.merchant && 'text-muted-foreground')}>
                 {d.merchant || <><Plus className="size-3.5" aria-hidden />Merchant</>}
-              </button>
+              </Button>
             )}
             {editingField === 'date' ? (
               <Input
@@ -468,43 +472,44 @@ function ConfirmationChipMoney({
                   if (v) setD(s => ({ ...s, occurred_at: new Date(v + 'T12:00:00').toISOString() }))
                   setEditingField(null)
                 }}
-                className="h-9 w-auto"
+                className="w-auto"
               />
             ) : (
-              <button type="button" onClick={() => setEditingField('date')} className={FIELD_PILL} aria-label={`Date ${formatDay(d.occurred_at)}, edit`}>
+              <Button variant="outline" onClick={() => setEditingField('date')} className={FIELD_PILL} aria-label={`Date ${formatDay(d.occurred_at)}, edit`}>
                 <CalendarDays className="size-3.5" aria-hidden />{formatDay(d.occurred_at)}
-              </button>
+              </Button>
             )}
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Tags">
             {(d.tags ?? []).map(tag => (
-              <span key={tag} className={cn(FIELD_PILL, 'pr-0')}>
+              <Badge key={tag} variant="outline" className={TAG_CHIP}>
                 {tag}
-                <button type="button" onClick={() => setD(s => ({ ...s, tags: (s.tags ?? []).filter(t => t !== tag) }))}
-                  aria-label={`Remove tag “${tag}”`} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2">
+                <Button variant="ghost" size="icon" onClick={() => setD(s => ({ ...s, tags: (s.tags ?? []).filter(t => t !== tag) }))}
+                  aria-label={`Remove tag “${tag}”`} className="text-muted-foreground hover:text-foreground">
                   <X className="size-3.5" aria-hidden />
-                </button>
-              </span>
+                </Button>
+              </Badge>
             ))}
             <Input value={newTag} onChange={e => setNewTag(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const trimmed = newTag.trim(); if (trimmed && !(d.tags ?? []).includes(trimmed) && (d.tags ?? []).length < 20) { setD(s => ({ ...s, tags: [...(s.tags ?? []), trimmed] })); setNewTag('') } } }}
-              placeholder="Add a tag…" aria-label="Add a tag, then press Enter" className="h-9 w-32" />
+              placeholder="Add a tag…" aria-label="Add a tag, then press Enter" className="w-32" />
           </div>
 
           {!isEdit && !splitMode && !sharesActive && (
             <div className="flex flex-col gap-2">
-              <label className="glass-soft flex min-h-11 items-center justify-between rounded-lg px-3 text-sm">
+              <Label className="glass-soft min-h-11 justify-between rounded-lg px-3 text-sm font-normal text-foreground">
                 <span>Repeat this entry</span>
-                <input type="checkbox" className="size-4 accent-[var(--accent-2)]" checked={makeRecurring} onChange={e => setMakeRecurring(e.currentTarget.checked)} />
-              </label>
+                <Switch checked={makeRecurring} onCheckedChange={setMakeRecurring} />
+              </Label>
               {makeRecurring && (
                 <PeriodPicker period={period} intervalCount={intervalCount} onChange={(p, n) => { setPeriod(p); setIntervalCount(n) }} />
               )}
             </div>
           )}
         </div>
-      )}
+      </CollapsibleContent>
+      </Collapsible>
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
@@ -599,13 +604,13 @@ function ConfirmationChipTask({
           className="mb-3 font-mono text-2xl font-semibold"
         />
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => setEditingTitle(true)}
-          className="mb-3 block font-mono text-2xl font-semibold text-left focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+          className="mb-3 h-auto min-h-11 justify-start whitespace-normal px-2 text-left font-mono text-2xl font-semibold"
         >
           {d.title}
-        </button>
+        </Button>
       )}
 
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
@@ -619,43 +624,43 @@ function ConfirmationChipTask({
               setD(s => ({ ...s, due_at: v ? new Date(v).toISOString() : null }))
               setEditingDue(false)
             }}
-            className="h-7 text-xs"
+            className="w-auto"
           />
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="outline"
             onClick={() => setEditingDue(true)}
             className={FIELD_PILL}
           >
             {d.due_at ? <><CalendarDays className="size-3.5" aria-hidden />{dueDisplay}</> : <><Plus className="size-3.5" aria-hidden />Due date</>}
-          </button>
+          </Button>
         )}
 
-        <select
+        <NativeSelect
           value={d.priority}
           aria-label="Priority"
           onChange={e => { const v = e.target.value as 'low' | 'medium' | 'high'; setD(s => ({ ...s, priority: v })) }}
-          className={cn(FIELD_PILL, 'pr-1')}
+          className={SELECT_PILL}
         >
-          <option value="low">Low priority</option>
-          <option value="medium">Medium priority</option>
-          <option value="high">High priority</option>
-        </select>
+          <NativeSelectOption value="low">Low priority</NativeSelectOption>
+          <NativeSelectOption value="medium">Medium priority</NativeSelectOption>
+          <NativeSelectOption value="high">High priority</NativeSelectOption>
+        </NativeSelect>
       </div>
 
       <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
         {(d.tags ?? []).map(tag => (
-          <div key={tag} className={cn(FIELD_PILL, 'pr-0')}>
+          <Badge key={tag} variant="outline" className={TAG_CHIP}>
             <span>{tag}</span>
-            <button type="button" onClick={() => setD(s => ({ ...s, tags: (s.tags ?? []).filter(t => t !== tag) }))}
-              aria-label={`Remove tag "${tag}"`} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2">
+            <Button variant="ghost" size="icon" onClick={() => setD(s => ({ ...s, tags: (s.tags ?? []).filter(t => t !== tag) }))}
+              aria-label={`Remove tag "${tag}"`} className="text-muted-foreground hover:text-foreground">
               <X className="size-3.5" aria-hidden />
-            </button>
-          </div>
+            </Button>
+          </Badge>
         ))}
         <Input value={newTag} onChange={e => setNewTag(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setD(s => ({ ...s, tags: addTag(s.tags ?? [], newTag) })); setNewTag('') } }}
-          placeholder="Add a tag…" aria-label="Add task tag" className="h-9 w-32" />
+          placeholder="Add a tag…" aria-label="Add task tag" className="w-32" />
       </div>
       <div className="mb-3">
         <ProjectPicker userId={userId} selectedId={d.project_id ?? null} onSelect={id => setD(s => ({ ...s, project_id: id }))} />
@@ -663,14 +668,10 @@ function ConfirmationChipTask({
 
       {!isEdit && (
         <div className="mb-3 flex flex-col gap-2">
-          <label className="glass-soft flex min-h-11 items-center justify-between rounded-lg px-3 text-sm">
+          <Label className="glass-soft min-h-11 justify-between rounded-lg px-3 text-sm font-normal text-foreground">
             <span>Repeat after it’s done</span>
-            <input
-              type="checkbox"
-              checked={makeRecurring}
-              onChange={e => setMakeRecurring(e.currentTarget.checked)}
-            />
-          </label>
+            <Switch checked={makeRecurring} onCheckedChange={setMakeRecurring} />
+          </Label>
           {makeRecurring && (
             <PeriodPicker
               period={period}
@@ -739,7 +740,7 @@ function ConfirmationChipLearning({
       </div>
 
       {editingText ? (
-        <textarea
+        <Textarea
           autoFocus
           defaultValue={d.text}
           onBlur={(e) => {
@@ -747,32 +748,34 @@ function ConfirmationChipLearning({
             if (v) setD(s => ({ ...s, text: v }))
             setEditingText(false)
           }}
-          className="mb-3 w-full rounded-lg border bg-background p-2 font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none resize-none"
+          className="mb-3 resize-none font-mono text-sm"
           rows={3}
+          aria-label="What you learned"
         />
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => setEditingText(true)}
-          className="mb-3 block w-full whitespace-pre-wrap text-left font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+          className={cn(EDIT_BLOCK, 'mb-3 font-mono text-sm')}
         >
           {d.text}
-        </button>
+        </Button>
       )}
 
       <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
         {d.tags.map((tag) => (
-          <div key={tag} className={cn(FIELD_PILL, 'pr-0')}>
+          <Badge key={tag} variant="outline" className={TAG_CHIP}>
             <span>{tag}</span>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => removeTag(tag)}
               aria-label={`Remove tag "${tag}"`}
-              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
+              className="text-muted-foreground hover:text-foreground"
             >
               <X className="size-3.5" aria-hidden />
-            </button>
-          </div>
+            </Button>
+          </Badge>
         ))}
         {d.tags.length < 12 && (
           <div className="flex items-center gap-1">
@@ -787,16 +790,16 @@ function ConfirmationChipLearning({
               }}
               placeholder="Add a tag…"
               aria-label="Add new tag"
-              className="h-9 w-32"
+              className="w-32"
             />
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="icon"
               onClick={() => addTag(newTag)}
               aria-label="Add tag"
-              className="flex size-9 items-center justify-center rounded-lg border border-white/15 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2"
             >
               <Plus className="size-4" aria-hidden />
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -812,17 +815,17 @@ function ConfirmationChipLearning({
           }}
           placeholder="source / where learned…"
           aria-label="Where you learned it"
-          className="mb-3 h-7 text-xs"
+          className="mb-3"
         />
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="outline"
           onClick={() => setEditingAttribution(true)}
           aria-label="Edit source or attribution"
-          className="mb-3 block w-full min-h-11 flex items-center text-left rounded-lg border bg-muted px-2 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+          className={cn(EDIT_BLOCK, 'mb-3 text-xs text-muted-foreground')}
         >
           {d.attribution || '+ source / attribution'}
-        </button>
+        </Button>
       )}
 
       <div className="flex gap-2">
@@ -883,7 +886,7 @@ function ConfirmationChipNote({
       </div>
 
       {editingBody ? (
-        <textarea
+        <Textarea
           autoFocus
           defaultValue={d.body}
           onBlur={(e) => {
@@ -891,19 +894,19 @@ function ConfirmationChipNote({
             if (v) setD(s => ({ ...s, body: v }))
             setEditingBody(false)
           }}
-          className="mb-3 w-full rounded-lg border bg-background p-2 font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none resize-none"
+          className="mb-3 resize-none font-mono text-sm"
           rows={3}
           aria-label="Note body"
         />
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => setEditingBody(true)}
-          className="mb-3 block w-full min-h-11 whitespace-pre-wrap text-left font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded flex items-center"
+          className={cn(EDIT_BLOCK, 'mb-3 font-mono text-sm')}
           aria-label="Edit note body"
         >
           {d.body}
-        </button>
+        </Button>
       )}
 
       {editingTitle ? (
@@ -920,29 +923,30 @@ function ConfirmationChipNote({
           className="mb-3 font-mono text-sm"
         />
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="outline"
           onClick={() => setEditingTitle(true)}
-          className="mb-3 block w-full min-h-11 flex items-center text-left rounded-lg border bg-muted px-2 text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+          className={cn(EDIT_BLOCK, 'mb-3')}
           aria-label="Edit note title"
         >
           {d.title ? <span className="font-semibold">{d.title}</span> : <span className="text-muted-foreground">+ title (optional)</span>}
-        </button>
+        </Button>
       )}
 
       <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
         {d.tags.map((tag) => (
-          <div key={tag} className={cn(FIELD_PILL, 'pr-0')}>
+          <Badge key={tag} variant="outline" className={TAG_CHIP}>
             <span>{tag}</span>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => removeTag(tag)}
               aria-label={`Remove tag "${tag}"`}
-              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
+              className="text-muted-foreground hover:text-foreground"
             >
               <X className="size-3.5" aria-hidden />
-            </button>
-          </div>
+            </Button>
+          </Badge>
         ))}
         {d.tags.length < 12 && (
           <div className="flex items-center gap-1">
@@ -957,16 +961,16 @@ function ConfirmationChipNote({
               }}
               placeholder="Add a tag…"
               aria-label="Add new tag"
-              className="h-9 w-32"
+              className="w-32"
             />
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="icon"
               onClick={() => addTag(newTag)}
               aria-label="Add tag"
-              className="flex size-9 items-center justify-center rounded-lg border border-white/15 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2"
             >
               <Plus className="size-4" aria-hidden />
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -1010,18 +1014,18 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
         <span className="font-mono tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
         {' '}for {draft.summary} ({draft.share_ids.length} {draft.share_ids.length === 1 ? 'share' : 'shares'}).
       </p>
-      <label className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-muted-foreground">Paid into</span>
-        <select
+      <Label className="flex-wrap text-xs">
+        <span>Paid into</span>
+        <NativeSelect
           value={receiveInto ?? ''}
           onChange={e => { setTouched(true); setAccountId(e.target.value || null) }}
-          className="rounded-lg border bg-muted px-2 py-1 text-base md:text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+          className={SELECT_PILL}
           aria-label="Account the repayment landed in"
         >
-          <option value="">No account</option>
-          {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-        </select>
-      </label>
+          <NativeSelectOption value="">No account</NativeSelectOption>
+          {accounts.map(acc => <NativeSelectOption key={acc.id} value={acc.id}>{acc.name}</NativeSelectOption>)}
+        </NativeSelect>
+      </Label>
       <p className="text-xs text-muted-foreground">This clears the debt and tops up the account. It isn’t counted as income.</p>
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
@@ -1056,8 +1060,8 @@ function ConfirmationChipBudget({ draft, onConfirm, onCancel }: {
         <span className="font-mono tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>/mo
       </span>
       <span className="flex items-center gap-2">
-        <button type="button" aria-label="Confirm budget" className="min-h-11 px-3 text-xs rounded-lg bg-accent-2/20 text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none" onClick={handleConfirm} disabled={busy}>Set</button>
-        <button type="button" aria-label="Cancel" className="min-h-11 px-3 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded-lg" onClick={onCancel} disabled={busy}>Cancel</button>
+        <Button variant="secondary" aria-label="Confirm budget" className="h-11 bg-accent-2/20 px-3 text-accent-2 hover:bg-accent-2/30" onClick={handleConfirm} disabled={busy}>Set</Button>
+        <Button variant="ghost" aria-label="Cancel" className="h-11 px-3 text-muted-foreground" onClick={onCancel} disabled={busy}>Cancel</Button>
       </span>
     </div>
   )

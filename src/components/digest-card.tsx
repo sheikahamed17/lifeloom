@@ -48,13 +48,16 @@ export function DigestCard({ userId }: { userId: string }) {
     <div className="flex flex-col gap-1">
       <InsightCard insight={row} variant="card" />
       <div className="flex items-center justify-between gap-2">
-        <Link
-          href="/insights"
-          className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
+        <Button
+          variant="ghost"
+          size="lg"
+          nativeButton={false}
+          render={<Link href="/insights" />}
+          className="-ml-3 gap-1 px-3 text-muted-foreground hover:text-foreground"
         >
           See past weeks
           <ChevronRight className="size-4" aria-hidden />
-        </Link>
+        </Button>
         <Button
           variant="ghost"
           size="icon-lg"

@@ -4,6 +4,11 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronDown, Mail, MessageSquare, Paperclip, Pencil, Repeat, Split, Trash2, Users } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { Separator } from '@/components/ui/separator'
 import { SwipeRow } from '@/components/swipe-row'
 import { RowMenu } from '@/components/row-menu'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
@@ -33,7 +38,7 @@ import type { MoneyFilter, MoneySort } from '@/lib/money-filter-sort'
 type Props = { userId: string; onEdit?: (row: MoneyEntryRow) => void; filter?: MoneyFilter; sort?: MoneySort }
 
 // Small metadata chips under an entry: one shape, one size (12 px), Lucide icons only.
-const META = 'inline-flex min-h-6 items-center gap-1 rounded-full border border-white/15 px-2 text-xs text-muted-foreground'
+const META = 'h-auto min-h-6 overflow-visible border-white/15 px-2 font-normal text-muted-foreground'
 
 /** "−₹120" / "+₹85,000" (JPY whole), the same signed form the save toast uses. */
 function formatAmount(e: MoneyEntryRow): string {
@@ -106,11 +111,13 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
 
   if (groups.length === 0) {
     return (
-      <p className="glass-soft rounded-2xl p-4 text-sm text-muted-foreground">
-        {filtered
-          ? 'No entries match these filters.'
-          : 'No money entries yet. Type “spent 80 on chai” above, or connect bank emails in Settings → Auto-import.'}
-      </p>
+      <Empty className="glass-soft p-4">
+        <EmptyDescription>
+          {filtered
+            ? 'No entries match these filters.'
+            : 'No money entries yet. Type “spent 80 on chai” above, or connect bank emails in Settings → Auto-import.'}
+        </EmptyDescription>
+      </Empty>
     )
   }
 
@@ -122,63 +129,65 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
           const first = g.parts[0]
           return (
             <li key={g.groupId} id={`pulse-row-${g.groupId}`} className="glass-soft rounded-2xl p-3 text-sm">
-              <div className="flex items-start justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(g.groupId)}
-                  aria-expanded={open}
-                  className="flex min-w-0 flex-1 flex-col items-start gap-1 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-accent-2"
-                >
-                  <span className="text-sm font-medium md:text-base">{first.description || first.merchant || 'Split payment'}</span>
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Split className="size-3.5" aria-hidden />
-                    Split {g.parts.length} ways
-                    <ChevronDown className={cn('size-3.5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
-                  </span>
-                  <EntryTimestamp occurredAt={first.occurred_at} />
-                </button>
-                <div className="flex flex-col items-end">
-                  <span className={cn('whitespace-nowrap font-mono text-sm font-medium tabular-nums', first.direction === 'out' ? 'text-destructive' : 'text-income')}>
-                    {signedAmount(g.total, first.currency, first.direction)}
-                  </span>
-                  <div className="-mb-2 -mr-2">
-                    <RowMenu
-                      label={`Actions for ${g.parts.length}-way split`}
-                      open={menuFor === g.groupId}
-                      onOpenChange={o => setMenuFor(o ? g.groupId : null)}
-                      items={[{ label: `Delete split (${g.parts.length} parts)`, icon: Trash2, destructive: true, onSelect: () => deleteGroup(g.parts) }]}
-                    />
+              <Collapsible open={open} onOpenChange={() => toggleGroup(g.groupId)}>
+                <div className="flex items-start justify-between gap-3">
+                  <CollapsibleTrigger
+                    render={<Button variant="ghost" />}
+                    className="h-auto min-w-0 flex-1 flex-col items-start justify-start gap-1 whitespace-normal px-0 py-0 text-left font-normal hover:bg-transparent"
+                  >
+                    <span className="text-sm font-medium md:text-base">{first.description || first.merchant || 'Split payment'}</span>
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Split className="size-3.5" aria-hidden />
+                      Split {g.parts.length} ways
+                      <ChevronDown className={cn('size-3.5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
+                    </span>
+                    <EntryTimestamp occurredAt={first.occurred_at} />
+                  </CollapsibleTrigger>
+                  <div className="flex flex-col items-end">
+                    <span className={cn('whitespace-nowrap font-mono text-sm font-medium tabular-nums', first.direction === 'out' ? 'text-destructive' : 'text-income')}>
+                      {signedAmount(g.total, first.currency, first.direction)}
+                    </span>
+                    <div className="-mb-2 -mr-2">
+                      <RowMenu
+                        label={`Actions for ${g.parts.length}-way split`}
+                        open={menuFor === g.groupId}
+                        onOpenChange={o => setMenuFor(o ? g.groupId : null)}
+                        items={[{ label: `Delete split (${g.parts.length} parts)`, icon: Trash2, destructive: true, onSelect: () => deleteGroup(g.parts) }]}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              {open && (
-                <ul className="mt-2 flex flex-col border-t border-white/10 pt-1" aria-label="Split parts">
-                  {g.parts.map(p => {
-                    const pc = resolve(p.category_id)
-                    return (
-                      <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          {pc?.icon && <span aria-hidden="true">{pc.icon}</span>}
-                          <span className="truncate text-muted-foreground">{pc?.name ?? 'Uncategorized'}</span>
-                        </span>
-                        <span className="flex items-center">
-                          <span className="font-mono tabular-nums">{formatMinor(p.amount, p.currency)}</span>
-                          {onEdit && (
-                            <button
-                              type="button"
-                              aria-label={`Edit ${pc?.name ?? 'split part'}`}
-                              onClick={() => onEdit(p)}
-                              className="flex size-11 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2"
-                            >
-                              <Pencil className="size-4" aria-hidden />
-                            </button>
-                          )}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
+                <CollapsibleContent>
+                  <Separator className="mt-2" />
+                  <ul className="flex flex-col pt-1" aria-label="Split parts">
+                    {g.parts.map(p => {
+                      const pc = resolve(p.category_id)
+                      return (
+                        <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            {pc?.icon && <span aria-hidden="true">{pc.icon}</span>}
+                            <span className="truncate text-muted-foreground">{pc?.name ?? 'Uncategorized'}</span>
+                          </span>
+                          <span className="flex items-center">
+                            <span className="font-mono tabular-nums">{formatMinor(p.amount, p.currency)}</span>
+                            {onEdit && (
+                              <Button
+                                variant="ghost"
+                                size="icon-lg"
+                                aria-label={`Edit ${pc?.name ?? 'split part'}`}
+                                onClick={() => onEdit(p)}
+                                className="text-muted-foreground hover:text-accent-2"
+                              >
+                                <Pencil className="size-4" aria-hidden />
+                              </Button>
+                            )}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </CollapsibleContent>
+              </Collapsible>
             </li>
           )
         }
@@ -218,18 +227,19 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
                 </p>
                 {(e.tags?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {(e.tags ?? []).map(tag => <span key={tag} className={META}>{tag}</span>)}
+                    {(e.tags ?? []).map(tag => <Badge key={tag} variant="outline" className={META}>{tag}</Badge>)}
                   </div>
                 )}
                 <div className="flex flex-wrap items-center gap-1.5">
                   <EntryTimestamp occurredAt={e.occurred_at} />
-                  {e.source === 'email' && <span className={META}><Mail className="size-3" aria-hidden />Email</span>}
-                  {e.source === 'sms' && <span className={META}><MessageSquare className="size-3" aria-hidden />SMS</span>}
-                  {e.recurring_rule_id && <span className={META}><Repeat className="size-3" aria-hidden />Recurring</span>}
+                  {e.source === 'email' && <Badge variant="outline" className={META}><Mail aria-hidden />Email</Badge>}
+                  {e.source === 'sms' && <Badge variant="outline" className={META}><MessageSquare aria-hidden />SMS</Badge>}
+                  {e.recurring_rule_id && <Badge variant="outline" className={META}><Repeat aria-hidden />Recurring</Badge>}
                   {e.currency !== prefs.primary_currency && (
-                    <button
-                      type="button"
-                      className={cn(META, 'outline-none hover:text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2')}
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className={cn(META, 'relative rounded-full bg-transparent before:absolute before:-inset-y-2.5 before:inset-x-0 hover:bg-transparent hover:text-accent-2')}
                       aria-expanded={expandedFx === e.id}
                       onClick={() => setExpandedFx(expandedFx === e.id ? null : e.id)}
                     >
@@ -239,31 +249,31 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
                           ? `≈ ${formatMinor(conv.amount, prefs.primary_currency)} at the ${formatDay(conv.rateDate)} rate`
                           : 'No exchange rate for this date yet'
                       })() : `In ${currencySymbol(prefs.primary_currency)}`}
-                    </button>
+                    </Button>
                   )}
                   {shared && mine!.map(s => (
-                    <Link
+                    <Badge
                       key={s.id}
-                      href={`/settings/people#${s.person_id}`}
+                      variant="outline"
+                      render={<Link href={`/settings/people#${s.person_id}`} />}
                       className={cn(
                         META,
-                        'relative outline-none transition-colors before:absolute before:-inset-y-2.5 before:inset-x-0 focus-visible:ring-2 focus-visible:ring-accent-2',
+                        'relative before:absolute before:-inset-y-2.5 before:inset-x-0',
                         !s.settled_at && 'border-accent-2/40 text-accent-2 hover:bg-accent-2/10',
                       )}
                     >
-                      <Users className="size-3" aria-hidden />
+                      <Users aria-hidden />
                       {personName.get(s.person_id) ?? 'Someone'} {s.settled_at ? 'paid' : `owes ${formatMinor(s.amount, e.currency)}`}
-                    </Link>
+                    </Badge>
                   ))}
                   {e.receipt_key && (
-                    <a
-                      href={`/api/receipt/${e.receipt_key}`}
-                      target="_blank"
-                      rel="noopener"
-                      className={cn(META, 'relative outline-none before:absolute before:-inset-y-2.5 before:inset-x-0 hover:text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2')}
+                    <Badge
+                      variant="outline"
+                      render={<a href={`/api/receipt/${e.receipt_key}`} target="_blank" rel="noopener" />}
+                      className={cn(META, 'relative before:absolute before:-inset-y-2.5 before:inset-x-0 hover:text-accent-2')}
                     >
-                      <Paperclip className="size-3" aria-hidden />Receipt
-                    </a>
+                      <Paperclip aria-hidden />Receipt
+                    </Badge>
                   )}
                 </div>
               </div>

@@ -9,6 +9,11 @@ import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { SettingsCard } from '../_ui'
 import { PageShell } from '@/components/page-shell'
 import { RowMenu } from '@/components/row-menu'
 import { UndoProvider, useUndo } from '@/components/undo-provider'
@@ -78,27 +83,25 @@ function ProjectsPageInner() {
   if (!userId) {
     return (
       <PageShell title="Projects" back={BACK}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
     <PageShell title="Projects" back={BACK}>
-      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Add a project</h2>
+      <SettingsCard title="Add a project">
         <div className="flex gap-2">
           <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New project…"
             onKeyDown={e => { if (e.key === 'Enter') addProject() }} aria-label="New project name" />
           <Button onClick={addProject}>Add</Button>
         </div>
         <ColourPicker value={newColor} onPick={setNewColor} label="Colour for the new project" />
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Your projects</h2>
+      <SettingsCard title="Your projects" contentClassName="gap-2">
         <ul className="glass-soft divide-y divide-white/10 rounded-lg">
-          {projects.length === 0 && <li className="p-3 text-sm text-muted-foreground">No projects yet.</li>}
+          {projects.length === 0 && <li><Empty className="p-3"><EmptyDescription>No projects yet.</EmptyDescription></Empty></li>}
           {projects.map(p => (
             <ProjectRowItem
               key={p.id}
@@ -109,31 +112,35 @@ function ProjectsPageInner() {
             />
           ))}
         </ul>
-      </section>
+      </SettingsCard>
     </PageShell>
   )
 }
 
 function ColourPicker({ value, onPick, label }: { value: string | null; onPick: (c: string) => void; label: string }) {
   return (
-    <div role="group" aria-label={label} className="-ml-2.5 flex flex-wrap">
+    <ToggleGroup
+      aria-label={label}
+      value={value ? [value] : []}
+      onValueChange={v => { if (v[0]) onPick(v[0]) }}
+      spacing={1}
+      className="-ml-1.5 flex-wrap"
+    >
       {PALETTE.map(c => (
-        <button
+        <ToggleGroupItem
           key={c}
-          type="button"
-          onClick={() => onPick(c)}
+          value={c}
           aria-label={COLOUR_NAME[c] ?? c}
-          aria-pressed={value === c}
-          className="flex size-11 items-center justify-center rounded-lg outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2"
+          className="size-11 min-w-11 p-0"
         >
           <span
             aria-hidden="true"
             className={cn('size-6 rounded-full border-2', value === c ? 'border-foreground' : 'border-transparent')}
             style={{ backgroundColor: c }}
           />
-        </button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   )
 }
 
@@ -153,7 +160,7 @@ function ProjectRowItem({
         <Input value={name} onChange={e => setName(e.target.value)}
           onBlur={() => { const n = name.trim(); if (n && n !== project.name) onWrite(project.id, 'update', { name: n }) }}
           aria-label={`Name of project ${project.name}`} className={cn('flex-1', project.archived && 'text-muted-foreground')} />
-        {project.archived ? <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-muted-foreground">Archived</span> : null}
+        {project.archived ? <Badge variant="secondary" className="shrink-0 text-muted-foreground">Archived</Badge> : null}
         <RowMenu
           label={`Actions for ${project.name}`}
           open={menuOpen}

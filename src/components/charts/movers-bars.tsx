@@ -4,7 +4,9 @@ import { useId, useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import type { Mover } from '@/lib/analytics'
 import { DIVERGING } from '@/lib/chart-palette'
-import { ChartHeader, TABLE, fullMoney } from '@/components/charts/chart-kit'
+import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ChartEmpty, ChartHeader, fullMoney } from '@/components/charts/chart-kit'
 
 interface MoversBarsProps {
   movers: Mover[]
@@ -27,30 +29,26 @@ export function MoversBars({ movers, symbol, jpy, limit = 8 }: MoversBarsProps) 
   const pct = (m: Mover) => (m.deltaPct === null ? 'new' : `${m.deltaPct > 0 ? '+' : ''}${m.deltaPct.toFixed(0)}%`)
 
   if (top.length === 0) {
-    return (
-      <section aria-labelledby={id} className="flex flex-col gap-2">
-        <h2 id={id} className="text-sm font-semibold">Biggest changes</h2>
-        <p className="text-sm text-muted-foreground">Nothing to compare yet. This needs two periods of spending.</p>
-      </section>
-    )
+    return <ChartEmpty id={id} title="Biggest changes">Nothing to compare yet. This needs two periods of spending.</ChartEmpty>
   }
 
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3">
+    <Card role="region" aria-labelledby={id}>
       <ChartHeader id={id} title="Biggest changes vs last period" showTable={showTable} onToggle={() => setShowTable(s => !s)} />
+      <CardContent>
       {showTable ? (
-        <table className={TABLE}>
-          <thead><tr><th>Category</th><th className="!text-right">Change</th><th className="!text-right">%</th></tr></thead>
-          <tbody>
+        <Table>
+          <TableHeader><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Change</TableHead><TableHead className="text-right">%</TableHead></TableRow></TableHeader>
+          <TableBody>
             {top.map(m => (
-              <tr key={m.name}>
-                <td>{m.icon && <span aria-hidden="true">{m.icon} </span>}{m.name}</td>
-                <td className="text-right font-mono tabular-nums">{signed(m.delta)}</td>
-                <td className="text-right font-mono tabular-nums">{pct(m)}</td>
-              </tr>
+              <TableRow key={m.name}>
+                <TableCell>{m.icon && <span aria-hidden="true">{m.icon} </span>}{m.name}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{signed(m.delta)}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{pct(m)}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       ) : (
         <ul className="flex flex-col" aria-label="Biggest changes">
           {top.map(m => {
@@ -90,6 +88,7 @@ export function MoversBars({ movers, symbol, jpy, limit = 8 }: MoversBarsProps) 
           })}
         </ul>
       )}
-    </section>
+      </CardContent>
+    </Card>
   )
 }

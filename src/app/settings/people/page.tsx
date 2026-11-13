@@ -20,9 +20,15 @@ import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Card, CardContent } from '@/components/ui/card'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/page-shell'
 import { RowMenu } from '@/components/row-menu'
-import { FIELD_SELECT } from '@/components/sort-control'
 import { UndoProvider, useUndo } from '@/components/undo-provider'
 import type { ExpenseShareRow, MoneyEntryRow, PersonRow } from '@/lib/dexie'
 
@@ -139,14 +145,15 @@ function PeoplePageInner() {
   if (!userId) {
     return (
       <PageShell title="People" back={BACK}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
     <PageShell title="People" back={BACK}>
-      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
+      <Card>
+       <CardContent className="flex flex-col gap-3">
         {showTotal && (
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold">Owed to you</h2>
@@ -170,10 +177,13 @@ function PeoplePageInner() {
           />
           <Button onClick={addPerson} disabled={!newName.trim()}>Add</Button>
         </div>
-      </section>
+       </CardContent>
+      </Card>
 
       {active.length === 0 && (
-        <p className="text-sm text-muted-foreground">No people yet. Add someone above, or share an expense from the capture chip.</p>
+        <Empty className="glass">
+          <EmptyDescription>No people yet. Add someone above, or share an expense from the capture chip.</EmptyDescription>
+        </Empty>
       )}
 
       {active.map(p => (
@@ -195,8 +205,7 @@ function PeoplePageInner() {
       ))}
 
       {archived.length > 0 && (
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold text-muted-foreground">Archived ({archived.length})</h2>
+        <SettingsCard title={`Archived (${archived.length})`} contentClassName="gap-2">
           <ul className="glass-soft divide-y divide-white/10 rounded-lg">
             {archived.map(p => (
               <li key={p.id} id={p.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1 text-sm">
@@ -205,7 +214,7 @@ function PeoplePageInner() {
               </li>
             ))}
           </ul>
-        </section>
+        </SettingsCard>
       )}
     </PageShell>
   )
@@ -244,7 +253,8 @@ function PersonCard({
   const outstanding = owed?.shares ?? []
 
   return (
-    <section id={person.id} className="glass flex flex-col gap-3 rounded-2xl p-4 scroll-mt-4">
+    <Card id={person.id} className="scroll-mt-4">
+     <CardContent className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         {editing ? (
           <div className="flex flex-1 gap-2">
@@ -278,16 +288,16 @@ function PersonCard({
       {outstanding.length > 0 && (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <label className="text-sm text-muted-foreground" htmlFor={`receive-${person.id}`}>Paid into</label>
-            <select
+            <Label htmlFor={`receive-${person.id}`}>Paid into</Label>
+            <NativeSelect
               id={`receive-${person.id}`}
               value={receiveInto ?? ''}
               onChange={e => { setAccountTouched(true); setAccountId(e.target.value || null) }}
-              className={cn(FIELD_SELECT, 'w-auto min-w-0 flex-1 sm:flex-none')}
+              className={cn(SELECT_CLASS, 'w-auto min-w-0 flex-1 sm:flex-none')}
             >
-              <option value="">No account</option>
-              {accounts.map(a => <option key={a.id} value={a.id}>{a.icon ? `${a.icon} ${a.name}` : a.name}</option>)}
-            </select>
+              <NativeSelectOption value="">No account</NativeSelectOption>
+              {accounts.map(a => <NativeSelectOption key={a.id} value={a.id}>{a.icon ? `${a.icon} ${a.name}` : a.name}</NativeSelectOption>)}
+            </NativeSelect>
             {outstanding.length > 1 && (
               <Button variant="outline" className="ml-auto" disabled={busy} onClick={() => onSettle(outstanding.map(s => s.shareId), receiveInto)}>
                 Mark all paid
@@ -312,17 +322,14 @@ function PersonCard({
       )}
 
       {settled.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => setHistoryOpen(o => !o)}
-            className="-mx-2 flex min-h-11 items-center justify-between rounded-lg px-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
-            aria-expanded={historyOpen}
+        <Collapsible open={historyOpen} onOpenChange={setHistoryOpen} className="flex flex-col gap-2">
+          <CollapsibleTrigger
+            render={<Button variant="ghost" className="-mx-2 h-11 w-[calc(100%+1rem)] justify-between px-2 text-sm font-semibold text-muted-foreground hover:text-foreground" />}
           >
             <span>Paid ({settled.length})</span>
             <ChevronDown className={cn('size-4 transition-transform', historyOpen && 'rotate-180')} aria-hidden />
-          </button>
-          {historyOpen && (
+          </CollapsibleTrigger>
+          <CollapsibleContent>
             <ul className="glass-soft divide-y divide-white/10 rounded-lg">
               {settled.map(s => {
                 const e = entryById.get(s.money_entry_id)!
@@ -341,9 +348,10 @@ function PersonCard({
                 )
               })}
             </ul>
-          )}
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
-    </section>
+     </CardContent>
+    </Card>
   )
 }

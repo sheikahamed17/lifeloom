@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, MessageCircle, Send, RotateCcw } from 'lucide-react'
+import { MessageCircle, Send, RotateCcw } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { buildAgentHistory } from '@/lib/assistant'
 import type { AssistantTurn } from '@/lib/assistant'
@@ -17,7 +17,10 @@ import { isQueryPlan } from '@/lib/query-plans'
 import { LockGate } from '@/components/lock-gate'
 import { PageShell } from '@/components/page-shell'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
 import { VoiceRecorder } from '@/components/voice-recorder'
 
 const EXAMPLE_QUESTIONS = [
@@ -185,28 +188,34 @@ function AssistantPageInner() {
     >
       {/* Message thread: the page scrolls; the ask bar below stays in reach. */}
       {isEmpty ? (
-        <section aria-labelledby="assistant-empty" className="glass flex flex-col gap-4 rounded-2xl p-4">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <MessageCircle className="size-10 text-muted-foreground" aria-hidden />
-            <h2 id="assistant-empty" className="text-lg font-semibold">Ask about your data</h2>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              I can help you understand your money, tasks, learning, and notes.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            {EXAMPLE_QUESTIONS.map((q, idx) => (
-              <button
-                key={idx}
-                onClick={() => setExampleQuestion(q)}
-                className="glass-soft min-h-11 rounded-lg px-4 py-3 text-left text-sm outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2"
-                type="button"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        </section>
+        <Card role="region" aria-labelledby="assistant-empty">
+          <CardContent>
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia>
+                  <MessageCircle className="size-10 text-muted-foreground" aria-hidden />
+                </EmptyMedia>
+                <EmptyTitle><h2 id="assistant-empty" className="text-lg font-semibold">Ask about your data</h2></EmptyTitle>
+                <EmptyDescription>
+                  I can help you understand your money, tasks, learning, and notes.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                {EXAMPLE_QUESTIONS.map((q, idx) => (
+                  <Button
+                    key={idx}
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setExampleQuestion(q)}
+                    className="h-auto min-h-11 w-full justify-start whitespace-normal px-4 py-3 text-left"
+                  >
+                    {q}
+                  </Button>
+                ))}
+              </EmptyContent>
+            </Empty>
+          </CardContent>
+        </Card>
       ) : (
         <div className="flex flex-col gap-4">
           {turns.map(turn => (
@@ -273,7 +282,7 @@ function AssistantPageInner() {
           ))}
           {busy && (
             <div role="status" className="flex w-fit items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
+              <Spinner className="motion-reduce:animate-none" aria-hidden />
               Thinking…
             </div>
           )}
@@ -286,28 +295,34 @@ function AssistantPageInner() {
         onSubmit={handleSubmit}
         className="glass sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 flex items-end gap-2 rounded-2xl p-2"
       >
-        <Input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Ask about your data…"
-          disabled={busy}
-          aria-label="Ask about your data"
-          enterKeyHint="send"
-          className="h-11 flex-1"
-        />
-        <VoiceRecorder
-          transcribeOnly
-          onTranscript={(t) => { void submitText(t, true) }}
-          disabled={busy || !userId}
-        />
-        <Button
-          type="submit"
-          disabled={!input.trim() || busy}
-          size="icon-lg"
-          aria-label="Send message"
-        >
-          <Send className="size-4" aria-hidden />
-        </Button>
+        <InputGroup className="h-11 flex-1">
+          <InputGroupInput
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder="Ask about your data…"
+            disabled={busy}
+            aria-label="Ask about your data"
+            enterKeyHint="send"
+            className="h-full"
+          />
+          <InputGroupAddon align="inline-end">
+            <VoiceRecorder
+              transcribeOnly
+              onTranscript={(t) => { void submitText(t, true) }}
+              disabled={busy || !userId}
+            />
+            <InputGroupButton
+              type="submit"
+              variant="default"
+              disabled={!input.trim() || busy}
+              size="icon-sm"
+              className="size-10"
+              aria-label="Send message"
+            >
+              <Send className="size-4" aria-hidden />
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
       </form>
     </PageShell>
   )
@@ -316,7 +331,7 @@ function AssistantPageInner() {
 function AssistantLoading() {
   return (
     <PageShell title="Assistant">
-      <p role="status" className="text-sm text-muted-foreground">Loading…</p>
+      <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner aria-hidden />Loading…</p>
     </PageShell>
   )
 }

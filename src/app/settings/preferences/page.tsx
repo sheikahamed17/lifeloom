@@ -14,11 +14,16 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Switch } from '@/components/ui/switch'
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
+import { SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/page-shell'
-import { FIELD_SELECT } from '@/components/sort-control'
 
 const BACK = { href: '/settings', label: 'Settings' }
-const SECTION_TITLE = 'text-sm font-semibold text-muted-foreground'
 
 export default function PreferencesPage() {
   const router = useRouter()
@@ -111,48 +116,46 @@ export default function PreferencesPage() {
   if (!userId) {
     return (
       <PageShell title="Preferences" back={BACK}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
     <PageShell title="Preferences" back={BACK}>
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+      <SettingsCard contentClassName="gap-2">
         <Label htmlFor="pref-currency" className="font-semibold">Primary currency</Label>
-        <select
+        <NativeSelect
           id="pref-currency"
           value={state.primaryCurrency}
           onChange={e => { const v = e.target.value; setState(s => ({ ...s, primaryCurrency: v })); setDirty(true); setSaveError(null) }}
-          className={FIELD_SELECT}
+          className={SELECT_CLASS}
         >
           {SUPPORTED_CURRENCIES.map(c => (
-            <option key={c} value={c}>{c}</option>
+            <NativeSelectOption key={c} value={c}>{c}</NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
         <p className="text-xs text-muted-foreground">
           Totals are shown in this currency; entries in other currencies are converted at the daily exchange rate.
         </p>
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <label className="flex min-h-11 items-center justify-between gap-3">
-          <span className="flex flex-col">
-            <span className="text-sm font-medium">Remind me to log my salary</span>
-            <span className="text-xs text-muted-foreground">A push on the last working day of each month, for income that doesn&apos;t arrive by email. Needs notifications turned on.</span>
-          </span>
-          <input
-            type="checkbox"
+      <SettingsCard>
+        <Field orientation="horizontal" className="min-h-11 justify-between gap-3">
+          <FieldContent>
+            <FieldLabel htmlFor="pref-salary-reminder" className="text-sm font-medium text-foreground">Remind me to log my salary</FieldLabel>
+            <FieldDescription className="text-xs">A push on the last working day of each month, for income that doesn&apos;t arrive by email. Needs notifications turned on.</FieldDescription>
+          </FieldContent>
+          <Switch
+            id="pref-salary-reminder"
             checked={state.salaryReminder}
-            onChange={e => { const v = e.currentTarget.checked; setState(s => ({ ...s, salaryReminder: v })); setDirty(true); setSaveError(null) }}
-            className="size-5 shrink-0 accent-accent-2"
+            onCheckedChange={v => { setState(s => ({ ...s, salaryReminder: v })); setDirty(true); setSaveError(null) }}
             aria-label="Remind me to log my salary on the last working day of the month"
           />
-        </label>
-      </section>
+        </Field>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 className={SECTION_TITLE}>Manual exchange rates</h2>
+      <SettingsCard title="Manual exchange rates" contentClassName="gap-2">
         <p className="text-xs text-muted-foreground">Used only when the daily rates don&apos;t include a currency (for example AED).</p>
         <ul className="flex flex-col">
           {Object.entries(state.fxOverrides).map(([cur, rate]) => (
@@ -172,9 +175,9 @@ export default function PreferencesPage() {
           {Object.keys(state.fxOverrides).length === 0 && <li className="text-xs text-muted-foreground">None set.</li>}
         </ul>
         <FxAddRow onAdd={(cur, rate) => { setState(s => ({ ...s, fxOverrides: { ...s.fxOverrides, [cur]: rate } })); setDirty(true); setSaveError(null) }} />
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+      <SettingsCard contentClassName="gap-2">
         <Label htmlFor="pref-tz-search" className="font-semibold">Time zone</Label>
         <Input
           id="pref-tz-search"
@@ -184,20 +187,21 @@ export default function PreferencesPage() {
         />
         <div role="listbox" aria-label="Time zone" className="glass-soft max-h-56 overflow-y-auto rounded-lg">
           {filteredTzs.map(z => (
-            <button
+            <Button
               key={z}
               type="button"
+              variant="ghost"
               role="option"
               aria-selected={state.tz === z}
               onClick={() => { setState(s => ({ ...s, tz: z })); setTzQuery(''); setDirty(true); setSaveError(null) }}
               className={cn(
-                'flex min-h-10 w-full items-center justify-between px-3 text-left text-sm outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-2',
+                'h-10 w-full justify-between rounded-none px-3 text-left font-normal',
                 state.tz === z && 'bg-white/10 font-medium',
               )}
             >
               <span>{z}</span>
               {state.tz === z && <Check className="size-4 text-accent-2" aria-hidden />}
-            </button>
+            </Button>
           ))}
           {filteredTzs.length === 0 && (
             <p className="px-3 py-2 text-xs text-muted-foreground">No matches.</p>
@@ -210,19 +214,20 @@ export default function PreferencesPage() {
           </p>
           <Button type="button" variant="outline" onClick={detectBrowserTz}>Use this device&apos;s time zone</Button>
         </div>
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 className={SECTION_TITLE}>Notifications</h2>
+      <SettingsCard title="Notifications" contentClassName="gap-2">
         {pushStatus === 'unsupported' && (
           <p className="text-sm text-muted-foreground">
             This device doesn&apos;t support notifications.
           </p>
         )}
         {pushStatus === 'denied' && (
-          <p className="text-sm text-destructive">
-            Notifications are blocked in your browser settings. Allow them for &quot;Lifeloom&quot; to turn them on.
-          </p>
+          <Alert variant="destructive">
+            <AlertDescription className="text-destructive">
+              Notifications are blocked in your browser settings. Allow them for &quot;Lifeloom&quot; to turn them on.
+            </AlertDescription>
+          </Alert>
         )}
         {pushStatus === 'subscribed' && (
           <>
@@ -245,33 +250,36 @@ export default function PreferencesPage() {
               Turn on notifications
             </Button>
             {pushError && (
-              <p role="alert" className="text-xs text-destructive break-words">{pushError}</p>
+              <Alert variant="destructive">
+                <AlertDescription className="break-words text-destructive">{pushError}</AlertDescription>
+              </Alert>
             )}
           </>
         )}
         {pushStatus === 'pending' && (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner className="size-4" aria-hidden /> Loading…</p>
         )}
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <label className="flex min-h-11 items-center justify-between gap-3">
-          <span className="flex flex-col">
-            <span className="text-sm font-medium">Read answers aloud</span>
-            <span className="text-xs text-muted-foreground">When you ask a question by voice, the answer is spoken too.</span>
-          </span>
-          <input
-            type="checkbox"
+      <SettingsCard>
+        <Field orientation="horizontal" className="min-h-11 justify-between gap-3">
+          <FieldContent>
+            <FieldLabel htmlFor="pref-speak" className="text-sm font-medium text-foreground">Read answers aloud</FieldLabel>
+            <FieldDescription className="text-xs">When you ask a question by voice, the answer is spoken too.</FieldDescription>
+          </FieldContent>
+          <Switch
+            id="pref-speak"
             checked={speakAnswers}
-            onChange={e => { const next = e.currentTarget.checked; setSpeakAnswers(next); setVoiceAnswersEnabled(next) }}
-            className="size-5 shrink-0 accent-accent-2"
+            onCheckedChange={next => { setSpeakAnswers(next); setVoiceAnswersEnabled(next) }}
           />
-        </label>
-      </section>
+        </Field>
+      </SettingsCard>
 
       <div className="flex flex-col gap-2">
         {saveError && (
-          <p role="alert" className="text-sm text-destructive">{saveError}</p>
+          <Alert variant="destructive">
+            <AlertDescription className="text-destructive">{saveError}</AlertDescription>
+          </Alert>
         )}
         <div className="flex gap-2">
           <Button onClick={save} disabled={!dirty || busy}>
@@ -302,10 +310,10 @@ function FxAddRow({ onAdd }: { onAdd: (cur: string, rate: number) => void }) {
     <div className="flex flex-wrap items-center gap-2">
       <span className="shrink-0 text-sm text-muted-foreground">1 EUR =</span>
       <Input value={rate} onChange={e => setRate(e.target.value)} inputMode="decimal" placeholder="Rate" aria-label="Rate for 1 EUR" className="h-11 w-24" />
-      <select value={cur} onChange={e => setCur(e.target.value)} aria-label="Currency"
-        className={cn(FIELD_SELECT, 'w-auto')}>
-        {SUPPORTED_CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-      </select>
+      <NativeSelect value={cur} onChange={e => setCur(e.target.value)} aria-label="Currency"
+        className={cn(SELECT_CLASS, 'w-auto')}>
+        {SUPPORTED_CURRENCIES.map(c => <NativeSelectOption key={c} value={c}>{c}</NativeSelectOption>)}
+      </NativeSelect>
       <Button type="button" size="lg" onClick={() => { const r = parseFloat(rate); if (isFinite(r) && r > 0) { onAdd(cur, r); setRate('') } }}>Add</Button>
     </div>
   )

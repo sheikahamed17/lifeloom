@@ -405,9 +405,10 @@ function FilteredMoneyList({
                 )}
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   {e.currency !== prefs.primary_currency && (
-                    <button
-                      type="button"
-                      className="text-xs text-muted-foreground hover:text-accent-2 transition text-left focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      className="h-10 px-2 font-normal text-muted-foreground hover:text-accent-2"
                       onClick={(ev) => { ev.stopPropagation(); setExpandedFx(expandedFx === e.id ? null : e.id) }}
                       aria-label={expandedFx === e.id ? `Hide currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}` : `Show currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}`}
                     >
@@ -417,7 +418,7 @@ function FilteredMoneyList({
                           ? `≈ ${currencySymbol(prefs.primary_currency)}${(conv.amount / (prefs.primary_currency === 'JPY' ? 1 : 100)).toFixed(2)} at ${conv.rateDate}`
                           : 'No FX rate yet for this date'
                       })() : '≈ convert'}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

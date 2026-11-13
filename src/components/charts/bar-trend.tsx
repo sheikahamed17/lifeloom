@@ -3,7 +3,9 @@
 import { useId, useMemo, useState } from 'react'
 import { SEQUENTIAL_HUE } from '@/lib/chart-palette'
 import { cn } from '@/lib/utils'
-import { ChartHeader, TABLE, fullMoney, tickClass } from '@/components/charts/chart-kit'
+import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ChartEmpty, ChartHeader, fullMoney, tickClass } from '@/components/charts/chart-kit'
 
 interface BarTrendProps {
   data: { label: string; amount: number }[]
@@ -21,26 +23,22 @@ export function BarTrend({ data, symbol, jpy, label }: BarTrendProps) {
   const n = data.length
 
   if (n <= 1) {
-    return (
-      <section aria-labelledby={id} className="flex flex-col gap-2">
-        <h2 id={id} className="text-sm font-semibold">{label}</h2>
-        <p className="text-sm text-muted-foreground">Not enough history yet. This fills in after a couple of periods.</p>
-      </section>
-    )
+    return <ChartEmpty id={id} title={label}>Not enough history yet. This fills in after a couple of periods.</ChartEmpty>
   }
 
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3">
+    <Card role="region" aria-labelledby={id}>
       <ChartHeader id={id} title={label} showTable={showTable} onToggle={() => setShowTable(s => !s)} />
+      <CardContent>
       {showTable ? (
-        <table className={TABLE}>
-          <thead><tr><th>Period</th><th className="!text-right">Amount</th></tr></thead>
-          <tbody>
+        <Table>
+          <TableHeader><TableRow><TableHead>Period</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+          <TableBody>
             {data.map(d => (
-              <tr key={d.label}><td>{d.label}</td><td className="text-right font-mono tabular-nums">{money(d.amount)}</td></tr>
+              <TableRow key={d.label}><TableCell>{d.label}</TableCell><TableCell className="text-right font-mono tabular-nums">{money(d.amount)}</TableCell></TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       ) : (
         <figure role="img" aria-label={`${label}: ${data.map(d => `${d.label} ${money(d.amount)}`).join(', ')}`} className="flex flex-col gap-1">
           <p className="text-right text-xs text-muted-foreground">Highest <span className="font-mono tabular-nums">{money(max)}</span></p>
@@ -68,6 +66,7 @@ export function BarTrend({ data, symbol, jpy, label }: BarTrendProps) {
           </div>
         </figure>
       )}
-    </section>
+      </CardContent>
+    </Card>
   )
 }

@@ -2,6 +2,13 @@
 
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Progress } from '@/components/ui/progress'
+import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { cn } from '@/lib/utils'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
 import { withYourShare } from '@/lib/shares'
@@ -80,9 +87,9 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
   const delta = bdPrev.spend === 0 ? null : ((bd.spend - bdPrev.spend) / bdPrev.spend) * 100
 
   const [expanded, setExpanded] = useState(false)
-  const displayRows = expanded ? bd.rows : bd.rows.slice(0, 6)
-  const hiddenCount = Math.max(0, bd.rows.length - 6)
-
+  const firstRows = bd.rows.slice(0, 6)
+  const extraRows = bd.rows.slice(6)
+  
   const weeklyBars = useMemo(
     () => weeklySpendBars(trend, prefs.primary_currency, rates, prefs.fx_overrides ?? {}, new Date().toISOString()),
     [trend, prefs.primary_currency, rates, prefs.fx_overrides],
@@ -91,25 +98,49 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
   const fmt = (amt: number) => (amt / (prefs.primary_currency === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })
   const symbol = currencySymbol(prefs.primary_currency)
 
+  const maxAmount = Math.max(1, ...bd.rows.map(r => r.amount))
+  const renderRow = (row: typeof bd.rows[number]) => (
+    <li key={row.name}>
+      <Button
+        variant="ghost"
+        onClick={() => onSelectCategory?.(row.name)}
+        title={`${row.count} ${row.count === 1 ? 'entry' : 'entries'}. Show them in the list`}
+        aria-label={`${row.name}: ${symbol}${fmt(row.amount)}, ${row.pct.toFixed(0)}% of spending, ${row.count} ${row.count === 1 ? 'entry' : 'entries'}. Show them in the list`}
+        className="-mx-2 h-auto min-h-11 w-[calc(100%+1rem)] justify-start gap-2 px-2 text-left font-normal"
+      >
+        <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">{row.icon && <span aria-hidden="true">{row.icon}</span>}{row.name}</span>
+        <Progress
+          value={(row.amount / maxAmount) * 100}
+          aria-hidden
+          className="min-w-0 flex-1 flex-nowrap [&_[data-slot=progress-indicator]]:bg-foreground/70 [&_[data-slot=progress-track]]:h-1.5"
+        />
+        <span className="shrink-0 font-mono tabular-nums">{symbol}{fmt(row.amount)}</span>
+        <span className="w-10 shrink-0 text-right text-muted-foreground tabular-nums">{row.pct.toFixed(0)}%</span>
+      </Button>
+    </li>
+  )
+
   return (
-    <section className="glass flex flex-col gap-4 rounded-2xl p-4" aria-labelledby="spent-heading">
+    <Card role="region" aria-labelledby="spent-heading" className="gap-4 p-4">
       <header className="flex items-center justify-between gap-2">
         <h2 id="spent-heading" className="text-sm font-semibold">Spent this {period}</h2>
-        <div className="glass-soft flex rounded-lg p-0.5" role="group" aria-label="Period">
+        <ToggleGroup
+          aria-label="Period"
+          spacing={0}
+          value={[period]}
+          onValueChange={v => { const next = v[0] as PeriodKind | undefined; if (next) setPeriod(next) }}
+          className="glass-soft rounded-lg p-0.5"
+        >
           {(['week', 'month'] as const).map(p => (
-            <button
+            <ToggleGroupItem
               key={p}
-              type="button"
-              aria-pressed={period === p}
-              onClick={() => setPeriod(p)}
-              className={`min-h-9 rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 ${
-                period === p ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
+              value={p}
+              className="h-9 rounded-md px-3 text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-white/10 aria-pressed:text-foreground"
             >
               {p === 'week' ? 'Week' : 'Month'}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </header>
 
       {/* The figure carries its own name; no neon glow (glow is for the primary action only). */}
@@ -125,56 +156,45 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
 
       <WeeklyBars values={weeklyBars} symbol={symbol} jpy={prefs.primary_currency === 'JPY'} />
 
-      <ul className="flex flex-col gap-1">
-        {displayRows.length === 0 && <li className="text-xs text-muted-foreground">No entries yet this {period}.</li>}
-        {displayRows.map(row => (
-          <li key={row.name} className="flex items-center gap-2 text-sm">
-            <button
-              type="button"
-              onClick={() => onSelectCategory?.(row.name)}
-              title={`${row.count} ${row.count === 1 ? 'entry' : 'entries'}. Show them in the list`}
-              aria-label={`${row.name}: ${symbol}${fmt(row.amount)}, ${row.pct.toFixed(0)}% of spending, ${row.count} ${row.count === 1 ? 'entry' : 'entries'}. Show them in the list`}
-              className="-mx-2 flex min-h-11 flex-1 items-center gap-2 rounded-lg px-2 text-left outline-none transition-colors hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
-            >
-              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">{row.icon && <span aria-hidden="true">{row.icon}</span>}{row.name}</span>
-              <div className="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-                <div className="absolute inset-y-0 left-0 bg-foreground/70" style={{ width: `${(row.amount / Math.max(1, ...bd.rows.map(r => r.amount))) * 100}%` }} />
-              </div>
-              <span className="font-mono tabular-nums flex-shrink-0">{symbol}{fmt(row.amount)}</span>
-              <span className="w-10 shrink-0 text-right text-muted-foreground tabular-nums">{row.pct.toFixed(0)}%</span>
-            </button>
-          </li>
-        ))}
-        {hiddenCount > 0 && !expanded && (
-          <li className="flex items-center pt-1">
-            <button
-              onClick={() => setExpanded(true)}
-              className="-mx-2 min-h-11 flex-1 rounded-lg px-2 text-left text-sm text-accent-2 outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
-            >
-              Show all {bd.rows.length} categories
-            </button>
-          </li>
+      <Collapsible open={expanded} onOpenChange={setExpanded} className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-1">
+          {bd.rows.length === 0 && <li className="text-xs text-muted-foreground">No entries yet this {period}.</li>}
+          {firstRows.map(renderRow)}
+        </ul>
+        <CollapsibleContent>
+          <ul className="flex flex-col gap-1">{extraRows.map(renderRow)}</ul>
+        </CollapsibleContent>
+        {extraRows.length > 0 && (
+          <CollapsibleTrigger className={cn(buttonVariants({ variant: 'ghost' }), '-mx-2 min-h-11 w-fit self-start px-2 text-accent-2')}>
+            {expanded ? 'Show fewer' : `Show all ${bd.rows.length} categories`}
+          </CollapsibleTrigger>
         )}
-      </ul>
+      </Collapsible>
 
       {bd.income > 0 && (
-        <div className="flex gap-4 border-t border-white/10 pt-3 text-sm">
-          <span>
-            Earned <span className="font-mono font-medium tabular-nums">{symbol}{fmt(bd.income)}</span>
-          </span>
-          <span className={bd.net >= 0 ? 'text-income' : 'text-destructive'}>
-            {bd.net >= 0 ? 'Saved' : 'Overspent'} <span className="font-mono font-medium tabular-nums">{symbol}{fmt(Math.abs(bd.net))}</span>
-          </span>
-        </div>
+        <>
+          <Separator />
+          <div className="flex gap-4 text-sm">
+            <span>
+              Earned <span className="font-mono font-medium tabular-nums">{symbol}{fmt(bd.income)}</span>
+            </span>
+            <span className={bd.net >= 0 ? 'text-income' : 'text-destructive'}>
+              {bd.net >= 0 ? 'Saved' : 'Overspent'} <span className="font-mono font-medium tabular-nums">{symbol}{fmt(Math.abs(bd.net))}</span>
+            </span>
+          </div>
+        </>
       )}
 
       {(conversionApplied || skippedCurrencies.size > 0) && (
-        <p className="border-t border-white/10 pt-2 text-xs text-muted-foreground">
-          {conversionApplied && conversionDate && <>Includes conversion via ECB {conversionDate}. </>}
-          {skippedCurrencies.size > 0 && <>Excluded {[...skippedCurrencies].join(', ')} (no FX rate yet).</>}
-        </p>
+        <>
+          <Separator />
+          <p className="text-xs text-muted-foreground">
+            {conversionApplied && conversionDate && <>Includes conversion via ECB {conversionDate}. </>}
+            {skippedCurrencies.size > 0 && <>Excluded {[...skippedCurrencies].join(', ')} (no FX rate yet).</>}
+          </p>
+        </>
       )}
-    </section>
+    </Card>
   )
 }
 

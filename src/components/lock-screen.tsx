@@ -4,6 +4,10 @@ import { useState } from 'react'
 import { Lock } from 'lucide-react'
 import { verifyPin } from '@/lib/pin-lock'
 import { AuroraBackground } from '@/components/aurora-background'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 
 export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   const [pin, setPin] = useState('')
@@ -24,28 +28,34 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     <>
       <AuroraBackground />
       <main className="flex min-h-[calc(100dvh_-_env(safe-area-inset-top))] items-center justify-center p-4">
-        <form onSubmit={submit} className="glass flex w-full max-w-xs flex-col items-center gap-4 rounded-2xl p-6">
-          <Lock className="size-8 text-accent-2" aria-hidden />
-          <h1 className="text-lg font-semibold">Enter your PIN</h1>
-          <input
-            type="password"
-            inputMode="numeric"
-            autoComplete="off"
-            autoFocus
-            value={pin}
-            onChange={e => setPin(e.target.value)}
-            aria-label="PIN"
-            className="glass-soft w-full rounded-lg px-3 py-2 text-center font-mono text-2xl tracking-[0.4em] outline-none focus-visible:ring-2 focus-visible:ring-accent-2"
-          />
-          <button
-            type="submit"
-            disabled={busy || pin.length === 0}
-            className="w-full rounded-lg bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] px-4 py-2 font-medium text-background disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-          >
-            {busy ? 'Checking…' : 'Unlock'}
-          </button>
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        </form>
+        <Card className="w-full max-w-xs p-2">
+          <CardHeader className="items-center justify-items-center text-center">
+            <Lock className="mb-2 size-8 text-accent-2" aria-hidden />
+            <CardTitle><h1 className="text-lg font-semibold">Enter your PIN</h1></CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submit} className="flex flex-col gap-4">
+              <Input
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                autoFocus
+                value={pin}
+                onChange={e => setPin(e.target.value)}
+                aria-label="PIN"
+                className="h-12 text-center font-mono text-2xl tracking-[0.4em] md:text-2xl"
+              />
+              <Button type="submit" size="lg" disabled={busy || pin.length === 0}>
+                {busy ? 'Checking…' : 'Unlock'}
+              </Button>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription className="text-destructive">{error}</AlertDescription>
+                </Alert>
+              )}
+            </form>
+          </CardContent>
+        </Card>
       </main>
     </>
   )

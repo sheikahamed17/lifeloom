@@ -7,6 +7,16 @@ import { db } from '@/lib/dexie'
 import { applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { buildBackup, parseBackup, moneyEntriesToCsv } from '@/lib/data-export'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Field } from '@/components/ui/field'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { SettingsCard } from '../_ui'
 import { PageShell } from '@/components/page-shell'
 import type { Op } from '@/types/ops'
 
@@ -21,6 +31,7 @@ export default function DataPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importError, setImportError] = useState('')
   const [importSuccess, setImportSuccess] = useState('')
+  const [pendingOps, setPendingOps] = useState<Op[] | null>(null)
 
   useEffect(() => {
     authClient.getSession().then(res => {
@@ -126,27 +137,9 @@ export default function DataPage() {
         return
       }
 
-      if (!window.confirm(`Import ${res.ops.length} saved changes? They're added to your current data and can't remove anything.`)) {
-        e.target.value = ''
-        return
-      }
-
-      // Apply each op
-      for (const op of res.ops) {
-        await applyLocalOp(op)
-      }
-
-      // Sync to server
-      await pushPullOnce({ userId: userId! })
-
-      setImportSuccess(`Imported ${res.ops.length} saved changes.`)
+      // Parsed and validated: ask before replaying (the dialog calls confirmImport).
       e.target.value = ''
-
-      // Refresh counts
-      const ops = await db.op_log.toArray()
-      setOpCount(ops.filter(o => o.user_id === userId).length)
-      const money = await db.money_entries.toArray()
-      setMoneyCount(money.filter(r => r.user_id === userId && !r.deleted_at).length)
+      setPendingOps(res.ops as Op[])
     } catch (err) {
       setImportError(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
       e.target.value = ''
@@ -155,10 +148,32 @@ export default function DataPage() {
     }
   }
 
+  async function confirmImport() {
+    const ops = pendingOps
+    setPendingOps(null)
+    if (!ops || !userId) return
+    setIsImporting(true)
+    try {
+      for (const op of ops) {
+        await applyLocalOp(op)
+      }
+      await pushPullOnce({ userId })
+      setImportSuccess(`Imported ${ops.length} saved changes.`)
+      const all = await db.op_log.toArray()
+      setOpCount(all.filter(o => o.user_id === userId).length)
+      const money = await db.money_entries.toArray()
+      setMoneyCount(money.filter(r => r.user_id === userId && !r.deleted_at).length)
+    } catch (err) {
+      setImportError(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
   if (!userId) {
     return (
       <PageShell title="Data & backup" back={BACK}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -166,8 +181,7 @@ export default function DataPage() {
   return (
     <PageShell title="Data & backup" back={BACK}>
       {/* Export backup (JSON) */}
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Back up everything</h2>
+      <SettingsCard title="Back up everything" contentClassName="gap-2">
         <p className="text-xs text-muted-foreground">Download a complete backup of your data as one JSON file ({opCount} saved changes).</p>
         <Button
           onClick={handleExportBackup}
@@ -176,11 +190,10 @@ export default function DataPage() {
         >
           {isExporting ? 'Exporting…' : 'Download backup'}
         </Button>
-      </section>
+      </SettingsCard>
 
       {/* Export money (CSV) */}
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Export money</h2>
+      <SettingsCard title="Export money" contentClassName="gap-2">
         <p className="text-xs text-muted-foreground">Download your money entries as a CSV spreadsheet ({moneyCount} entries).</p>
         <Button
           variant="outline"
@@ -190,37 +203,55 @@ export default function DataPage() {
         >
           {isExporting ? 'Exporting…' : 'Download money CSV'}
         </Button>
-      </section>
+      </SettingsCard>
 
       {/* Import backup */}
-      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Restore from a backup</h2>
-        <div>
-          <label htmlFor="import-file" className="mb-2 block text-xs text-muted-foreground">
+      <SettingsCard title="Restore from a backup">
+        <Field>
+          <Label htmlFor="import-file" className="text-xs">
             Choose a .json backup file to import
-          </label>
-          <input
+          </Label>
+          <Input
             id="import-file"
             type="file"
             accept=".json,application/json"
             onChange={handleImportFile}
             disabled={isImporting}
-            className="w-full text-sm text-muted-foreground file:mr-3 file:min-h-10 file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:text-sm file:font-medium file:text-foreground hover:file:bg-white/15 disabled:opacity-50"
+            className="h-auto py-1.5 text-sm text-muted-foreground file:mr-3 file:h-8 file:rounded-lg file:bg-white/10 file:px-4 file:text-sm file:font-medium file:text-foreground hover:file:bg-white/15"
           />
-        </div>
+        </Field>
 
         {importError && (
-          <p role="alert" className="text-xs text-destructive">{importError}</p>
+          <Alert variant="destructive">
+            <AlertDescription className="text-destructive">{importError}</AlertDescription>
+          </Alert>
         )}
 
         {importSuccess && (
-          <p role="status" className="text-xs text-income">{importSuccess}</p>
+          <Alert role="status">
+            <AlertDescription className="text-income">{importSuccess}</AlertDescription>
+          </Alert>
         )}
 
         <p className="text-xs text-muted-foreground">
           Importing is safe: it adds to what you already have and never deletes anything.
         </p>
-      </section>
+      </SettingsCard>
+
+      <AlertDialog open={pendingOps !== null} onOpenChange={open => { if (!open) setPendingOps(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Import {pendingOps?.length ?? 0} saved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They&apos;re added to your current data and can&apos;t remove anything.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmImport}>Import</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   )
 }

@@ -4,6 +4,8 @@ import { GeistMono } from 'geist/font/mono'
 import { ServiceWorkerRegistrar } from '@/components/service-worker-registrar'
 import { DemoBanner } from '@/components/demo-banner'
 import { BackgroundSync } from '@/components/background-sync'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -28,8 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen overflow-x-clip bg-background text-foreground antialiased">
         <ServiceWorkerRegistrar />
         <BackgroundSync />
-        <DemoBanner />
-        {children}
+        <TooltipProvider>
+          <DemoBanner />
+          {children}
+        </TooltipProvider>
+        <Toaster />
       </body>
     </html>
   )

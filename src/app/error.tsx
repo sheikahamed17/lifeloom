@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 /**
  * Route-segment error boundary. Catches any unhandled render/runtime error in a
@@ -26,31 +28,23 @@ export default function AppError({
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-center text-foreground">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6">
-        <h1 className="text-lg font-semibold">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Lifeloom hit an unexpected error. Your data is safe on this device — reloading usually fixes it.
-        </p>
-        <div className="mt-5 flex justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background"
-          >
-            Reload
-          </button>
-          <button
-            type="button"
-            onClick={() => reset()}
-            className="rounded-lg border border-white/15 px-4 py-2 text-sm text-foreground"
-          >
-            Try again
-          </button>
-        </div>
-        {error?.digest && (
-          <p className="mt-4 font-mono text-xs text-muted-foreground/60">ref: {error.digest}</p>
-        )}
-      </div>
+      <Card className="w-full max-w-sm p-2">
+        <CardHeader className="text-center">
+          <CardTitle><h1 className="text-lg font-semibold">Something went wrong</h1></CardTitle>
+          <CardDescription>
+            Lifeloom hit an unexpected error. Your data is safe on this device — reloading usually fixes it.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center gap-4">
+          <div className="flex justify-center gap-2">
+            <Button onClick={() => window.location.reload()}>Reload</Button>
+            <Button variant="outline" onClick={() => reset()}>Try again</Button>
+          </div>
+          {error?.digest && (
+            <p className="font-mono text-xs text-muted-foreground">ref: {error.digest}</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

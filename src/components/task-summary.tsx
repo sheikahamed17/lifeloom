@@ -2,6 +2,9 @@
 
 import { useMemo } from 'react'
 import { useTasks } from '@/hooks/use-tasks'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Item, ItemGroup, ItemTitle } from '@/components/ui/item'
+import { cn } from '@/lib/utils'
 
 type Props = { userId: string }
 
@@ -23,32 +26,31 @@ export function TaskSummary({ userId }: Props) {
     return { overdue, today, upcoming, noDate }
   }, [tasks])
 
+  const rows: { label: string; value: number; warn?: boolean }[] = [
+    { label: 'Overdue', value: overdue, warn: overdue > 0 },
+    { label: 'Today', value: today },
+    { label: 'Upcoming', value: upcoming },
+    { label: 'No due date', value: noDate },
+  ]
+
   return (
-    <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-      <header>
-        <span className="text-sm font-semibold">Tasks</span>
-      </header>
-      <ul className="flex flex-col gap-1.5 text-sm">
-        <li className="flex items-center justify-between">
-          <span className={overdue > 0 ? 'text-warning' : ''}>Overdue</span>
-          <span className="font-mono tabular-nums">{overdue}</span>
-        </li>
-        <li className="flex items-center justify-between">
-          <span>Today</span>
-          <span className="font-mono tabular-nums">{today}</span>
-        </li>
-        <li className="flex items-center justify-between">
-          <span>Upcoming</span>
-          <span className="font-mono tabular-nums">{upcoming}</span>
-        </li>
-        <li className="flex items-center justify-between">
-          <span>No due date</span>
-          <span className="font-mono tabular-nums">{noDate}</span>
-        </li>
-      </ul>
-      <div className="border-t border-white/10 pt-2 text-xs text-muted-foreground">
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-semibold">Tasks</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ItemGroup className="gap-0">
+          {rows.map(r => (
+            <Item key={r.label} role="listitem" size="xs" className="flex-nowrap justify-between py-1.5">
+              <ItemTitle className={cn('font-normal', r.warn && 'text-warning')}>{r.label}</ItemTitle>
+              <span className="font-mono tabular-nums">{r.value}</span>
+            </Item>
+          ))}
+        </ItemGroup>
+      </CardContent>
+      <CardFooter className="bg-transparent py-3 text-xs text-muted-foreground">
         <span className="font-mono tabular-nums">{tasks.length === 0 ? 'No open tasks.' : `${tasks.length} open`}</span>
-      </div>
-    </section>
+      </CardFooter>
+    </Card>
   )
 }

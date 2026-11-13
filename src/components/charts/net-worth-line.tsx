@@ -2,7 +2,9 @@
 
 import { useId, useMemo, useState } from 'react'
 import { SEQUENTIAL_HUE } from '@/lib/chart-palette'
-import { ChartHeader, TABLE, useMeasuredWidth } from '@/components/charts/chart-kit'
+import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ChartEmpty, ChartHeader, useMeasuredWidth } from '@/components/charts/chart-kit'
 
 interface NetWorthLineProps {
   data: { label: string; net: number }[]
@@ -90,32 +92,26 @@ export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
   }, [data])
 
   if (isEmpty) {
-    return (
-      <section aria-labelledby={id} className="flex flex-col gap-2">
-        <h2 id={id} className="text-sm font-semibold">Net worth</h2>
-        <p className="text-sm text-muted-foreground">Not enough history yet. This fills in as your accounts age.</p>
-      </section>
-    )
+    return <ChartEmpty id={id} title="Net worth">Not enough history yet. This fills in as your accounts age.</ChartEmpty>
   }
 
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3">
+    <Card role="region" aria-labelledby={id}>
       <ChartHeader id={id} title="Net worth" showTable={showData} onToggle={() => setShowData(s => !s)} />
 
+      <CardContent>
       {showData ? (
-        <div className="overflow-x-auto">
-          <table className={TABLE}>
-            <thead><tr><th>Period</th><th className="!text-right">Net worth</th></tr></thead>
-            <tbody>
-              {data.map((d) => (
-                <tr key={d.label}>
-                  <td>{d.label}</td>
-                  <td className="text-right font-mono tabular-nums">{formatNet(d.net)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader><TableRow><TableHead>Period</TableHead><TableHead className="text-right">Net worth</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {data.map((d) => (
+              <TableRow key={d.label}>
+                <TableCell>{d.label}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{formatNet(d.net)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       ) : (
         <div ref={wrapRef}>
           <svg
@@ -243,6 +239,7 @@ export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
           </svg>
         </div>
       )}
-    </section>
+      </CardContent>
+    </Card>
   )
 }

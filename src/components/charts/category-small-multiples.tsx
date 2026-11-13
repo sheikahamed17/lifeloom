@@ -3,7 +3,9 @@
 import { useId, useMemo, useState } from 'react'
 import type { CategorySeries, Period } from '@/lib/analytics'
 import { CATEGORICAL, DIVERGING } from '@/lib/chart-palette'
-import { ChartHeader, TABLE, fullMoney } from '@/components/charts/chart-kit'
+import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ChartEmpty, ChartHeader, fullMoney } from '@/components/charts/chart-kit'
 
 // Color follows the ENTITY, not its rank: hash the (stable) category name to a
 // fixed CATEGORICAL slot so a category keeps its hue when its rank changes
@@ -32,34 +34,28 @@ export function CategorySmallMultiples({ series, periods, symbol, jpy }: Categor
   const max = useMemo(() => Math.max(0, ...series.flatMap(s => s.points)), [series])
 
   if (series.length === 0) {
-    return (
-      <section aria-labelledby={id} className="flex flex-col gap-2">
-        <h2 id={id} className="text-sm font-semibold">Spending by category</h2>
-        <p className="text-sm text-muted-foreground">No categorised spending in this range yet.</p>
-      </section>
-    )
+    return <ChartEmpty id={id} title="Spending by category">No categorised spending in this range yet.</ChartEmpty>
   }
 
   const first = periods[0]?.label
   const last = periods[periods.length - 1]?.label
 
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3">
+    <Card role="region" aria-labelledby={id}>
       <ChartHeader id={id} title="Spending by category" showTable={showTable} onToggle={() => setShowTable(s => !s)} />
+      <CardContent className="flex flex-col gap-3">
       {showTable ? (
-        <div className="overflow-x-auto">
-          <table className={TABLE}>
-            <thead><tr><th>Category</th>{periods.map(p => <th key={p.label} className="!text-right">{p.label}</th>)}</tr></thead>
-            <tbody>
-              {series.map(s => (
-                <tr key={s.name}>
-                  <td className="whitespace-nowrap">{s.icon && <span aria-hidden="true">{s.icon} </span>}{s.name}</td>
-                  {s.points.map((v, i) => <td key={i} className="text-right font-mono tabular-nums">{money(v)}</td>)}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader><TableRow><TableHead>Category</TableHead>{periods.map(p => <TableHead key={p.label} className="text-right">{p.label}</TableHead>)}</TableRow></TableHeader>
+          <TableBody>
+            {series.map(s => (
+              <TableRow key={s.name}>
+                <TableCell>{s.icon && <span aria-hidden="true">{s.icon} </span>}{s.name}</TableCell>
+                {s.points.map((v, i) => <TableCell key={i} className="text-right font-mono tabular-nums">{money(v)}</TableCell>)}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       ) : (
         <>
           <p className="text-xs text-muted-foreground">Same scale in every panel. Tallest bar {money(max)}.</p>
@@ -99,6 +95,7 @@ export function CategorySmallMultiples({ series, periods, symbol, jpy }: Categor
           </ul>
         </>
       )}
-    </section>
+      </CardContent>
+    </Card>
   )
 }

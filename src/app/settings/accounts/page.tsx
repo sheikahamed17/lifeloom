@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Archive, ChevronDown, Pencil, Star } from 'lucide-react'
+import { Archive, Pencil, Star } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useArchivedAccounts } from '@/hooks/use-archived-accounts'
@@ -17,9 +17,12 @@ import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { ArchivedCollapsible, SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/page-shell'
 import { RowMenu } from '@/components/row-menu'
-import { FIELD_SELECT } from '@/components/sort-control'
 import { UndoProvider, useUndo } from '@/components/undo-provider'
 import { db, type AccountRow } from '@/lib/dexie'
 
@@ -140,15 +143,14 @@ function AccountsPageInner() {
   if (!userId) {
     return (
       <PageShell title="Accounts" back={BACK}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
     <PageShell title="Accounts" back={BACK}>
-      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Add an account</h2>
+      <SettingsCard title="Add an account">
         <div className="flex gap-2">
           <Input
             value={newName}
@@ -167,25 +169,25 @@ function AccountsPageInner() {
           />
         </div>
         <div className="flex gap-2">
-          <select
+          <NativeSelect
             value={newType}
             onChange={e => setNewType(e.target.value as 'asset' | 'liability')}
-            className={cn(FIELD_SELECT, 'flex-1')}
+            className={cn(SELECT_CLASS, 'flex-1')}
             aria-label="Account type"
           >
-            <option value="asset">{TYPE_WORD.asset}</option>
-            <option value="liability">{TYPE_WORD.liability}</option>
-          </select>
-          <select
+            <NativeSelectOption value="asset">{TYPE_WORD.asset}</NativeSelectOption>
+            <NativeSelectOption value="liability">{TYPE_WORD.liability}</NativeSelectOption>
+          </NativeSelect>
+          <NativeSelect
             value={newCurrency}
             onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
-            className={cn(FIELD_SELECT, 'w-auto')}
+            className={cn(SELECT_CLASS, 'w-auto')}
             aria-label="Currency"
           >
             {SUPPORTED_CURRENCIES.map(curr => (
-              <option key={curr} value={curr}>{curr}</option>
+              <NativeSelectOption key={curr} value={curr}>{curr}</NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         <Input
           value={matchHints}
@@ -208,12 +210,11 @@ function AccountsPageInner() {
           />
           <Button onClick={addAccount} className="flex-1">Add</Button>
         </div>
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Active accounts</h2>
+      <SettingsCard title="Active accounts" contentClassName="gap-2">
         <ul className="glass-soft divide-y divide-white/10 rounded-lg">
-          {accounts.length === 0 && <li className="p-3 text-sm text-muted-foreground">Add your first account.</li>}
+          {accounts.length === 0 && <li><Empty className="p-3"><EmptyDescription>Add your first account.</EmptyDescription></Empty></li>}
           {accounts.map(a => (
             <AccountRowItem
               key={a.id}
@@ -231,10 +232,9 @@ function AccountsPageInner() {
             The starred account is picked for you when you add an entry by hand, voice or receipt.
           </p>
         )}
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Past alerts</h2>
+      <SettingsCard title="Past alerts" contentClassName="gap-2">
         {backfill.length > 0 ? (
           <div className="flex items-center justify-between gap-3">
             <p className="min-w-0 text-sm">
@@ -250,7 +250,7 @@ function AccountsPageInner() {
         <p role="status" className="text-sm text-muted-foreground empty:hidden">
           {tagged ? `Tagged ${tagged} past ${tagged === 1 ? 'entry' : 'entries'}.` : ''}
         </p>
-      </section>
+      </SettingsCard>
 
       {archived.length > 0 && (
         <ArchivedSection archived={archived} onRestore={restoreAccount} />
@@ -395,35 +395,22 @@ function ArchivedSection({
   archived: ReturnType<typeof useArchivedAccounts>
   onRestore: (id: string) => void
 }) {
-  const [isOpen, setIsOpen] = useState(false)
-
   return (
-    <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-        className="-mx-2 flex min-h-11 items-center justify-between rounded-lg px-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
-      >
-        <span>Archived ({archived.length})</span>
-        <ChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} aria-hidden />
-      </button>
-      {isOpen && (
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
-          {archived.map(a => (
-            <li key={a.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm">
-                  {a.icon && <span aria-hidden="true" className="mr-1.5">{a.icon}</span>}
-                  {a.name}
-                </p>
-                <p className="text-xs text-muted-foreground">{TYPE_WORD[a.type]}</p>
-              </div>
-              <Button variant="ghost" onClick={() => onRestore(a.id)} aria-label={`Restore ${a.name}`}>Restore</Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <ArchivedCollapsible count={archived.length}>
+      <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+        {archived.map(a => (
+          <li key={a.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm">
+                {a.icon && <span aria-hidden="true" className="mr-1.5">{a.icon}</span>}
+                {a.name}
+              </p>
+              <p className="text-xs text-muted-foreground">{TYPE_WORD[a.type]}</p>
+            </div>
+            <Button variant="ghost" onClick={() => onRestore(a.id)} aria-label={`Restore ${a.name}`}>Restore</Button>
+          </li>
+        ))}
+      </ul>
+    </ArchivedCollapsible>
   )
 }

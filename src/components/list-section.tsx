@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { SlidersHorizontal } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 
 type Props = {
   id: string
@@ -17,11 +18,9 @@ type Props = {
 /**
  * A list with a heading and ONE Filter button (critique: six stacked filter
  * controls pushed the first entry far down the phone screen). The controls live
- * in a panel that opens on demand.
+ * in a popover that opens on demand.
  */
 export function ListSection({ id, title, activeFilters, onClearFilters, filters, children }: Props) {
-  const [open, setOpen] = useState(false)
-  const panelId = `${id}-filters`
   return (
     <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
@@ -30,18 +29,19 @@ export function ListSection({ id, title, activeFilters, onClearFilters, filters,
           {activeFilters > 0 && (
             <Button variant="ghost" onClick={onClearFilters}>Clear</Button>
           )}
-          <Button variant="outline" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(o => !o)}>
-            <SlidersHorizontal className="size-4" aria-hidden />
-            Filter
-            {activeFilters > 0 && <span className="rounded-full bg-accent-2/20 px-1.5 text-xs tabular-nums text-accent-2">{activeFilters}<span className="sr-only"> active</span></span>}
-          </Button>
+          <Popover>
+            <PopoverTrigger render={<Button variant="outline" />}>
+              <SlidersHorizontal className="size-4" aria-hidden />
+              Filter
+              {activeFilters > 0 && <Badge className="bg-accent-2/20 px-1.5 tabular-nums text-accent-2">{activeFilters}<span className="sr-only"> active</span></Badge>}
+            </PopoverTrigger>
+            <PopoverContent align="end" className="glass max-h-[70vh] w-[min(28rem,calc(100vw-2rem))] gap-3 overflow-y-auto p-3">
+              <PopoverTitle className="sr-only">{title} filters</PopoverTitle>
+              {filters}
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
-      {open && (
-        <div id={panelId} role="group" aria-label={`${title} filters`} className="glass-soft flex flex-col gap-3 rounded-2xl p-3">
-          {filters}
-        </div>
-      )}
       {children}
     </section>
   )

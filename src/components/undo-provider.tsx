@@ -1,14 +1,26 @@
 'use client'
 
 import { createContext, useContext, useMemo } from 'react'
-import { X } from 'lucide-react'
-import { useUndoStack } from '@/hooks/use-undo-stack'
+import { toast } from 'sonner'
 
 /**
- * App toasts. `push(label, undo)` shows "label · Undo"; `push(label)` shows a plain
- * notice. Every save and every delete reports here, so no action ends in silence.
+ * App toasts, shown by sonner (the single `<Toaster />` lives in the root layout,
+ * above the phone dock). `push(label, undo)` shows "label · Undo"; `push(label)`
+ * shows a plain notice. Every save and every delete reports here, so no action
+ * ends in silence. Sonner owns the aria-live region, timing and swipe-to-dismiss.
  */
 type UndoApi = { push: (label: string, undo?: () => Promise<void>) => void }
+
+const TOAST_MS = 6000
+
+function push(label: string, undo?: () => Promise<void>) {
+  toast(label, {
+    duration: TOAST_MS,
+    action: undo
+      ? { label: 'Undo', onClick: () => { undo().catch(err => console.error('undo', err)) } }
+      : undefined,
+  })
+}
 
 const UndoContext = createContext<UndoApi | null>(null)
 
@@ -19,40 +31,6 @@ export function useUndo(): UndoApi {
 }
 
 export function UndoProvider({ children }: { children: React.ReactNode }) {
-  const { entries, push, trigger, dismiss } = useUndoStack(6000)
-  const value = useMemo(() => ({ push }), [push])
-  return (
-    <UndoContext.Provider value={value}>
-      {children}
-      {/* Always mounted so screen readers announce each new toast. Sits above the phone dock. */}
-      <div
-        role="status"
-        aria-live="polite"
-        className="pointer-events-none fixed inset-x-3 bottom-[calc(5.5rem_+_env(safe-area-inset-bottom))] z-50 flex flex-col items-center gap-2 lg:bottom-6"
-      >
-        {entries.map(u => (
-          <div key={u.id} className="glass pointer-events-auto flex max-w-full items-center gap-1 rounded-2xl py-1 pl-4 pr-1 text-sm">
-            <span className="min-w-0 truncate">{u.label}</span>
-            {u.undo && (
-              <button
-                type="button"
-                className="min-h-11 rounded-lg px-3 font-semibold text-accent-2 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2"
-                onClick={() => trigger(u.id)}
-              >
-                Undo
-              </button>
-            )}
-            <button
-              type="button"
-              aria-label="Dismiss"
-              className="flex size-11 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-white/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
-              onClick={() => dismiss(u.id)}
-            >
-              <X className="size-4" aria-hidden />
-            </button>
-          </div>
-        ))}
-      </div>
-    </UndoContext.Provider>
-  )
+  const value = useMemo(() => ({ push }), [])
+  return <UndoContext.Provider value={value}>{children}</UndoContext.Provider>
 }

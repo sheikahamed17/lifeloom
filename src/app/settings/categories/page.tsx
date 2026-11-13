@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Archive, ChevronDown, Merge, Pencil } from 'lucide-react'
+import { Archive, Merge, Pencil } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useCategories } from '@/hooks/use-categories'
 import { useArchivedCategories } from '@/hooks/use-archived-categories'
@@ -12,9 +12,13 @@ import { db } from '@/lib/dexie'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { ArchivedCollapsible, SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/page-shell'
 import { RowMenu } from '@/components/row-menu'
-import { FIELD_SELECT } from '@/components/sort-control'
 import { UndoProvider, useUndo } from '@/components/undo-provider'
 import type { CategoryRow } from '@/lib/dexie'
 
@@ -125,32 +129,31 @@ function CategoriesPageInner() {
   if (!userId) {
     return (
       <PageShell title="Categories" back={BACK}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
     <PageShell title="Categories" back={BACK}>
-      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Add a category</h2>
+      <SettingsCard title="Add a category">
         <div className="flex gap-2">
           <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name" maxLength={40} aria-label="Category name" />
           <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} placeholder="Emoji" maxLength={8} className="w-20 text-center" aria-label="Category emoji" />
         </div>
         <div className="flex gap-2">
-          <select
+          <NativeSelect
             value={kind}
             onChange={e => setKind(e.target.value as 'spend' | 'income')}
-            className={cn(FIELD_SELECT, 'w-auto')}
+            className={cn(SELECT_CLASS, 'w-auto')}
             aria-label="Spend or income"
           >
-            <option value="spend">Spend</option>
-            <option value="income">Income</option>
-          </select>
+            <NativeSelectOption value="spend">Spend</NativeSelectOption>
+            <NativeSelectOption value="income">Income</NativeSelectOption>
+          </NativeSelect>
           <Button size="lg" onClick={addCategory} className="flex-1">Add</Button>
         </div>
-      </section>
+      </SettingsCard>
 
       <CategorySection
         title="Spend"
@@ -237,10 +240,9 @@ function CategorySection({
   }
 
   return (
-    <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-      <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
+    <SettingsCard title={title} contentClassName="gap-2">
       <ul className="glass-soft divide-y divide-white/10 rounded-lg">
-        {categories.length === 0 && <li className="p-3 text-sm text-muted-foreground">No {title.toLowerCase()} categories.</li>}
+        {categories.length === 0 && <li><Empty className="p-3"><EmptyDescription>No {title.toLowerCase()} categories.</EmptyDescription></Empty></li>}
         {categories.map(c => {
           const sameKindActive = allCategories.filter(cat => cat.kind === c.kind)
           const canMerge = sameKindActive.length >= 2
@@ -276,22 +278,22 @@ function CategorySection({
           if (mergingId === c.id) {
             return (
               <li key={c.id} className="flex flex-col gap-2 p-3">
-                <label htmlFor={`merge-${c.id}`} className="text-sm">Merge {c.name} into</label>
-                <select
+                <Label htmlFor={`merge-${c.id}`} className="text-sm text-foreground">Merge {c.name} into</Label>
+                <NativeSelect
                   id={`merge-${c.id}`}
                   value={mergeTargetId ?? ''}
                   onChange={e => onMergeTargetChange(e.target.value || null)}
-                  className={FIELD_SELECT}
+                  className={SELECT_CLASS}
                 >
-                  <option value="">Choose a category…</option>
+                  <NativeSelectOption value="">Choose a category…</NativeSelectOption>
                   {sameKindActive
                     .filter(cat => cat.id !== c.id)
                     .map(cat => (
-                      <option key={cat.id} value={cat.id}>
+                      <NativeSelectOption key={cat.id} value={cat.id}>
                         {cat.icon ? `${cat.icon} ${cat.name}` : cat.name}
-                      </option>
+                      </NativeSelectOption>
                     ))}
-                </select>
+                </NativeSelect>
                 <div className="flex w-full gap-2">
                   <Button
                     onClick={() => onMergeConfirm(c.id, mergeTargetId ?? '')}
@@ -325,7 +327,7 @@ function CategorySection({
           )
         })}
       </ul>
-    </section>
+    </SettingsCard>
   )
 }
 
@@ -336,32 +338,19 @@ function ArchivedSection({
   archived: ReturnType<typeof useArchivedCategories>
   onRestore: (id: string) => void
 }) {
-  const [isOpen, setIsOpen] = useState(false)
-
   return (
-    <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-        className="-mx-2 flex min-h-11 items-center justify-between rounded-lg px-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
-      >
-        <span>Archived ({archived.length})</span>
-        <ChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} aria-hidden />
-      </button>
-      {isOpen && (
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
-          {archived.map(c => (
-            <li key={c.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
-              <span className="min-w-0 truncate text-sm">
-                {c.icon && <span aria-hidden="true" className="mr-1.5">{c.icon}</span>}
-                {c.name}
-              </span>
-              <Button variant="ghost" onClick={() => onRestore(c.id)} aria-label={`Restore ${c.name}`}>Restore</Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <ArchivedCollapsible count={archived.length}>
+      <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+        {archived.map(c => (
+          <li key={c.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
+            <span className="min-w-0 truncate text-sm">
+              {c.icon && <span aria-hidden="true" className="mr-1.5">{c.icon}</span>}
+              {c.name}
+            </span>
+            <Button variant="ghost" onClick={() => onRestore(c.id)} aria-label={`Restore ${c.name}`}>Restore</Button>
+          </li>
+        ))}
+      </ul>
+    </ArchivedCollapsible>
   )
 }

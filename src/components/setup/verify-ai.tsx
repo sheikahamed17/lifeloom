@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import type { AiCheckResult } from '@/lib/setup'
 
 export function VerifyAi({ onNext }: { onNext: () => void }) {
@@ -46,27 +48,29 @@ export function VerifyAi({ onNext }: { onNext: () => void }) {
 
       {checking && (
         <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" aria-hidden /> Checking…
+          <Spinner aria-hidden /> Checking…
         </div>
       )}
 
       {!checking && result?.ok && (
-        <div className="flex items-center gap-2 rounded-lg bg-income/10 p-3 text-sm text-income">
-          <CheckCircle2 className="size-5 flex-shrink-0" aria-hidden /> AI is connected and working.
-        </div>
+        <Alert className="text-income">
+          <CheckCircle2 aria-hidden />
+          <AlertTitle>AI is connected and working.</AlertTitle>
+        </Alert>
       )}
 
       {!checking && result && !result.ok && (
-        <div className="flex flex-col gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-          <div className="flex items-center gap-2">
-            <XCircle className="size-5 flex-shrink-0" aria-hidden /> AI isn&apos;t working yet.
-          </div>
-          <p className="break-words text-xs opacity-90">{result.error}</p>
-          <p className="text-xs opacity-90">
-            Get a free key at{' '}
-            <a className="underline" href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a>, set it with <code>wrangler secret put GROQ_API_KEY</code>, then retry.
-          </p>
-        </div>
+        <Alert variant="destructive">
+          <XCircle aria-hidden />
+          <AlertTitle>AI isn&apos;t working yet.</AlertTitle>
+          <AlertDescription>
+            <p className="break-words">{result.error}</p>
+            <p>
+              Get a free key at{' '}
+              <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a>, set it with <code>wrangler secret put GROQ_API_KEY</code>, then retry.
+            </p>
+          </AlertDescription>
+        </Alert>
       )}
 
       <div className="flex gap-2">

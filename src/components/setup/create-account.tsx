@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail } from 'lucide-react'
+import { Mail, TriangleAlert } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Spinner } from '@/components/ui/spinner'
 import { magicLinkSentMessage } from '@/lib/setup'
 
 // The FIRST user must be created with a magic link — Better Auth's passkey can
@@ -56,13 +58,17 @@ export function CreateAccount({ emailConfigured }: { emailConfigured: boolean })
       </div>
 
       {!emailConfigured && (
-        <p className="rounded-lg bg-warning/10 p-2 text-xs text-warning">
-          Email isn&apos;t configured on this instance yet — the sign-in link will be printed to your <b>deploy logs</b> instead of emailed.
-        </p>
+        <Alert className="text-warning">
+          <TriangleAlert aria-hidden />
+          <AlertDescription className="text-warning">
+            Email isn&apos;t configured on this instance yet — the sign-in link will be printed to your <b>deploy logs</b> instead of emailed.
+          </AlertDescription>
+        </Alert>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="setup-email">Email</Label>
+      <FieldGroup>
+        <Field>
+        <FieldLabel htmlFor="setup-email">Email</FieldLabel>
         <Input
           id="setup-email"
           type="email"
@@ -72,13 +78,19 @@ export function CreateAccount({ emailConfigured }: { emailConfigured: boolean })
           autoComplete="email"
           placeholder="you@example.com"
         />
-      </div>
+        </Field>
+      </FieldGroup>
 
       <Button type="submit" disabled={state === 'sending'} className="w-full">
+        {state === 'sending' && <Spinner aria-hidden />}
         {state === 'sending' ? 'Sending…' : 'Send sign-in link'}
       </Button>
 
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
     </form>
   )
 }

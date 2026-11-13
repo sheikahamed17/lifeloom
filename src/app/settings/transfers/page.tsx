@@ -15,8 +15,15 @@ import { formatMinor } from '@/lib/currency'
 import { formatDay } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Switch } from '@/components/ui/switch'
+import { Field, FieldLabel } from '@/components/ui/field'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Card } from '@/components/ui/card'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/page-shell'
-import { FIELD_SELECT } from '@/components/sort-control'
 import { UndoProvider, useUndo } from '@/components/undo-provider'
 
 const BACK = { href: '/settings', label: 'Settings' }
@@ -151,7 +158,7 @@ function TransfersPageInner() {
   if (!userId) {
     return (
       <PageShell title="Transfers" back={BACK}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
@@ -160,43 +167,42 @@ function TransfersPageInner() {
 
   return (
     <PageShell title="Transfers" back={BACK}>
-      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">Move money</h2>
-        <select
+      <SettingsCard title="Move money">
+        <NativeSelect
           value={fromAccountId ?? 'none'}
           onChange={e => {
             const val = e.target.value
             setFromAccountId(val === 'none' ? null : val)
             setToAccountId(null) // Reset to-account when from changes
           }}
-          className={FIELD_SELECT}
+          className={SELECT_CLASS}
           aria-label="From account"
         >
-          <option value="none">From account…</option>
+          <NativeSelectOption value="none">From account…</NativeSelectOption>
           {accounts.map(acc => (
-            <option key={acc.id} value={acc.id}>
+            <NativeSelectOption key={acc.id} value={acc.id}>
               {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
 
-        <select
+        <NativeSelect
           value={toAccountId ?? 'none'}
           onChange={e => {
             const val = e.target.value
             setToAccountId(val === 'none' ? null : val)
           }}
           disabled={eligibleToAccounts.length === 0}
-          className={`${FIELD_SELECT} disabled:opacity-50`}
+          className={SELECT_CLASS}
           aria-label="To account"
         >
-          <option value="none">To account…</option>
+          <NativeSelectOption value="none">To account…</NativeSelectOption>
           {eligibleToAccounts.map(acc => (
-            <option key={acc.id} value={acc.id}>
+            <NativeSelectOption key={acc.id} value={acc.id}>
               {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
 
         {fromAccount && eligibleToAccounts.length === 0 && (
           <p className="text-xs text-muted-foreground">
@@ -228,28 +234,27 @@ function TransfersPageInner() {
           aria-label="Transfer note"
         />
 
-        <label className="flex min-h-11 items-center justify-between gap-3 rounded-lg bg-white/5 px-3 text-sm">
-          <span>Repeat</span>
-          <input
-            type="checkbox"
+        <Field orientation="horizontal" className="min-h-11 items-center justify-between gap-3 rounded-lg bg-white/5 px-3">
+          <FieldLabel htmlFor="transfer-repeat" className="text-sm font-normal text-foreground">Repeat</FieldLabel>
+          <Switch
+            id="transfer-repeat"
             checked={repeat}
-            onChange={e => { const v = e.currentTarget.checked; setRepeat(v) }}
-            className="size-5 shrink-0 accent-accent-2"
+            onCheckedChange={v => setRepeat(v)}
             aria-label="Repeat this transfer on a schedule"
           />
-        </label>
+        </Field>
         {repeat && (
-          <select
+          <NativeSelect
             value={period}
             onChange={e => { const v = e.target.value as typeof period; setPeriod(v) }}
             aria-label="Repeat period"
-            className={FIELD_SELECT}
+            className={SELECT_CLASS}
           >
-            <option value="daily">Every day</option>
-            <option value="weekly">Every week</option>
-            <option value="monthly">Every month</option>
-            <option value="yearly">Every year</option>
-          </select>
+            <NativeSelectOption value="daily">Every day</NativeSelectOption>
+            <NativeSelectOption value="weekly">Every week</NativeSelectOption>
+            <NativeSelectOption value="monthly">Every month</NativeSelectOption>
+            <NativeSelectOption value="yearly">Every year</NativeSelectOption>
+          </NativeSelect>
         )}
 
         <Button
@@ -259,48 +264,61 @@ function TransfersPageInner() {
         >
           {repeat ? 'Transfer and repeat' : 'Transfer'}
         </Button>
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">History</h2>
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
-          {transfers.length === 0 && (
-            <li className="p-3 text-sm text-muted-foreground">No transfers yet.</li>
-          )}
-          {transfers.map(t => {
-            const fromName = accountNameMap.get(t.from_account_id) || 'Unknown account'
-            const toName = accountNameMap.get(t.to_account_id) || 'Unknown account'
+      <SettingsCard title="History" contentClassName="gap-2">
+        {transfers.length === 0 ? (
+          <Empty className="glass-soft p-3">
+            <EmptyDescription>No transfers yet.</EmptyDescription>
+          </Empty>
+        ) : (
+          <Card className="glass-soft gap-0 rounded-lg py-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-3">Transfer</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-12 pr-1"><span className="sr-only">Actions</span></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transfers.map(t => {
+                  const fromName = accountNameMap.get(t.from_account_id) || 'Unknown account'
+                  const toName = accountNameMap.get(t.to_account_id) || 'Unknown account'
 
-            return (
-              <li key={t.id} className="flex items-center gap-2 py-2 pl-3 pr-1">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="flex min-w-0 items-center gap-1.5 text-sm">
-                      <span className="truncate">{fromName}</span>
-                      <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                      <span className="sr-only">to</span>
-                      <span className="truncate">{toName}</span>
-                    </span>
-                    <span className="shrink-0 font-mono text-sm tabular-nums">{formatMinor(t.amount, t.currency)}</span>
-                  </div>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {formatDay(t.occurred_at, prefs.tz)}{t.note ? ` · ${t.note}` : ''}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon-lg"
-                  onClick={() => deleteTransfer(t.id)}
-                  aria-label={`Delete transfer from ${fromName} to ${toName}`}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                </Button>
-              </li>
-            )
-          })}
-        </ul>
-      </section>
+                  return (
+                    <TableRow key={t.id}>
+                      <TableCell className="max-w-0 py-2 pl-3 whitespace-normal">
+                        <span className="flex min-w-0 items-center gap-1.5 text-sm">
+                          <span className="truncate">{fromName}</span>
+                          <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                          <span className="sr-only">to</span>
+                          <span className="truncate">{toName}</span>
+                        </span>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {formatDay(t.occurred_at, prefs.tz)}{t.note ? ` · ${t.note}` : ''}
+                        </p>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMinor(t.amount, t.currency)}</TableCell>
+                      <TableCell className="pr-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          onClick={() => deleteTransfer(t.id)}
+                          aria-label={`Delete transfer from ${fromName} to ${toName}`}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="size-4" aria-hidden />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
+      </SettingsCard>
     </PageShell>
   )
 }

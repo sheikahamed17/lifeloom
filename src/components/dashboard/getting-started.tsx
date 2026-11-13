@@ -3,6 +3,9 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ChevronRight, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useBudgets } from '@/hooks/use-budgets'
@@ -57,36 +60,40 @@ export function GettingStarted({ userId }: Props) {
   // Only what's left to do: finished steps collapse into the count, so a nearly
   // complete checklist doesn't push the real work down the screen.
   return (
-    <section aria-labelledby="get-started-heading" className="glass flex flex-col gap-1 rounded-2xl p-4">
+    <Card role="region" aria-labelledby="get-started-heading" className="gap-1 p-4">
       <div className="flex items-center justify-between gap-2">
         <h2 id="get-started-heading" className="text-sm font-semibold">
           Get started <span className="font-normal text-muted-foreground">· {doneCount} of {steps.length} done</span>
         </h2>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-lg"
           onClick={handleDismiss}
-          className="-mr-2 -mt-2 flex size-11 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-white/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
+          className="-mr-2 -mt-2 text-muted-foreground hover:text-foreground"
           aria-label="Hide the getting started guide"
         >
           <X className="size-4" aria-hidden />
-        </button>
+        </Button>
       </div>
       <ul className="flex flex-col">
         {remaining.map(step => (
           <li key={step.id}>
-            <Link
-              href={step.href}
-              className="-mx-2 flex min-h-11 items-center gap-3 rounded-lg px-2 py-1.5 outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
+            <Item
+              size="xs"
+              render={<Link href={step.href} />}
+              className="-mx-2 min-h-11 w-[calc(100%+1rem)] flex-nowrap gap-3 px-2 py-1.5"
             >
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-sm">{step.label}</span>
-                <span className="text-xs text-muted-foreground">{step.why}</span>
-              </span>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            </Link>
+              <ItemContent className="min-w-0 gap-0">
+                <ItemTitle className="font-normal">{step.label}</ItemTitle>
+                <ItemDescription className="text-xs">{step.why}</ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              </ItemActions>
+            </Item>
           </li>
         ))}
       </ul>
-    </section>
+    </Card>
   )
 }

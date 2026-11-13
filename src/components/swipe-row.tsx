@@ -3,6 +3,7 @@
 import { useEffect, useReducer, useRef } from 'react'
 import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { swipeReducer, captureStartsOn, initialSwipeState, REVEAL_WIDTH, type SwipeState, type SwipeAction } from '@/lib/gesture-swipe'
 
 const LONG_PRESS_MS = 500
@@ -85,7 +86,7 @@ export function SwipeRow({ onDelete, onTap, onLongPress, deleteLabel, isOpen, on
   // belong to that control; only a tap on the row's own surface edits.
   function handleClick(e: React.MouseEvent) {
     if (!onTap) return
-    const control = (e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="menuitem"]')
+    const control = (e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="menuitem"], [role="checkbox"]')
     if (control && e.currentTarget.contains(control)) return
     onTap()
   }
@@ -93,16 +94,16 @@ export function SwipeRow({ onDelete, onTap, onLongPress, deleteLabel, isOpen, on
   return (
     <div className="relative overflow-hidden rounded-2xl focus-within:ring-2 focus-within:ring-accent-2">
       {state.translateX < 0 && (
-        <button
-          type="button"
+        <Button
+          variant="destructive"
           aria-label={deleteLabel}
           tabIndex={isOpen ? 0 : -1}
           onClick={onDelete}
           style={{ width: REVEAL_WIDTH }}
-          className="absolute inset-y-0 right-0 flex items-center justify-center bg-destructive text-white focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+          className="absolute inset-y-0 right-0 h-auto rounded-none bg-destructive text-background hover:bg-destructive/90"
         >
-          <Trash2 className="h-5 w-5" aria-hidden />
-        </button>
+          <Trash2 className="size-5" aria-hidden />
+        </Button>
       )}
       <div
         onClick={handleClick}

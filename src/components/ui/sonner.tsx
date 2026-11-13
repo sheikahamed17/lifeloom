@@ -1,15 +1,31 @@
 "use client"
 
-import { useTheme } from "next-themes"
+import { useSyncExternalStore } from "react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
+// The phone/tablet dock (below `lg`) sits at the bottom edge; toasts clear it there.
+const DESKTOP = "(min-width: 1024px)"
+const DOCK_OFFSET = "calc(5.5rem + env(safe-area-inset-bottom))"
+
+function subscribe(cb: () => void) {
+  const mq = window.matchMedia(DESKTOP)
+  mq.addEventListener("change", cb)
+  return () => mq.removeEventListener("change", cb)
+}
+const isDesktop = () => window.matchMedia(DESKTOP).matches
+
+// Dark-only app (PRODUCT.md): the toaster never follows a system or theme switch.
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const desktop = useSyncExternalStore(subscribe, isDesktop, () => true)
+  const offset = desktop ? 24 : DOCK_OFFSET
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="dark"
+      position="bottom-center"
+      offset={{ bottom: offset, left: 12, right: 12 }}
+      mobileOffset={{ bottom: offset, left: 12, right: 12 }}
       className="toaster group"
       icons={{
         success: (
@@ -38,7 +54,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast glass! text-sm!",
+          actionButton: "h-10! rounded-lg! bg-transparent! px-3! text-sm! font-semibold! text-accent-2! hover:bg-white/10!",
         },
       }}
       {...props}

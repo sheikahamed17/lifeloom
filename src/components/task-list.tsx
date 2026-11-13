@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Circle, CheckCircle2, Trash2, Repeat, Plus, Pencil, Bell, BellOff } from 'lucide-react'
+import { Trash2, Repeat, Plus, Pencil, Bell, BellOff } from 'lucide-react'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { taskCompletionOps, formatRecurrence } from '@/lib/recurring-task'
 import { groupTasks, subtaskProgress, rollupOps, visibleNodes, type TaskNode } from '@/lib/subtasks'
@@ -16,6 +16,9 @@ import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { EntryTimestamp } from '@/components/entry-timestamp'
 import { sortTasks, type TaskSort } from '@/lib/list-sort'
 import { db, type TaskRow } from '@/lib/dexie'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { Input } from '@/components/ui/input'
 
 type Props = { userId: string; filter: TaskFilter; projectId?: string | null; tag?: string | null; sort?: TaskSort; onEdit?: (row: TaskRow) => void }
 
@@ -137,19 +140,14 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
           className="glass-soft flex items-start justify-between gap-3 rounded-2xl p-3"
         >
           {/* The circle completes the task; a tap anywhere else on the row opens the editor. */}
-          <button
-            type="button"
-            onClick={() => { if (!hasChildren) toggleComplete(t) }}
-            className="-my-2 -ml-2 flex size-11 shrink-0 items-center justify-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-2 aria-disabled:cursor-default"
+          {/* A parent's circle is read-only: it reflects its sub-tasks. */}
+          <Checkbox
+            checked={isCompleted}
+            readOnly={hasChildren}
+            onCheckedChange={() => { if (!hasChildren) toggleComplete(t) }}
             aria-label={hasChildren ? `${t.title}: ${progress!.done} of ${progress!.total} sub-tasks done` : (isCompleted ? `Mark "${t.title}" open` : `Complete "${t.title}"`)}
-            aria-disabled={hasChildren}
-          >
-            {isCompleted ? (
-              <CheckCircle2 className="size-5 text-accent-2" aria-hidden />
-            ) : (
-              <Circle className="size-5 text-muted-foreground" aria-hidden />
-            )}
-          </button>
+            className="mt-0.5 size-5 rounded-full after:-inset-3 data-checked:border-accent-2 data-checked:bg-accent-2"
+          />
             <div className="flex min-w-0 flex-1 flex-col">
               <span className={`md:text-base ${isCompleted ? 'text-muted-foreground line-through' : ''}`}>
                 {t.title}
@@ -211,11 +209,13 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
 
   if (nodes.length === 0) {
     return (
-      <div className="glass-soft rounded-2xl p-4 text-center text-sm text-muted-foreground">
-        {filter === 'open' && 'No open tasks. Add one by saying or typing "remind me to…"'}
-        {filter === 'completed' && 'No completed tasks yet.'}
-        {filter === 'all' && 'No tasks yet.'}
-      </div>
+      <Empty className="glass-soft">
+        <EmptyDescription>
+          {filter === 'open' && 'No open tasks. Add one by saying or typing "remind me to…"'}
+          {filter === 'completed' && 'No completed tasks yet.'}
+          {filter === 'all' && 'No tasks yet.'}
+        </EmptyDescription>
+      </Empty>
     )
   }
 
@@ -244,13 +244,13 @@ function SubtaskAdd({ parentId, onAdd }: { parentId: string; onAdd: (parentId: s
   return (
     <div className="ml-6 flex items-center gap-1">
       <Plus className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-      <input
+      <Input
         value={title}
         onChange={e => setTitle(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAdd(parentId, title); setTitle('') } }}
         placeholder="add sub-task…"
         aria-label="Add sub-task"
-        className="flex-1 bg-transparent text-xs text-muted-foreground placeholder:text-muted-foreground/60 focus-visible:text-foreground outline-none py-1"
+        className="flex-1 border-0 bg-transparent text-xs shadow-none focus-visible:ring-0 md:text-xs"
       />
     </div>
   )

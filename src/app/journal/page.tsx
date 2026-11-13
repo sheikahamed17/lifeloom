@@ -7,8 +7,14 @@ import { useJournal } from '@/hooks/use-journal'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { formatDay } from '@/lib/format'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
+import { Field, FieldGroup } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
+import { Textarea } from '@/components/ui/textarea'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { PageShell } from '@/components/page-shell'
 import type { JournalRow } from '@/lib/dexie'
 
@@ -95,7 +101,7 @@ export default function JournalPage() {
   if (!userId) {
     return (
       <PageShell title="Journal">
-        <p role="status" className="text-sm text-muted-foreground">Loading…</p>
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner aria-hidden />Loading…</p>
       </PageShell>
     )
   }
@@ -104,58 +110,66 @@ export default function JournalPage() {
 
   return (
     <PageShell title="Journal">
-      <section aria-label="Write an entry" className="glass flex flex-col gap-3 rounded-2xl p-4">
-        <textarea
-          value={body}
-          onChange={e => setBody(e.target.value)}
-          placeholder="How was your day?"
-          rows={4}
-          aria-label="Journal entry"
-          className="glass-soft w-full resize-none rounded-lg border border-input px-3 py-2 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 md:text-sm"
-        />
-        <div className="grid grid-cols-5 gap-1" role="group" aria-label="Mood">
-          {MOODS.map(m => {
-            const pressed = selectedMood === m.value
-            return (
-              <button
-                key={m.value}
-                type="button"
-                onClick={() => setMood(pressed ? null : m.value)}
-                aria-pressed={pressed}
-                className={cn(
-                  'flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-lg border text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2',
-                  pressed
-                    ? 'border-accent-2 bg-accent-2/15 font-medium text-foreground'
-                    : 'border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground',
-                )}
-              >
-                <span aria-hidden="true" className="text-xl leading-none">{m.value}</span>
-                {m.label}
-              </button>
-            )
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            aria-label="Entry date"
-            className="glass-soft h-10 rounded-lg border border-input px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-accent-2 md:text-sm"
-          />
-          <Button onClick={save} disabled={!body.trim()} className="flex-1">
-            {editingId ? 'Save changes' : 'Add entry'}
-          </Button>
-          {editingId && <Button variant="ghost" onClick={resetForm}>Cancel</Button>}
-        </div>
-      </section>
+      <Card role="region" aria-label="Write an entry">
+        <CardContent>
+          <FieldGroup className="gap-3">
+            <Field>
+              <Textarea
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder="How was your day?"
+                rows={4}
+                aria-label="Journal entry"
+                className="glass-soft resize-none px-3"
+              />
+            </Field>
+            <ToggleGroup
+              aria-label="Mood"
+              spacing={1}
+              className="grid w-full grid-cols-5"
+              value={selectedMood ? [selectedMood] : []}
+              onValueChange={next => setMood(next[0] ?? null)}
+            >
+              {MOODS.map(m => (
+                <ToggleGroupItem
+                  key={m.value}
+                  value={m.value}
+                  variant="outline"
+                  className="h-auto min-h-14 flex-col gap-0.5 text-xs aria-pressed:border-accent-2 aria-pressed:bg-accent-2/15 aria-pressed:font-medium aria-pressed:text-foreground"
+                >
+                  <span aria-hidden="true" className="text-xl leading-none">{m.value}</span>
+                  {m.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <Field orientation="horizontal" className="flex-wrap">
+              <Input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                aria-label="Entry date"
+                className="w-auto"
+              />
+              <Button onClick={save} disabled={!body.trim()} className="flex-1">
+                {editingId ? 'Save changes' : 'Add entry'}
+              </Button>
+              {editingId && <Button variant="ghost" onClick={resetForm}>Cancel</Button>}
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
 
-      <section aria-labelledby="journal-entries" className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 id="journal-entries" className="text-sm font-semibold text-muted-foreground">Entries</h2>
+      <Card role="region" aria-labelledby="journal-entries">
+        <CardHeader>
+          <CardTitle><h2 id="journal-entries" className="text-sm font-semibold text-muted-foreground">Entries</h2></CardTitle>
+        </CardHeader>
+        <CardContent>
+        {entries.length === 0 && (
+          <Empty className="border p-4">
+            <EmptyHeader><EmptyDescription>No journal entries yet. Write your first above.</EmptyDescription></EmptyHeader>
+          </Empty>
+        )}
         <ul className="divide-y divide-white/10">
-          {entries.length === 0 && (
-            <li className="py-3 text-sm text-muted-foreground">No journal entries yet. Write your first above.</li>
-          )}
           {entries.map(e => {
             const day = formatDay(e.occurred_at, prefs.tz)
             const entryMood = findMood(e.mood)
@@ -187,7 +201,8 @@ export default function JournalPage() {
             )
           })}
         </ul>
-      </section>
+        </CardContent>
+      </Card>
     </PageShell>
   )
 }

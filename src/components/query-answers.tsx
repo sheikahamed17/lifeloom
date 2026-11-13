@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { Circle, CheckCircle2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { QueryListAnswer } from '@/components/query-list-answer'
 import type { QueryPlan } from '@/lib/query-plans'
 import { filterTasksForQuery } from '@/lib/query-task-exec'
@@ -106,12 +107,9 @@ export function QueryLearningListAnswer({ userId, plan, onDismiss, onResult }: {
             {l.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {l.tags.map(tag => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white/10 text-muted-foreground border border-white/20"
-                  >
+                  <Badge key={tag} variant="outline" className="border-white/20 bg-white/10 text-muted-foreground">
                     {tag}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             )}
@@ -163,12 +161,9 @@ export function QueryNotesListAnswer({ userId, plan, onDismiss, onResult }: { us
             {n.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {n.tags.map(tag => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white/10 text-muted-foreground border border-white/20"
-                  >
+                  <Badge key={tag} variant="outline" className="border-white/20 bg-white/10 text-muted-foreground">
                     {tag}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             )}

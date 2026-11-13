@@ -16,11 +16,17 @@ import { monthBounds } from '@/lib/money-filter-sort'
 import { makeCategoryResolver } from '@/lib/category-resolve'
 import { formatLocalDate } from '@/lib/format'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Empty, EmptyContent, EmptyDescription } from '@/components/ui/empty'
+import { Item } from '@/components/ui/item'
+import { Separator } from '@/components/ui/separator'
 
 type Props = { userId: string }
 
-const LINK = 'inline-flex min-h-11 items-center gap-1 rounded-lg text-sm text-accent-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent-2'
+const LINK = cn(buttonVariants({ variant: 'link' }), 'h-11 px-0')
 
 
 export function UpcomingWidget({ userId }: Props) {
@@ -98,16 +104,20 @@ export function UpcomingWidget({ userId }: Props) {
 
   if (upcoming.length === 0) {
     return (
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4" aria-labelledby="upcoming-heading">
+      <Card role="region" aria-labelledby="upcoming-heading" className="gap-2 p-4">
         <h2 id="upcoming-heading" className="text-sm font-semibold">Upcoming</h2>
-        <p className="text-sm text-muted-foreground">Add a recurring entry (rent, salary, a subscription) to see what’s coming and how the month ends.</p>
-        <Link href="/settings/recurring" className={`${LINK} self-start`}>Recurring rules<ChevronRight className="size-4" aria-hidden /></Link>
-      </section>
+        <Empty className="p-2">
+          <EmptyDescription>Add a recurring entry (rent, salary, a subscription) to see what’s coming and how the month ends.</EmptyDescription>
+          <EmptyContent>
+            <Link href="/settings/recurring" className={LINK}>Recurring rules<ChevronRight className="size-4" aria-hidden /></Link>
+          </EmptyContent>
+        </Empty>
+      </Card>
     )
   }
 
   return (
-    <section className="glass flex flex-col gap-4 rounded-2xl p-4" aria-labelledby="upcoming-heading">
+    <Card role="region" aria-labelledby="upcoming-heading" className="gap-4 p-4">
       <div className="flex flex-col gap-1">
         <h2 id="upcoming-heading" className="text-sm font-semibold">Month end, projected</h2>
         <div className={`font-mono text-3xl font-semibold tabular-nums leading-tight ${netColor}`}>
@@ -118,7 +128,7 @@ export function UpcomingWidget({ userId }: Props) {
         </p>
       </div>
 
-      <div className="border-t border-white/10" />
+      <Separator />
 
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-semibold">Upcoming</h3>
@@ -129,22 +139,21 @@ export function UpcomingWidget({ userId }: Props) {
               event.description ||
               '—'
             return (
-              <li
-                key={`${event.ruleId}-${idx}`}
-                className="flex min-h-10 items-center gap-3 text-sm"
-              >
-                <span className="w-14 shrink-0 text-xs text-muted-foreground">
-                  {formatLocalDate(event.date, prefs.tz, { day: 'numeric', month: 'short' })}
-                </span>
-                <span className="flex-1 truncate">{catName}</span>
-                <span className={`shrink-0 font-mono tabular-nums ${event.direction === 'in' ? 'text-income' : 'text-foreground'}`}>
-                  {event.direction === 'in' ? '+' : '−'}{symbol}{fmt(toPrimary(event.amount, event.currency))}
-                </span>
+              <li key={`${event.ruleId}-${idx}`}>
+                <Item size="xs" className="min-h-10 flex-nowrap gap-3 p-0">
+                  <span className="w-14 shrink-0 text-xs text-muted-foreground">
+                    {formatLocalDate(event.date, prefs.tz, { day: 'numeric', month: 'short' })}
+                  </span>
+                  <span className="flex-1 truncate">{catName}</span>
+                  <span className={`shrink-0 font-mono tabular-nums ${event.direction === 'in' ? 'text-income' : 'text-foreground'}`}>
+                    {event.direction === 'in' ? '+' : '−'}{symbol}{fmt(toPrimary(event.amount, event.currency))}
+                  </span>
+                </Item>
               </li>
             )
           })}
         </ul>
       </div>
-    </section>
+    </Card>
   )
 }

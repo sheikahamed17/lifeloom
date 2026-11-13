@@ -3,7 +3,8 @@
 import { useMemo } from 'react'
 import { X } from 'lucide-react'
 import { useTasks } from '@/hooks/use-tasks'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 type Props = {
   userId: string
@@ -12,43 +13,40 @@ type Props = {
 }
 
 export function TaskTagFilter({ userId, selectedTag, onChange }: Props) {
-  const tasks = useTasks(userId, 'all')
-
+  const items = useTasks(userId, 'all')
   const distinctTags = useMemo(() => {
     const tags = new Set<string>()
-    for (const t of tasks) for (const tag of (t.tags ?? [])) tags.add(tag)
+    for (const e of items) for (const tag of (e.tags ?? [])) tags.add(tag)
     return Array.from(tags).sort()
-  }, [tasks])
+  }, [items])
 
   if (distinctTags.length === 0) return null
 
   return (
-    <div className="flex flex-wrap gap-2 items-center">
+    <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs text-muted-foreground">Tags:</span>
-      {distinctTags.map(tag => (
-        <button
-          key={tag}
-          type="button"
-          onClick={() => onChange(selectedTag === tag ? null : tag)}
-          className={cn(
-            'inline-flex items-center justify-center gap-1 px-3 min-h-11 rounded-full text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none',
-            selectedTag === tag
-              ? 'border border-accent-2/50 bg-accent-2/15 text-accent-2'
-              : 'bg-white/10 border border-white/20 text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {tag}
-          {selectedTag === tag && <X className="w-3 h-3" />}
-        </button>
-      ))}
+      <ToggleGroup
+        aria-label="Tags by tag"
+        value={selectedTag ? [selectedTag] : []}
+        onValueChange={v => onChange(v[0] ?? null)}
+        className="max-w-full flex-wrap"
+      >
+        {distinctTags.map(tag => (
+          <ToggleGroupItem
+            key={tag}
+            value={tag}
+            variant="outline"
+            className="min-h-11 rounded-full px-3 text-xs text-muted-foreground aria-pressed:border-accent-2/50 aria-pressed:bg-accent-2/15 aria-pressed:text-accent-2"
+          >
+            {tag}
+            {selectedTag === tag && <X className="size-3" aria-hidden />}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
       {selectedTag && (
-        <button
-          type="button"
-          onClick={() => onChange(null)}
-          className="text-xs text-muted-foreground hover:text-foreground transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded px-2 py-1"
-        >
+        <Button variant="ghost" size="lg" onClick={() => onChange(null)} className="px-2 text-xs text-muted-foreground hover:text-foreground">
           Clear
-        </button>
+        </Button>
       )}
     </div>
   )

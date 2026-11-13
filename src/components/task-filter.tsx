@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { TaskFilter as TaskFilterValue } from '@/hooks/use-tasks'
 
 type Props = {
@@ -16,24 +16,18 @@ const OPTIONS: { value: TaskFilterValue; label: string }[] = [
 
 export function TaskFilter({ active, onChange }: Props) {
   return (
-    <div role="tablist" aria-label="Task filter" className="flex gap-1 rounded-full glass-soft p-1 text-xs">
-      {OPTIONS.map(o => (
-        <button
-          key={o.value}
-          role="tab"
-          aria-selected={active === o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          className={cn(
-            'flex-1 rounded-full px-3 py-1 transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none',
-            active === o.value
-              ? 'border border-accent-2/50 bg-accent-2/15 text-accent-2'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
+    <Tabs value={active} onValueChange={v => onChange(v as TaskFilterValue)}>
+      <TabsList aria-label="Task filter" className="glass-soft group-data-horizontal/tabs:h-auto w-full gap-1 rounded-full bg-transparent p-1">
+        {OPTIONS.map(o => (
+          <TabsTrigger
+            key={o.value}
+            value={o.value}
+            className="h-auto min-h-10 rounded-full px-3 text-xs text-muted-foreground focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-accent-2 data-active:border-accent-2/50 data-active:bg-accent-2/15 data-active:text-accent-2 data-active:shadow-none"
+          >
+            {o.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   )
 }

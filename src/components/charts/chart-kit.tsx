@@ -1,6 +1,9 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
 
 /**
  * Shared chart parts (UX pass, 13 Nov 2026). Charts used to draw into a fixed
@@ -28,7 +31,7 @@ export function useMeasuredWidth<T extends HTMLElement>() {
   return [ref, width] as const
 }
 
-/** Title + "Table / Chart" toggle: every chart has a table view (identity is never colour alone). */
+/** Title + "Table / Chart" toggle: every chart has a table view (identity is never colour alone). Render inside a <Card>. */
 export function ChartHeader({ id, title, showTable, onToggle, children }: {
   id: string
   title: string
@@ -37,20 +40,43 @@ export function ChartHeader({ id, title, showTable, onToggle, children }: {
   children?: React.ReactNode
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-      <h2 id={id} className="text-sm font-semibold">{title}</h2>
-      <div className="flex items-center gap-3">
+    <CardHeader>
+      <CardTitle>
+        <h2 id={id} className="text-sm font-semibold">{title}</h2>
+      </CardTitle>
+      <CardAction className="flex items-center gap-3">
         {children}
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onToggle}
           aria-pressed={showTable}
-          className="-mr-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-accent-2 outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
+          className="-mr-2 text-accent-2"
         >
           {showTable ? 'Show chart' : 'Show table'}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </CardAction>
+    </CardHeader>
+  )
+}
+
+/** Card shell for a chart's empty state: a title and a short explanation. */
+export function ChartEmpty({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <Card role="region" aria-labelledby={id}>
+      <CardHeader>
+        <CardTitle>
+          <h2 id={id} className="text-sm font-semibold">{title}</h2>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Empty className="border p-4">
+          <EmptyHeader>
+            <EmptyDescription>{children}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -79,4 +105,5 @@ export function fullMoney(minor: number, symbol: string, jpy: boolean): string {
   return `${sign}${symbol}${Math.abs(major).toLocaleString('en-IN', { maximumFractionDigits: jpy ? 0 : 2 })}`
 }
 
+/** @deprecated charts now use the shadcn Table; kept for compatibility. */
 export const TABLE = 'w-full text-sm [&_td]:px-2 [&_td]:py-2 [&_th]:px-2 [&_th]:py-2 [&_th]:text-left [&_th]:font-medium [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-white/10'

@@ -1,9 +1,17 @@
 'use client'
 
 import { useId } from 'react'
+import { Field, FieldLabel } from '@/components/ui/field'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
-/** The one select style for list filters and sorts. */
+/**
+ * Legacy class string for the few raw selects that still style themselves.
+ * New code should use NativeSelect with FIELD_NATIVE_SELECT instead.
+ */
 export const FIELD_SELECT = 'min-h-11 w-full rounded-lg border border-input glass-soft px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-accent-2 md:text-sm'
+
+/** Class for the shadcn NativeSelect wrapper: full width, 44 px tall, readable text. */
+export const FIELD_NATIVE_SELECT = 'w-full [&_select]:h-11 [&_select]:bg-white/5 [&_select]:text-base md:[&_select]:text-sm'
 
 /** Generic labelled sort control. */
 export function SortControl<T extends string>({
@@ -19,13 +27,13 @@ export function SortControl<T extends string>({
 }) {
   const id = useId()
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-xs text-muted-foreground">{label}</label>
-      <select id={id} value={value} onChange={e => onChange(e.target.value as T)} className={FIELD_SELECT}>
+    <Field className="gap-1">
+      <FieldLabel htmlFor={id} className="text-xs">{label}</FieldLabel>
+      <NativeSelect id={id} value={value} onChange={e => onChange(e.target.value as T)} className={FIELD_NATIVE_SELECT}>
         {options.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
+          <NativeSelectOption key={opt.value} value={opt.value}>{opt.label}</NativeSelectOption>
         ))}
-      </select>
-    </div>
+      </NativeSelect>
+    </Field>
   )
 }

@@ -13,6 +13,9 @@ import { GettingStarted } from '@/components/dashboard/getting-started'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Kbd } from '@/components/ui/kbd'
 import { AuroraBackground } from '@/components/aurora-background'
 import { ConfirmationChip, type ChipDraft } from '@/components/confirmation-chip'
 import { QueryAnswerCard } from '@/components/query-answer-card'
@@ -90,8 +93,6 @@ function nextDueFromAnchor(anchorIso: string, period: 'daily'|'weekly'|'monthly'
     is_active: 1,
   })
 }
-
-const CAPTURE_ICON = 'flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-white/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 disabled:pointer-events-none disabled:opacity-50'
 
 function AppPageInner() {
   const router = useRouter()
@@ -753,18 +754,22 @@ function AppPageInner() {
             onSubmit={(e) => { e.preventDefault(); parseText() }}
             className="glass sticky top-[calc(0.5rem_+_env(safe-area-inset-top))] z-30 flex flex-col gap-1 rounded-2xl p-2"
           >
-            <label htmlFor="capture-input" className="sr-only">Capture a note, task or spend</label>
-            <Input
-              id="capture-input"
-              ref={captureInputRef}
-              value={text}
-              onChange={e => { setText(e.target.value); if (captureNotice) setCaptureNotice(null) }}
-              placeholder="Add a note, task or spend…"
-              autoComplete="off"
-              enterKeyHint="send"
-              disabled={captureBusy}
-              className="h-11 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
-            />
+            <Label htmlFor="capture-input" className="sr-only">Capture a note, task or spend</Label>
+            <div className="relative">
+              <Input
+                id="capture-input"
+                ref={captureInputRef}
+                value={text}
+                onChange={e => { setText(e.target.value); if (captureNotice) setCaptureNotice(null) }}
+                placeholder="Add a note, task or spend…"
+                autoComplete="off"
+                enterKeyHint="send"
+                disabled={captureBusy}
+                className="h-11 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+              />
+              {/* The "/" shortcut is a keyboard thing: hint it on desktop only, and only while the field is empty. */}
+              {!text && !captureBusy && <Kbd className="absolute right-2 top-1/2 hidden -translate-y-1/2 lg:inline-flex" aria-hidden>/</Kbd>}
+            </div>
             <div className="flex items-center gap-0.5">
               <VoiceRecorder
                 compact
@@ -789,25 +794,27 @@ function AppPageInner() {
                   setDraft({ ...(payload as unknown as ChipDraft), receiptPreviewUrl: previewUrl } as ChipDraft)
                 }}
               />
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-lg"
                 aria-label="Add an entry by hand"
                 disabled={captureBusy}
                 onClick={() => setDraft(blankDraftForKind(tabKind(), prefs.primary_currency ?? 'INR', new Date().toISOString()))}
-                className={CAPTURE_ICON}
+                className="text-muted-foreground hover:text-foreground"
               >
                 <PenLine className="size-5" aria-hidden />
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-lg"
                 aria-label="What can I capture?"
                 aria-expanded={showHelp}
                 disabled={captureBusy}
                 onClick={() => setShowHelp(s => !s)}
-                className={CAPTURE_ICON}
+                className="text-muted-foreground hover:text-foreground"
               >
                 <CircleHelp className="size-5" aria-hidden />
-              </button>
+              </Button>
               <span className="flex-1" />
               {!online && (
                 <span role="status" className="mr-2 text-xs text-warning">Offline: saved on this device</span>
@@ -820,16 +827,16 @@ function AppPageInner() {
 
           <div ref={captureResultRef} className="flex scroll-mt-36 flex-col gap-4 empty:hidden md:gap-5">
           {captureNotice && !draft && (
-            <div role="alert" className="glass-soft flex flex-col gap-2 rounded-2xl p-3 text-sm sm:flex-row sm:items-center">
-              <p className="flex-1">
+            <Alert className="glass-soft flex flex-col gap-2 rounded-2xl p-3 sm:flex-row sm:items-center">
+              <AlertDescription className="flex-1 text-foreground">
                 {captureNotice === 'unplaced' ? 'I couldn’t tell what that is.' : 'Couldn’t reach the AI just now.'}{' '}
                 <span className="text-muted-foreground">Try “spent 80 on chai”, “remind me to call mom at 6” or “note: the wifi password is on the router”.</span>
-              </p>
+              </AlertDescription>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={addManually}>Add it manually</Button>
                 <Button variant="ghost" size="icon" aria-label="Dismiss" onClick={() => setCaptureNotice(null)}><X className="size-4" aria-hidden /></Button>
               </div>
-            </div>
+            </Alert>
           )}
 
           {queuedCount > 0 && (
@@ -879,8 +886,8 @@ function AppPageInner() {
           </div>
 
           {showPushNudge && (
-            <div className="glass-soft flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-2 text-sm">
-              <span>Get a notification when a task is due?</span>
+            <Alert role="status" className="glass-soft flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-2">
+              <AlertDescription className="text-foreground">Get a notification when a task is due?</AlertDescription>
               <div className="flex gap-1">
                 <Button
                   variant="outline"
@@ -902,7 +909,7 @@ function AppPageInner() {
                   Not now
                 </Button>
               </div>
-            </div>
+            </Alert>
           )}
 
           <TodayNudge userId={user.id} onGoToTasks={() => setTab('tasks')} />

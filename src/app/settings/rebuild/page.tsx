@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { CircleCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent } from '@/components/ui/card'
+import { Spinner } from '@/components/ui/spinner'
 import { PageShell } from '@/components/page-shell'
 import { runBackfill, BackfillHttpError, type BackfillResult } from '@/lib/backfill-driver'
 
@@ -50,16 +53,24 @@ export default function RebuildPage() {
 
   return (
     <PageShell title="Rebuild server data" back={{ href: '/settings', label: 'Settings' }}>
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
+      <Card>
+       <CardContent className="flex flex-col gap-2 text-sm">
         <p>Rebuilds the server&apos;s copy of your data from your history. Use it if budgets or insights look out of date. Safe to run any time; the data on this device isn&apos;t touched.</p>
         <p className="text-xs text-muted-foreground">It works in batches and pauses whenever Cloudflare&apos;s free plan asks it to slow down, so it can take a few minutes. Keep this page open.</p>
-      </section>
+       </CardContent>
+      </Card>
 
-      <section className="glass flex flex-col gap-3 rounded-2xl p-4" aria-live="polite">
-        <Button onClick={() => rebuild()} disabled={busy}>{busy ? 'Rebuilding…' : 'Start rebuild'}</Button>
+      <Card aria-live="polite">
+       <CardContent className="flex flex-col gap-3">
+        <Button onClick={() => rebuild()} disabled={busy}>
+          {busy && <Spinner className="size-4" aria-hidden />}
+          {busy ? 'Rebuilding…' : 'Start rebuild'}
+        </Button>
         {busy && <p className="text-sm text-muted-foreground">Rebuilt {processed} saved changes so far…</p>}
         {busy && waitingSec !== null && (
-          <p className="text-sm text-muted-foreground">Cloudflare&apos;s free plan asked us to slow down. Trying again in {waitingSec} s; nothing is lost.</p>
+          <Alert>
+            <AlertDescription>Cloudflare&apos;s free plan asked us to slow down. Trying again in {waitingSec} s; nothing is lost.</AlertDescription>
+          </Alert>
         )}
         {result?.completed && (
           <div className="flex flex-col gap-2 text-sm">
@@ -71,14 +82,15 @@ export default function RebuildPage() {
           </div>
         )}
         {result && !result.completed && (
-          <div role="alert" className="flex flex-col gap-2 text-sm">
-            <p className="text-warning">
+          <Alert>
+            <AlertDescription className="text-warning">
               Paused after {result.totalProcessed} saved changes{result.error ? ` (${result.error})` : ''}. Nothing is lost; continue where it stopped.
-            </p>
-            <Button variant="outline" onClick={() => rebuild(result.after)} disabled={busy}>Continue rebuild</Button>
-          </div>
+            </AlertDescription>
+            <Button variant="outline" onClick={() => rebuild(result.after)} disabled={busy} className="mt-2 w-fit">Continue rebuild</Button>
+          </Alert>
         )}
-      </section>
+       </CardContent>
+      </Card>
     </PageShell>
   )
 }

@@ -3,7 +3,9 @@
 import { useId, useMemo, useState } from 'react'
 import { DIVERGING, SPEND_COLOR, INCOME_COLOR } from '@/lib/chart-palette'
 import { cn } from '@/lib/utils'
-import { ChartHeader, TABLE, compactMoney, fullMoney, tickClass } from '@/components/charts/chart-kit'
+import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ChartEmpty, ChartHeader, compactMoney, fullMoney, tickClass } from '@/components/charts/chart-kit'
 
 interface DualSeriesTrendProps {
   spend: { label: string; amount: number }[]
@@ -32,36 +34,32 @@ export function DualSeriesTrend({ spend, income, symbol, jpy }: DualSeriesTrendP
   const pct = (v: number) => (v > 0 && max > 0 ? `${Math.max(2, (v / max) * 100)}%` : 0)
 
   if (n === 0) {
-    return (
-      <section aria-labelledby={id} className="flex flex-col gap-2">
-        <h2 id={id} className="text-sm font-semibold">Income and spend</h2>
-        <p className="text-sm text-muted-foreground">No entries in this range yet.</p>
-      </section>
-    )
+    return <ChartEmpty id={id} title="Income and spend">No entries in this range yet.</ChartEmpty>
   }
 
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3">
+    <Card role="region" aria-labelledby={id}>
       <ChartHeader id={id} title="Income and spend" showTable={showTable} onToggle={() => setShowTable(s => !s)}>
         <span className="hidden items-center gap-3 text-xs text-muted-foreground sm:flex">
           <Legend />
         </span>
       </ChartHeader>
+      <CardContent className="flex flex-col gap-3">
       <div className="flex items-center gap-3 text-xs text-muted-foreground sm:hidden"><Legend /></div>
       {showTable ? (
-        <table className={TABLE}>
-          <thead><tr><th>Period</th><th className="!text-right">Spend</th><th className="!text-right">Income</th><th className="!text-right">Net</th></tr></thead>
-          <tbody>
+        <Table>
+          <TableHeader><TableRow><TableHead>Period</TableHead><TableHead className="text-right">Spend</TableHead><TableHead className="text-right">Income</TableHead><TableHead className="text-right">Net</TableHead></TableRow></TableHeader>
+          <TableBody>
             {periods.map(p => (
-              <tr key={p.label}>
-                <td>{p.label}</td>
-                <td className="text-right font-mono tabular-nums">{money(p.spend)}</td>
-                <td className="text-right font-mono tabular-nums">{money(p.income)}</td>
-                <td className="text-right font-mono tabular-nums">{p.spend || p.income ? `${p.income - p.spend >= 0 ? '+' : ''}${money(p.income - p.spend)}` : '—'}</td>
-              </tr>
+              <TableRow key={p.label}>
+                <TableCell>{p.label}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{money(p.spend)}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{money(p.income)}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">{p.spend || p.income ? `${p.income - p.spend >= 0 ? '+' : ''}${money(p.income - p.spend)}` : '—'}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       ) : (
         <figure
           role="img"
@@ -107,7 +105,8 @@ export function DualSeriesTrend({ spend, income, symbol, jpy }: DualSeriesTrendP
           <p className="text-xs text-muted-foreground">Under each period: net (income minus spend).</p>
         </figure>
       )}
-    </section>
+      </CardContent>
+    </Card>
   )
 }
 

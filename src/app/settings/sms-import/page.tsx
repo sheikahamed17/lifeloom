@@ -3,9 +3,12 @@
 import { useState } from 'react'
 import { Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent } from '@/components/ui/card'
+import { SettingsCard } from '../_ui'
 import { PageShell } from '@/components/page-shell'
 
-const COPY_TARGET = 'glass-soft flex w-full items-start gap-2 break-all rounded-lg p-3 text-left font-mono text-xs outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2'
+const COPY_TARGET = 'glass-soft h-auto w-full items-start justify-start gap-2 whitespace-normal break-all p-3 text-left font-mono text-xs font-normal'
 
 const APPS_SCRIPT = `/**
  * Lifeloom — email transaction auto-ingest.
@@ -87,38 +90,41 @@ export default function AutoImportPage() {
 
   return (
     <PageShell title="Auto-import transactions" back={{ href: '/settings', label: 'Settings' }}>
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
+      <Card>
+       <CardContent className="flex flex-col gap-2 text-sm">
         <p>Turn your bank&apos;s transaction alerts into money entries automatically. Email is fully hands-off; SMS needs a tap to share. Imported transactions appear in your Money tab marked Email or SMS. Change the category or delete any that are wrong.</p>
         <p className="text-xs text-muted-foreground">Your token is a secret: anyone with it can add entries to your account.</p>
-      </section>
+       </CardContent>
+      </Card>
 
-      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-        <h2 className="text-sm font-semibold">Step 1: your token</h2>
+      <SettingsCard title="Step 1: your token">
         <Button onClick={generate} disabled={busy}>{busy ? 'Generating…' : token ? 'Make a new token' : 'Make a token'}</Button>
-        {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription className="text-destructive">{error}</AlertDescription>
+          </Alert>
+        )}
         {token && (
           <div className="flex flex-col gap-1">
             <p className="text-xs text-warning">Copy this now: it&apos;s shown only once. Making a new one replaces it.</p>
-            <button type="button" onClick={() => copy(token, 'token')} className={COPY_TARGET}>
+            <Button type="button" variant="outline" onClick={() => copy(token, 'token')} className={COPY_TARGET}>
               <span className="min-w-0 flex-1"><span className="sr-only">Copy token: </span>{token}</span>
               <Copy className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            </button>
+            </Button>
             {copyStatus('token')}
           </div>
         )}
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
-        <h2 className="text-sm font-semibold">Step 2: your import address</h2>
-        <button type="button" onClick={() => copy(endpoint, 'endpoint')} className={COPY_TARGET}>
+      <SettingsCard title="Step 2: your import address" contentClassName="gap-2 text-sm">
+        <Button type="button" variant="outline" onClick={() => copy(endpoint, 'endpoint')} className={COPY_TARGET}>
           <span className="min-w-0 flex-1"><span className="sr-only">Copy import address: </span>{endpoint}</span>
           <Copy className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        </button>
+        </Button>
         {copyStatus('endpoint')}
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
-        <h2 className="text-sm font-semibold">Option A: email (recommended, fully hands-off)</h2>
+      <SettingsCard title="Option A: email (recommended, fully hands-off)" contentClassName="gap-2 text-sm">
         <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-xs">
           <li>Open <a className="underline" href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a>, choose <strong>New project</strong> and paste the script below over the sample code.</li>
           <li>Open <strong>Project Settings</strong> (the gear), then <strong>Script properties</strong>, and add three: <code>ENDPOINT</code> = your import address above, <code>TOKEN</code> = your token, and <code>SENDER</code> = your bank&apos;s alert address (e.g. <code>alerts@hdfcbank.bank.in</code>; separate several banks with commas).</li>
@@ -126,22 +132,21 @@ export default function AutoImportPage() {
           <li>Open <strong>Triggers</strong> (the clock), choose <strong>Add trigger</strong>: function <code>ingestPulseEmails</code>, event source <em>Time-driven</em>, <em>Minutes timer</em>, <em>every 10 minutes</em>.</li>
           <li>That&apos;s it: <strong>no Gmail label or filter needed</strong>. New bank emails become Email entries within about 10 minutes.</li>
         </ol>
-        <button type="button" onClick={() => copy(APPS_SCRIPT, 'script')} aria-label="Copy script" className="glass-soft relative max-h-48 overflow-auto whitespace-pre rounded-lg p-3 pr-9 text-left font-mono text-xs outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2">
+        <Button type="button" variant="outline" onClick={() => copy(APPS_SCRIPT, 'script')} aria-label="Copy script" className="glass-soft relative block h-auto max-h-48 w-full overflow-auto whitespace-pre p-3 pr-9 text-left font-mono text-xs font-normal">
           <Copy className="absolute right-3 top-3 size-4 text-muted-foreground" aria-hidden />
           {APPS_SCRIPT}
-        </button>
+        </Button>
         {copyStatus('script')}
-      </section>
+      </SettingsCard>
 
-      <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
-        <h2 className="text-sm font-semibold">Option B: SMS on iPhone (a Shortcut in the share sheet)</h2>
+      <SettingsCard title="Option B: SMS on iPhone (a Shortcut in the share sheet)" contentClassName="gap-2 text-sm">
         <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-xs">
           <li>Open the <strong>Shortcuts</strong> app and tap the <strong>+</strong> button to create a Shortcut (not an Automation). Name it <strong>Add to Lifeloom</strong>.</li>
           <li>Add the action <strong>Get Contents of URL</strong>: URL = your import address above; Method = <strong>POST</strong>; Headers = <code>Authorization: Bearer &lt;your token&gt;</code> and <code>Content-Type: application/json</code>; Request Body = <strong>JSON</strong> with <code>text</code> = the <strong>Shortcut Input</strong> variable.</li>
           <li>Open the shortcut&apos;s details (the info button), turn on <strong>Show in Share Sheet</strong>, and accept <strong>Text</strong>.</li>
           <li>To use it: in Messages, select the bank SMS text, tap <strong>Share</strong>, then <strong>Add to Lifeloom</strong>. An SMS entry appears.</li>
         </ol>
-      </section>
+      </SettingsCard>
     </PageShell>
   )
 }

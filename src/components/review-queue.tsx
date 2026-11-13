@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Mail, MessageSquare } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Separator } from '@/components/ui/separator'
 import { CategoryPicker } from '@/components/category-picker'
 import { EntryTimestamp } from '@/components/entry-timestamp'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
@@ -38,78 +41,87 @@ export function ReviewQueue({ userId, focusId }: { userId: string; focusId?: str
   }, [handledFocus])
 
   if (items.length === 0) return null
-  const visible = showAll ? items : items.slice(0, SHOWN)
+  const shown = items.slice(0, SHOWN)
+  const extra = items.slice(SHOWN)
+
+  const renderItem = ({ entry: e, needsCategory, cardLast4 }: typeof items[number], index: number) => {
+    const SourceIcon = e.source === 'sms' ? MessageSquare : Mail
+    const isOpen = (what: 'category' | 'account') => open?.id === e.id && open.what === what
+    const toggle = (what: 'category' | 'account') => setOpen(isOpen(what) ? null : { id: e.id, what })
+    return (
+      <li key={e.id} id={`review-${e.id}`} className="flex flex-col gap-2 py-3">
+        {index > 0 && <Separator className="-mt-3 mb-1" />}
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{e.description || e.merchant || 'Imported entry'}</p>
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <SourceIcon className="size-3.5" aria-hidden />
+              <span className="sr-only">{e.source === 'sms' ? 'From SMS,' : 'From email,'}</span>
+              <EntryTimestamp occurredAt={e.occurred_at} className="tabular-nums" />
+            </p>
+          </div>
+          <span className={cn('whitespace-nowrap font-mono text-sm font-medium tabular-nums', e.direction === 'out' ? 'text-destructive' : 'text-income')}>
+            {signedAmount(e.amount, e.currency, e.direction)}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {needsCategory && (
+            <Button variant="outline" aria-expanded={isOpen('category')} onClick={() => toggle('category')}>
+              Set category
+            </Button>
+          )}
+          {cardLast4 && (
+            <Button variant="outline" aria-expanded={isOpen('account')} onClick={() => toggle('account')}>
+              Which account is •{cardLast4}?
+            </Button>
+          )}
+        </div>
+        {isOpen('category') && (
+          <CategoryPicker
+            userId={userId}
+            kind={e.direction === 'out' ? 'spend' : 'income'}
+            selectedId={e.category_id}
+            onSelect={(id, name) => { setOpen(null); void setCategory(e, id, name) }}
+          />
+        )}
+        {isOpen('account') && cardLast4 && (
+          <div role="group" aria-label={`Account for card ending ${cardLast4}`} className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">Lifeloom will remember this card for its future alerts.</p>
+            <div className="flex flex-wrap gap-1.5">
+              {activeAccounts.map(acc => (
+                <Button key={acc.id} variant="outline" onClick={() => { setOpen(null); void linkCard(e, cardLast4, acc) }}>
+                  {acc.icon && <span aria-hidden="true">{acc.icon}</span>}{acc.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+      </li>
+    )
+  }
 
   return (
-    <section aria-labelledby="needs-you-heading" className="glass flex flex-col gap-1 rounded-2xl p-4">
+    <Card role="region" aria-labelledby="needs-you-heading" className="gap-1 p-4">
       <h2 id="needs-you-heading" className="text-sm font-semibold">
         Needs you <span className="font-normal text-muted-foreground">· {items.length}</span>
       </h2>
-      <ul className="flex flex-col divide-y divide-white/10">
-        {visible.map(({ entry: e, needsCategory, cardLast4 }) => {
-          const SourceIcon = e.source === 'sms' ? MessageSquare : Mail
-          const isOpen = (what: 'category' | 'account') => open?.id === e.id && open.what === what
-          const toggle = (what: 'category' | 'account') => setOpen(isOpen(what) ? null : { id: e.id, what })
-          return (
-            <li key={e.id} id={`review-${e.id}`} className="flex flex-col gap-2 py-3 last:pb-0">
-              <div className="flex items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{e.description || e.merchant || 'Imported entry'}</p>
-                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <SourceIcon className="size-3.5" aria-hidden />
-                    <span className="sr-only">{e.source === 'sms' ? 'From SMS,' : 'From email,'}</span>
-                    <EntryTimestamp occurredAt={e.occurred_at} className="tabular-nums" />
-                  </p>
-                </div>
-                <span className={cn('whitespace-nowrap font-mono text-sm font-medium tabular-nums', e.direction === 'out' ? 'text-destructive' : 'text-income')}>
-                  {signedAmount(e.amount, e.currency, e.direction)}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {needsCategory && (
-                  <Button variant="outline" size="sm" aria-expanded={isOpen('category')} onClick={() => toggle('category')}>
-                    Set category
-                  </Button>
-                )}
-                {cardLast4 && (
-                  <Button variant="outline" size="sm" aria-expanded={isOpen('account')} onClick={() => toggle('account')}>
-                    Which account is •{cardLast4}?
-                  </Button>
-                )}
-              </div>
-              {isOpen('category') && (
-                <CategoryPicker
-                  userId={userId}
-                  kind={e.direction === 'out' ? 'spend' : 'income'}
-                  selectedId={e.category_id}
-                  onSelect={(id, name) => { setOpen(null); void setCategory(e, id, name) }}
-                />
-              )}
-              {isOpen('account') && cardLast4 && (
-                <div role="group" aria-label={`Account for card ending ${cardLast4}`} className="flex flex-col gap-2">
-                  <p className="text-xs text-muted-foreground">Lifeloom will remember this card for its future alerts.</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {activeAccounts.map(acc => (
-                      <Button key={acc.id} variant="outline" size="sm" onClick={() => { setOpen(null); void linkCard(e, cardLast4, acc) }}>
-                        {acc.icon && <span aria-hidden="true">{acc.icon}</span>}{acc.name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-      {items.length > SHOWN && (
-        <button
-          type="button"
-          onClick={() => setShowAll(s => !s)}
-          className="mt-1 min-h-11 self-start rounded-lg px-2 text-sm text-accent-2 outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
-        >
-          {showAll ? 'Show fewer' : `Show all ${items.length}`}
-        </button>
-      )}
-    </section>
+      <Collapsible open={showAll} onOpenChange={setShowAll} className="flex flex-col">
+        <ul className={cn('flex flex-col', extra.length === 0 && '[&>li:last-child]:pb-0')}>
+          {shown.map((it, i) => renderItem(it, i))}
+        </ul>
+        {extra.length > 0 && (
+          <CollapsibleContent>
+            <ul className="flex flex-col [&>li:last-child]:pb-0">
+              {extra.map((it, i) => renderItem(it, SHOWN + i))}
+            </ul>
+          </CollapsibleContent>
+        )}
+        {items.length > SHOWN && (
+          <CollapsibleTrigger className={cn(buttonVariants({ variant: 'ghost' }), 'mt-1 min-h-11 w-fit self-start px-2 text-accent-2')}>
+            {showAll ? 'Show fewer' : `Show all ${items.length}`}
+          </CollapsibleTrigger>
+        )}
+      </Collapsible>
+    </Card>
   )
 }

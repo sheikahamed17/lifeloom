@@ -3,6 +3,10 @@
 import { ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
+import { Empty, EmptyContent, EmptyDescription } from '@/components/ui/empty'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
 import { useGoals } from '@/hooks/use-goals'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
@@ -72,10 +76,14 @@ export function GoalsWidget({ userId }: Props) {
     return (
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">Goals</h2>
-        <p className="text-sm text-muted-foreground">Set a savings target (a trip, a new laptop) and watch your progress here.</p>
-        <Link href="/settings/goals" className="inline-flex min-h-11 items-center gap-1 self-start rounded-lg text-sm text-accent-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent-2">
-          Add a goal<ChevronRight className="size-4" aria-hidden />
-        </Link>
+        <Empty className="p-2">
+          <EmptyDescription>Set a savings target (a trip, a new laptop) and watch your progress here.</EmptyDescription>
+          <EmptyContent>
+            <Link href="/settings/goals" className={cn(buttonVariants({ variant: 'link' }), 'h-11 self-center px-0')}>
+              Add a goal<ChevronRight className="size-4" aria-hidden />
+            </Link>
+          </EmptyContent>
+        </Empty>
       </div>
     )
   }
@@ -101,19 +109,11 @@ export function GoalsWidget({ userId }: Props) {
                 {fmt(p.current, goal.currency)} of {fmt(goal.target_amount, goal.currency)}
               </span>
             </div>
-            <div
-              className="h-2 w-full overflow-hidden rounded-full bg-white/10"
-              role="progressbar"
-              aria-valuenow={pctDisplay}
-              aria-valuemin={0}
-              aria-valuemax={100}
+            <Progress
+              value={Math.min(p.pct, 100)}
               aria-label={`${goal.name} progress ${pctDisplay}%`}
-            >
-              <div
-                className="h-full bg-accent-2"
-                style={{ width: `${Math.min(p.pct, 100)}%` }}
-              />
-            </div>
+              className="[&_[data-slot=progress-indicator]]:bg-accent-2 [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-white/10"
+            />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{pctDisplay}%</span>
               {p.remaining > 0 && (

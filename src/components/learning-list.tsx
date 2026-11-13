@@ -12,6 +12,8 @@ import { EntryTimestamp } from '@/components/entry-timestamp'
 import { sortByDate, type DateSort } from '@/lib/list-sort'
 import type { LearningRow } from '@/lib/dexie'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
 
 type Props = { userId: string; selectedTag: string | null; sort?: DateSort; onEdit?: (row: LearningRow) => void }
 
@@ -50,9 +52,11 @@ export function LearningList({ userId, selectedTag, sort = 'newest', onEdit }: P
 
   if (sorted.length === 0) {
     return (
-      <div className="glass-soft rounded-2xl p-4 text-center text-sm text-muted-foreground">
-        {selectedTag ? `No learnings with tag "${selectedTag}".` : "No learnings yet — say 'I learned…'"}
-      </div>
+      <Empty className="glass-soft">
+        <EmptyDescription>
+          {selectedTag ? `No learnings with tag "${selectedTag}".` : "No learnings yet — say 'I learned…'"}
+        </EmptyDescription>
+      </Empty>
     )
   }
 
@@ -86,17 +90,13 @@ export function LearningList({ userId, selectedTag, sort = 'newest', onEdit }: P
             {(e.tags ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {(e.tags ?? []).map(tag => (
-                  <span
+                  <Badge
                     key={tag}
-                    className={cn(
-                      'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
-                      selectedTag === tag
-                        ? 'bg-accent-2/30 text-accent-2 border border-accent-2/50'
-                        : 'bg-white/10 text-muted-foreground border border-white/20',
-                    )}
+                    variant="outline"
+                    className={cn(selectedTag === tag ? 'border-accent-2/50 bg-accent-2/30 text-accent-2' : 'bg-white/10 text-muted-foreground')}
                   >
                     {tag}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             )}

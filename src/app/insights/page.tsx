@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { PageShell } from '@/components/page-shell'
 import { InsightCard } from '@/components/insight-card'
 import { Button } from '@/components/ui/button'
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
+import { Spinner } from '@/components/ui/spinner'
 import { useInsights } from '@/hooks/use-insights'
 import { pushPullOnce } from '@/lib/sync-client'
 
@@ -45,7 +47,7 @@ export default function InsightsPage() {
         // The page's one primary action, so it is the one thing that glows.
         <Button onClick={generate} disabled={generating || !userId} aria-busy={generating} className="glow-cta">
           {generating
-            ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
+            ? <Spinner className="motion-reduce:animate-none" aria-hidden />
             : <Sparkles className="size-4" aria-hidden />}
           {generating ? 'Generating…' : 'Generate this week'}
         </Button>
@@ -54,7 +56,11 @@ export default function InsightsPage() {
       {/* Always mounted so screen readers announce the result; takes no space while empty. */}
       <p role="status" className="text-sm text-muted-foreground empty:sr-only">{msg}</p>
       {insights.length === 0 ? (
-        <p className="glass rounded-2xl p-4 text-sm text-muted-foreground">No insights yet — they arrive every Monday, or generate this week now.</p>
+        <Empty className="glass border p-4">
+          <EmptyHeader>
+            <EmptyDescription>No insights yet — they arrive every Monday, or generate this week now.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <ul className="flex flex-col gap-3">
           {insights.map(i => (

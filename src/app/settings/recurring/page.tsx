@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeftRight, ArrowRight, Pause, Play, Trash2 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useRecurringRules } from '@/hooks/use-recurring-rules'
 import { useCategories } from '@/hooks/use-categories'
 import { useAllAccounts } from '@/hooks/use-all-accounts'
@@ -80,72 +85,90 @@ function RecurringSettingsPageInner() {
   if (!userId) {
     return (
       <PageShell title="Recurring rules" back={BACK}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <Skeleton className="h-40 w-full rounded-2xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
     <PageShell title="Recurring rules" back={BACK}>
-      <ul className="glass divide-y divide-white/10 rounded-2xl">
-        {rules.length === 0 && (
-          <li className="p-4 text-sm text-muted-foreground">
+      {rules.length === 0 ? (
+        <Empty className="glass">
+          <EmptyDescription>
             No recurring rules yet. Turn on &quot;Repeat this entry&quot; when you add an entry to create one.
-          </li>
-        )}
-        {rules.map(r => {
-          const cat = r.category_id ? categoryById.get(r.category_id) : undefined
-          const periodText = `Every ${r.interval_count > 1 ? `${r.interval_count} ` : ''}${PERIOD_NOUN[r.period]}${r.interval_count > 1 ? 's' : ''}`
-          const isTransfer = !!(r.from_account_id && r.to_account_id)
-          const fromName = isTransfer ? (accountById.get(r.from_account_id!)?.name ?? 'Unknown') : ''
-          const toName = isTransfer ? (accountById.get(r.to_account_id!)?.name ?? 'Unknown') : ''
-          return (
-            <li key={r.id} className="flex flex-col gap-1 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className={`flex items-center gap-1.5 font-mono tabular-nums ${isTransfer ? 'text-foreground' : r.direction === 'out' ? 'text-destructive' : 'text-income'}`}>
-                  {isTransfer ? '' : r.direction === 'out' ? '−' : '+'}{formatMinor(r.amount, r.currency)}
-                  {isTransfer && (
-                    <>
-                      <ArrowLeftRight className="size-4 text-muted-foreground" aria-hidden />
-                      <span className="sr-only">transfer</span>
-                    </>
-                  )}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.is_active ? 'bg-income/15 text-income' : 'bg-white/10 text-muted-foreground'}`}>
-                  {r.is_active ? 'Active' : 'Paused'}
-                </span>
-              </div>
-              <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-                {isTransfer && (
-                  <>
-                    <span>{fromName}</span>
-                    <ArrowRight className="size-3 shrink-0" aria-hidden />
-                    <span className="sr-only">to</span>
-                    <span>{toName} ·</span>
-                  </>
-                )}
-                {!isTransfer && cat && (
-                  <span>
-                    {cat.icon && <span aria-hidden="true" className="mr-1">{cat.icon}</span>}
-                    {cat.name} ·
-                  </span>
-                )}
-                <span>{periodText} · next {formatDay(r.next_due_at, prefs.tz)}</span>
-              </p>
-              <div className="mt-2 flex gap-2">
-                <Button variant="outline" onClick={() => setActive(r.id, r.is_active ? 0 : 1)}>
-                  {r.is_active ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
-                  {r.is_active ? 'Pause' : 'Resume'}
-                </Button>
-                <Button variant="ghost" onClick={() => deleteRule(r.id)} className="text-muted-foreground hover:text-destructive">
-                  <Trash2 className="size-4" aria-hidden />
-                  Delete
-                </Button>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+          </EmptyDescription>
+        </Empty>
+      ) : (
+        <Card className="gap-0 py-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-4">Rule</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="pr-4 text-right"><span className="sr-only">Actions</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rules.map(r => {
+                const cat = r.category_id ? categoryById.get(r.category_id) : undefined
+                const periodText = `Every ${r.interval_count > 1 ? `${r.interval_count} ` : ''}${PERIOD_NOUN[r.period]}${r.interval_count > 1 ? 's' : ''}`
+                const isTransfer = !!(r.from_account_id && r.to_account_id)
+                const fromName = isTransfer ? (accountById.get(r.from_account_id!)?.name ?? 'Unknown') : ''
+                const toName = isTransfer ? (accountById.get(r.to_account_id!)?.name ?? 'Unknown') : ''
+                return (
+                  <TableRow key={r.id}>
+                    <TableCell className="py-3 pl-4 align-top whitespace-normal">
+                      <span className={`flex items-center gap-1.5 font-mono tabular-nums ${isTransfer ? 'text-foreground' : r.direction === 'out' ? 'text-destructive' : 'text-income'}`}>
+                        {isTransfer ? '' : r.direction === 'out' ? '−' : '+'}{formatMinor(r.amount, r.currency)}
+                        {isTransfer && (
+                          <>
+                            <ArrowLeftRight className="size-4 text-muted-foreground" aria-hidden />
+                            <span className="sr-only">transfer</span>
+                          </>
+                        )}
+                      </span>
+                      <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                        {isTransfer && (
+                          <>
+                            <span>{fromName}</span>
+                            <ArrowRight className="size-3 shrink-0" aria-hidden />
+                            <span className="sr-only">to</span>
+                            <span>{toName} ·</span>
+                          </>
+                        )}
+                        {!isTransfer && cat && (
+                          <span>
+                            {cat.icon && <span aria-hidden="true" className="mr-1">{cat.icon}</span>}
+                            {cat.name} ·
+                          </span>
+                        )}
+                        <span>{periodText} · next {formatDay(r.next_due_at, prefs.tz)}</span>
+                      </p>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <Badge variant="secondary" className={r.is_active ? 'bg-income/15 text-income' : 'text-muted-foreground'}>
+                        {r.is_active ? 'Active' : 'Paused'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="pr-4 align-top">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setActive(r.id, r.is_active ? 0 : 1)}>
+                          {r.is_active ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
+                          {r.is_active ? 'Pause' : 'Resume'}
+                        </Button>
+                        <Button variant="ghost" onClick={() => deleteRule(r.id)} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="size-4" aria-hidden />
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </PageShell>
   )
 }

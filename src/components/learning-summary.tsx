@@ -2,6 +2,10 @@
 
 import { useMemo } from 'react'
 import { useLearnings } from '@/hooks/use-learnings'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Item, ItemGroup, ItemTitle } from '@/components/ui/item'
+import { Separator } from '@/components/ui/separator'
 
 type Props = { userId: string }
 
@@ -32,39 +36,39 @@ export function LearningSummary({ userId }: Props) {
     return { thisWeek, topTags }
   }, [learnings])
 
+  const rows = [
+    { label: 'This week', value: thisWeek },
+    { label: 'Total', value: learnings.length },
+  ]
+
   return (
-    <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-      <header>
-        <span className="text-sm font-semibold">Learnings</span>
-      </header>
-      <ul className="flex flex-col gap-1.5 text-sm">
-        <li className="flex items-center justify-between">
-          <span>This week</span>
-          <span className="font-mono tabular-nums">{thisWeek}</span>
-        </li>
-        <li className="flex items-center justify-between">
-          <span>Total</span>
-          <span className="font-mono tabular-nums">{learnings.length}</span>
-        </li>
-      </ul>
-      {topTags.length > 0 && (
-        <>
-          <div className="border-t border-white/10 pt-2" />
-          <div className="flex flex-col gap-1.5 text-xs">
-            <span className="text-muted-foreground">Top tags</span>
-            <div className="flex flex-wrap gap-1">
-              {topTags.map(tag => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white/10 text-muted-foreground border border-white/20"
-                >
-                  {tag}
-                </span>
-              ))}
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-semibold">Learnings</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <ItemGroup className="gap-0">
+          {rows.map(r => (
+            <Item key={r.label} role="listitem" size="xs" className="flex-nowrap justify-between py-1.5">
+              <ItemTitle className="font-normal">{r.label}</ItemTitle>
+              <span className="font-mono tabular-nums">{r.value}</span>
+            </Item>
+          ))}
+        </ItemGroup>
+        {topTags.length > 0 && (
+          <>
+            <Separator />
+            <div className="flex flex-col gap-1.5 text-xs">
+              <span className="text-muted-foreground">Top tags</span>
+              <div className="flex flex-wrap gap-1">
+                {topTags.map(tag => (
+                  <Badge key={tag} variant="secondary" className="text-muted-foreground">{tag}</Badge>
+                ))}
+              </div>
             </div>
-          </div>
-        </>
-      )}
-    </section>
+          </>
+        )}
+      </CardContent>
+    </Card>
   )
 }

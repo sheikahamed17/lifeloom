@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AuroraBackground } from '@/components/aurora-background'
 import { authClient } from '@/lib/auth-client'
@@ -68,32 +70,35 @@ export default function LoginPage() {
             ) : (
               <div className="flex flex-col gap-3">
                 <Button onClick={handlePasskey} disabled={state === 'sending'} className="w-full">
-                  <Fingerprint className="size-4" aria-hidden />
+                  {state === 'sending' ? <Spinner aria-hidden /> : <Fingerprint className="size-4" aria-hidden />}
                   {state === 'sending' ? 'Signing in…' : 'Sign in with Face ID'}
                 </Button>
 
                 {!showEmail ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowEmail(true)}
-                    className="text-sm text-muted-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                  >
+                  <Button type="button" variant="link" onClick={() => setShowEmail(true)} className="text-muted-foreground">
                     Email me a link instead
-                  </button>
+                  </Button>
                 ) : (
                   <form onSubmit={handleEmail} className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" required value={email}
-                        onChange={e => setEmail(e.target.value)} autoComplete="email" />
-                    </div>
+                    <FieldGroup>
+                      <Field>
+                        <FieldLabel htmlFor="email">Email</FieldLabel>
+                        <Input id="email" type="email" required value={email}
+                          onChange={e => setEmail(e.target.value)} autoComplete="email" />
+                      </Field>
+                    </FieldGroup>
                     <Button type="submit" variant="secondary" disabled={state === 'sending'}>
+                      {state === 'sending' && <Spinner aria-hidden />}
                       {state === 'sending' ? 'Sending…' : 'Send magic link'}
                     </Button>
                   </form>
                 )}
 
-                {errorMsg && <p role="alert" className="text-sm text-destructive">{errorMsg}</p>}
+                {errorMsg && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{errorMsg}</AlertDescription>
+                  </Alert>
+                )}
               </div>
             )}
           </CardContent>

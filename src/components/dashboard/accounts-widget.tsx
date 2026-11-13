@@ -3,6 +3,11 @@
 import { ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
+import { Empty, EmptyContent, EmptyDescription } from '@/components/ui/empty'
+import { Item, ItemContent, ItemTitle } from '@/components/ui/item'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
@@ -15,7 +20,7 @@ import { currencySymbol } from '@/lib/currency'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { netWorth, type AccountLike } from '@/lib/accounts'
 
-const LINK = 'inline-flex min-h-11 items-center gap-1 rounded-lg text-sm text-accent-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent-2'
+const LINK = cn(buttonVariants({ variant: 'link' }), 'h-11 px-0')
 
 type Props = { userId: string }
 
@@ -81,8 +86,12 @@ export function AccountsWidget({ userId }: Props) {
     return (
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">Accounts</h2>
-        <p className="text-sm text-muted-foreground">Add your bank accounts and cards to see balances and net worth.</p>
-        <Link href="/settings/accounts" className={`${LINK} self-start`}>Add an account<ChevronRight className="size-4" aria-hidden /></Link>
+        <Empty className="p-2">
+          <EmptyDescription>Add your bank accounts and cards to see balances and net worth.</EmptyDescription>
+          <EmptyContent>
+            <Link href="/settings/accounts" className={LINK}>Add an account<ChevronRight className="size-4" aria-hidden /></Link>
+          </EmptyContent>
+        </Empty>
       </div>
     )
   }
@@ -111,42 +120,44 @@ export function AccountsWidget({ userId }: Props) {
         {nw.perAccount
           .filter(a => a.type === 'asset')
           .map(acct => (
-            <div key={acct.id} className="flex items-center justify-between gap-2 text-sm">
-              <div className="flex min-w-0 items-center gap-2">
+            <Item key={acct.id} size="xs" className="flex-nowrap justify-between p-0">
+              <ItemContent className="min-w-0 flex-row items-center gap-2">
                 {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
-                <span className="truncate">{acct.name}</span>
-              </div>
-              <span className="font-mono tabular-nums">
+                <ItemTitle className="min-w-0 font-normal"><span className="truncate">{acct.name}</span></ItemTitle>
+              </ItemContent>
+              <span className="font-mono text-sm tabular-nums">
                 {fmtIn(acct.balance, acct.currency)}
               </span>
-            </div>
+            </Item>
           ))}
 
         {/* Liabilities section */}
         {nw.perAccount
           .filter(a => a.type === 'liability')
           .length > 0 && (
-          <div className="flex flex-col gap-2 border-t border-white/10 pt-2">
+          <div className="flex flex-col gap-2">
+            <Separator />
             <h3 className="text-xs text-muted-foreground">Cards and loans</h3>
             {nw.perAccount
               .filter(a => a.type === 'liability')
               .map(acct => (
-                <div key={acct.id} className="flex items-center justify-between gap-2 text-sm">
-                  <div className="flex min-w-0 items-center gap-2">
+                <Item key={acct.id} size="xs" className="flex-nowrap justify-between p-0">
+                  <ItemContent className="min-w-0 flex-row items-center gap-2">
                     {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
-                    <span className="truncate">{acct.name}</span>
-                  </div>
-                  <span className="font-mono tabular-nums text-destructive">
+                    <ItemTitle className="min-w-0 font-normal"><span className="truncate">{acct.name}</span></ItemTitle>
+                  </ItemContent>
+                  <span className="font-mono text-sm tabular-nums text-destructive">
                     {fmtIn(acct.balance, acct.currency)}
                   </span>
-                </div>
+                </Item>
               ))}
           </div>
         )}
       </div>
 
       {accounts.length > 0 && (
-        <div className="border-t border-white/10 pt-1">
+        <div className="flex flex-col">
+          <Separator />
           <Link href="/settings/transfers" className={LINK}>
             Move money between accounts<ChevronRight className="size-4" aria-hidden />
           </Link>

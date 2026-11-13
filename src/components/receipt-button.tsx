@@ -6,6 +6,8 @@ import type { ReceiptStreamEvent } from '@/lib/receipt-sse'
 import { callReceiptApiStreaming } from '@/lib/receipt-sse'
 import { enqueueReceipt } from '@/lib/receipt-queue'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Props = {
   disabled: boolean
@@ -46,7 +48,7 @@ export function ReceiptButton({ disabled, onParsed }: Props) {
   const status = state === 'uploading' ? 'Uploading receipt…' : state === 'parsing' ? 'Reading receipt…' : state === 'error' ? `Receipt failed: ${errorMsg || 'try again'}` : null
   return (
     <div className="flex min-w-0 items-center gap-1">
-      <input
+      <Input
         ref={inputRef}
         type="file"
         accept="image/*"
@@ -58,17 +60,18 @@ export function ReceiptButton({ disabled, onParsed }: Props) {
           e.currentTarget.value = ''
         }}
       />
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="icon-lg"
         disabled={disabled || state === 'uploading' || state === 'parsing'}
         onClick={() => inputRef.current?.click()}
-        className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-white/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 disabled:pointer-events-none disabled:opacity-50"
+        className="text-muted-foreground hover:text-foreground"
         aria-label="Scan a receipt"
       >
         {state === 'uploading' || state === 'parsing'
           ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
           : <Camera className="size-5" aria-hidden />}
-      </button>
+      </Button>
       {status && (
         <span role="status" className={cn('min-w-0 truncate text-xs', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>{status}</span>
       )}

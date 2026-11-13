@@ -11,6 +11,13 @@ import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { habitStreaks, parseSchedule } from '@/lib/habits'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Spinner } from '@/components/ui/spinner'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { PageShell } from '@/components/page-shell'
 import { cn } from '@/lib/utils'
 import type { HabitRow } from '@/lib/dexie'
@@ -177,7 +184,7 @@ export default function HabitsPage() {
   if (!userId) {
     return (
       <PageShell title="Habits">
-        <p role="status" className="text-sm text-muted-foreground">Loading…</p>
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner aria-hidden />Loading…</p>
       </PageShell>
     )
   }
@@ -185,10 +192,17 @@ export default function HabitsPage() {
   return (
     <PageShell title="Habits">
       {/* The daily job (marking habits done) comes first; adding a habit is the rarer one. */}
-      <section aria-labelledby="habits-active" className="glass flex flex-col gap-2 rounded-2xl p-4">
-        <h2 id="habits-active" className="text-sm font-semibold text-muted-foreground">Active habits</h2>
+      <Card role="region" aria-labelledby="habits-active">
+        <CardHeader>
+          <CardTitle><h2 id="habits-active" className="text-sm font-semibold text-muted-foreground">Active habits</h2></CardTitle>
+        </CardHeader>
+        <CardContent>
+        {habits.length === 0 && (
+          <Empty className="border p-4">
+            <EmptyHeader><EmptyDescription>No habits yet. Add your first one below.</EmptyDescription></EmptyHeader>
+          </Empty>
+        )}
         <ul className="divide-y divide-white/10">
-          {habits.length === 0 && <li className="py-3 text-sm text-muted-foreground">No habits yet. Add your first one below.</li>}
           {habits.map(h => {
             const habitLogs = logs.filter(l => l.habit_id === h.id && !l.deleted_at)
             const days = habitLogs.map(l => l.day)
@@ -200,8 +214,8 @@ export default function HabitsPage() {
               <li key={h.id} className="flex flex-col gap-2 py-3 first:pt-1 last:pb-0">
                 {isEditing ? (
                   <>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
+                    <FieldGroup className="gap-2">
+                      <Field orientation="horizontal">
                         <Input
                           value={editName}
                           onChange={e => setEditName(e.target.value)}
@@ -217,14 +231,14 @@ export default function HabitsPage() {
                           className="w-20 text-center"
                           aria-label="Edit habit icon"
                         />
-                      </div>
+                      </Field>
                       <ScheduleControl
                         isDaily={editScheduleIsDaily}
                         selectedWeekdays={editSelectedWeekdays}
                         onDailyChange={setEditScheduleIsDaily}
                         onWeekdaysChange={setEditSelectedWeekdays}
                       />
-                    </div>
+                    </FieldGroup>
                     <div className="flex gap-2">
                       <Button onClick={saveEdit} className="flex-1">Save</Button>
                       <Button variant="ghost" onClick={cancelEdit} className="flex-1">Cancel</Button>
@@ -234,10 +248,11 @@ export default function HabitsPage() {
                   <>
                     <div className="flex items-center gap-1">
                       {/* The whole name is the toggle; its accessible name states the state ("Done today" / "Mark done"). */}
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => toggleToday(h)}
-                        className="-ml-2 flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-1 text-left outline-none transition-colors hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
+                        className="-ml-2 h-auto min-h-11 min-w-0 flex-1 justify-start gap-3 px-2 py-1 text-left whitespace-normal"
                       >
                         {s.completedToday
                           ? <CheckCircle2 className="size-6 shrink-0 fill-accent-2/20 text-accent-2" aria-hidden />
@@ -249,7 +264,7 @@ export default function HabitsPage() {
                           </span>
                           <span className={cn('text-xs', s.completedToday ? 'text-accent-2' : 'text-muted-foreground')}>{status}</span>
                         </span>
-                      </button>
+                      </Button>
                       <Button variant="ghost" className="px-3" onClick={() => startEdit(h)} aria-label={`Edit ${h.name}`}>
                         Edit
                       </Button>
@@ -275,11 +290,16 @@ export default function HabitsPage() {
             )
           })}
         </ul>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section aria-labelledby="habits-new" className="glass flex flex-col gap-3 rounded-2xl p-4">
-        <h2 id="habits-new" className="text-sm font-semibold text-muted-foreground">New habit</h2>
-        <div className="flex gap-2">
+      <Card role="region" aria-labelledby="habits-new">
+        <CardHeader>
+          <CardTitle><h2 id="habits-new" className="text-sm font-semibold text-muted-foreground">New habit</h2></CardTitle>
+        </CardHeader>
+        <CardContent>
+        <FieldGroup className="gap-3">
+        <Field orientation="horizontal">
           <Input
             value={newName}
             onChange={e => setNewName(e.target.value)}
@@ -295,7 +315,7 @@ export default function HabitsPage() {
             className="w-20 text-center"
             aria-label="Habit icon"
           />
-        </div>
+        </Field>
         <ScheduleControl
           isDaily={newScheduleIsDaily}
           selectedWeekdays={newSelectedWeekdays}
@@ -303,7 +323,9 @@ export default function HabitsPage() {
           onWeekdaysChange={setNewSelectedWeekdays}
         />
         <Button onClick={addHabit} disabled={!newName.trim()} className="w-full">Add habit</Button>
-      </section>
+        </FieldGroup>
+        </CardContent>
+      </Card>
 
       {archived.length > 0 && (
         <ArchivedSection archived={archived} onRestore={restoreHabit} />
@@ -319,42 +341,44 @@ function ArchivedSection({
   archived: ReturnType<typeof useArchivedHabits>
   onRestore: (id: string) => void
 }) {
-  const [isOpen, setIsOpen] = useState(false)
-
   return (
-    <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-      <h2>
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          aria-expanded={isOpen}
-          aria-controls="habits-archived"
-          className="flex min-h-11 w-full items-center justify-between rounded-lg text-left text-sm font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
-        >
-          <span>Archived ({archived.length})</span>
-          <ChevronDown className={cn('size-4 transition-transform motion-reduce:transition-none', isOpen && 'rotate-180')} aria-hidden />
-        </button>
-      </h2>
-      {isOpen && (
-        <ul id="habits-archived" className="divide-y divide-white/10">
-          {archived.map(h => (
-            <li key={h.id} className="flex items-center justify-between gap-2 py-2">
-              <span className="min-w-0 truncate text-sm">
-                {h.icon && <span aria-hidden="true" className="mr-1">{h.icon}</span>}
-                {h.name}
-              </span>
-              <Button
-                variant="ghost"
-                onClick={() => onRestore(h.id)}
-                aria-label={`Restore ${h.name}`}
+    <Card>
+      <Collapsible>
+        <CardHeader>
+          <CardTitle>
+            <h2>
+              <CollapsibleTrigger
+                render={<Button variant="ghost" className="-mx-2 flex w-[calc(100%+1rem)] justify-between px-2 text-sm font-semibold text-muted-foreground hover:text-foreground [&[data-panel-open]>svg]:rotate-180" />}
               >
-                Restore
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+                <span>Archived ({archived.length})</span>
+                <ChevronDown className="size-4 transition-transform motion-reduce:transition-none" aria-hidden />
+              </CollapsibleTrigger>
+            </h2>
+          </CardTitle>
+        </CardHeader>
+        <CollapsibleContent id="habits-archived">
+          <CardContent>
+            <ul className="divide-y divide-white/10">
+              {archived.map(h => (
+                <li key={h.id} className="flex items-center justify-between gap-2 py-2">
+                  <span className="min-w-0 truncate text-sm">
+                    {h.icon && <span aria-hidden="true" className="mr-1">{h.icon}</span>}
+                    {h.name}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    onClick={() => onRestore(h.id)}
+                    aria-label={`Restore ${h.name}`}
+                  >
+                    Restore
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   )
 }
 
@@ -377,51 +401,40 @@ function ScheduleControl({ isDaily, selectedWeekdays, onDailyChange, onWeekdaysC
   const abbrev = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
   const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-  const toggleWeekday = (day: number) => {
-    const newSet = new Set(selectedWeekdays)
-    if (newSet.has(day)) {
-      newSet.delete(day)
-    } else {
-      newSet.add(day)
-    }
-    onWeekdaysChange(newSet)
-  }
-
   return (
-    <div className="flex flex-col gap-2">
-      <label className="flex min-h-11 w-fit cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={isDaily}
-          onChange={e => onDailyChange(e.target.checked)}
-          className="size-4 accent-accent-2"
-        />
-        <span>Daily</span>
-      </label>
+    <FieldGroup className="gap-2">
+      <Field orientation="horizontal">
+        <FieldLabel className="min-h-11 cursor-pointer items-center">
+          <Checkbox
+            aria-label="Daily"
+            checked={isDaily}
+            onCheckedChange={checked => onDailyChange(checked)}
+          />
+          <span>Daily</span>
+        </FieldLabel>
+      </Field>
       {!isDaily && (
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Days of the week">
-          {abbrev.map((letter, i) => {
-            const on = selectedWeekdays.has(i)
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => toggleWeekday(i)}
-                aria-label={labels[i]}
-                aria-pressed={on}
-                className={cn(
-                  'flex size-10 items-center justify-center rounded-lg border text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2',
-                  on
-                    ? 'border-accent-2 bg-accent-2/15 text-foreground'
-                    : 'border-white/10 text-muted-foreground hover:border-white/20 hover:text-foreground',
-                )}
-              >
-                {letter}
-              </button>
-            )
-          })}
-        </div>
+        <ToggleGroup
+          multiple
+          variant="outline"
+          spacing={1}
+          aria-label="Days of the week"
+          className="flex-wrap"
+          value={Array.from(selectedWeekdays).map(String)}
+          onValueChange={next => onWeekdaysChange(new Set(next.map(Number)))}
+        >
+          {abbrev.map((letter, i) => (
+            <ToggleGroupItem
+              key={i}
+              value={String(i)}
+              aria-label={labels[i]}
+              className="size-10 aria-pressed:border-accent-2 aria-pressed:bg-accent-2/15"
+            >
+              {letter}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       )}
-    </div>
+    </FieldGroup>
   )
 }

@@ -4,6 +4,11 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import { MoneyCard, currentPeriodRange } from '@/components/money-card'
 import { BudgetSection } from '@/components/budget-section'
 import { CardsSection } from '@/components/cards-section'
@@ -28,7 +33,7 @@ import { formatMinor } from '@/lib/currency'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { db, type MoneyEntryRow } from '@/lib/dexie'
 
-const CARD = 'glass rounded-2xl p-4'
+const CARD = 'p-4'
 
 /**
  * Everything the old /dashboard showed that is about money, in one place (owner
@@ -42,11 +47,11 @@ export function MoneyOverview({ userId, onSelectCategory, withDigest = false }: 
       {withDigest && <DigestCard userId={userId} />}
       <MoneyCard userId={userId} onSelectCategory={onSelectCategory} />
       <BudgetSection userId={userId} />
-      <section className={CARD} aria-label="Owed to you"><OwedWidget userId={userId} /></section>
+      <Card role="region" aria-label="Owed to you" className={CARD}><OwedWidget userId={userId} /></Card>
       <CardsSection userId={userId} />
-      <section className={CARD} aria-label="Accounts and net worth"><AccountsWidget userId={userId} /></section>
+      <Card role="region" aria-label="Accounts and net worth" className={CARD}><AccountsWidget userId={userId} /></Card>
       <UpcomingWidget userId={userId} />
-      <section className={CARD} aria-label="Savings goals"><GoalsWidget userId={userId} /></section>
+      <Card role="region" aria-label="Savings goals" className={CARD}><GoalsWidget userId={userId} /></Card>
     </div>
   )
 }
@@ -93,51 +98,48 @@ export function MonthSummary({ userId, onSelectCategory }: { userId: string; onS
     return latest && new Date().getTime() - new Date(latest.ends_at).getTime() <= 7 * 24 * 60 * 60 * 1000 ? latest : null
   }, [userId])
 
-  const LINK = 'inline-flex min-h-11 items-center gap-1 rounded-lg px-2 -mx-2 text-sm outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2'
+  const LINK = cn(buttonVariants({ variant: 'ghost' }), '-mx-2 h-auto min-h-11 justify-start px-2 font-normal')
 
   return (
-    <section aria-labelledby="month-heading" className="flex flex-col gap-3">
-      <div className={`${CARD} flex flex-col gap-1`}>
-        <h2 id="month-heading" className="text-sm font-semibold">This month</h2>
-        <p className="flex items-baseline gap-2">
-          <span className="font-mono text-2xl font-semibold tabular-nums">{formatMinor(spent, primary, 0)}</span>
-          <span className="text-sm text-muted-foreground">spent</span>
-        </p>
-        <div className="flex flex-col">
-          {budgetState.total > 0 && (
-            <button type="button" className={LINK} aria-expanded={open} aria-controls="money-overview" onClick={() => setOpen(true)}>
-              {budgetState.onTrack} of {budgetState.total} budgets on track
-            </button>
-          )}
-          {owed > 0 && (
-            <Link href="/settings/people" className={LINK}>
-              <span className="font-mono tabular-nums">{formatMinor(owed, primary, 0)}</span> owed to you
-              <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
-            </Link>
-          )}
-          {freshDigest && (
-            <Link href={`/insights/${freshDigest.id}`} className={LINK}>
-              Your week in review is ready
-              <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
-            </Link>
-          )}
-        </div>
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls="money-overview"
-          onClick={() => setOpen(o => !o)}
-          className="mt-1 flex min-h-11 items-center justify-between rounded-lg border-t border-white/10 pt-2 text-sm text-accent-2 outline-none focus-visible:ring-2 focus-visible:ring-accent-2"
-        >
-          {open ? 'Hide overview' : 'Overview: categories, budgets, accounts, goals'}
-          <ChevronDown className={`size-4 transition-transform motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} aria-hidden />
-        </button>
-      </div>
-      {open && (
-        <div id="money-overview">
+    <section aria-labelledby="month-heading">
+      <Collapsible open={open} onOpenChange={setOpen} className="flex flex-col gap-3">
+        <Card className={`${CARD} gap-1`}>
+          <h2 id="month-heading" className="text-sm font-semibold">This month</h2>
+          <p className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-semibold tabular-nums">{formatMinor(spent, primary, 0)}</span>
+            <span className="text-sm text-muted-foreground">spent</span>
+          </p>
+          <div className="flex flex-col">
+            {budgetState.total > 0 && (
+              <Button variant="ghost" className="-mx-2 h-auto min-h-11 justify-start px-2 font-normal" aria-expanded={open} aria-controls="money-overview" onClick={() => setOpen(true)}>
+                {budgetState.onTrack} of {budgetState.total} budgets on track
+              </Button>
+            )}
+            {owed > 0 && (
+              <Link href="/settings/people" className={LINK}>
+                <span className="font-mono tabular-nums">{formatMinor(owed, primary, 0)}</span> owed to you
+                <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+              </Link>
+            )}
+            {freshDigest && (
+              <Link href={`/insights/${freshDigest.id}`} className={LINK}>
+                Your week in review is ready
+                <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+              </Link>
+            )}
+          </div>
+          <Separator className="mt-1" />
+          <CollapsibleTrigger
+            className={cn(buttonVariants({ variant: 'ghost' }), 'h-auto min-h-11 justify-between px-2 -mx-2 text-accent-2')}
+          >
+            {open ? 'Hide overview' : 'Overview: categories, budgets, accounts, goals'}
+            <ChevronDown className={`size-4 transition-transform motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} aria-hidden />
+          </CollapsibleTrigger>
+        </Card>
+        <CollapsibleContent id="money-overview">
           <MoneyOverview userId={userId} onSelectCategory={onSelectCategory} />
-        </div>
-      )}
+        </CollapsibleContent>
+      </Collapsible>
     </section>
   )
 }

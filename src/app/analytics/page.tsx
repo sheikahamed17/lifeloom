@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { PageShell } from '@/components/page-shell'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { BarTrend } from '@/components/charts/bar-trend'
 import { DualSeriesTrend } from '@/components/charts/dual-series-trend'
 import { MoversBars } from '@/components/charts/movers-bars'
@@ -191,54 +195,51 @@ export default function AnalyticsPage() {
   const symbol = currencySymbol(prefs.primary_currency)
   const jpy = prefs.primary_currency === 'JPY'
 
-  const CARD = 'glass rounded-2xl p-4'
   const bucketToggle = (
-    <div className="glass-soft flex rounded-lg p-0.5" role="group" aria-label="Group by">
-      {(['week', 'month'] as const).map(b => (
-        <button
-          key={b}
-          type="button"
-          aria-pressed={bucket === b}
-          onClick={() => setBucket(b)}
-          className={`min-h-9 rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 ${bucket === b ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          {b === 'week' ? 'Weeks' : 'Months'}
-        </button>
-      ))}
-    </div>
+    <ToggleGroup
+      aria-label="Group by"
+      className="glass-soft p-0.5"
+      value={[bucket]}
+      onValueChange={next => { if (next[0]) setBucket(next[0] as 'week' | 'month') }}
+    >
+      <ToggleGroupItem value="week" className="h-10 px-3">Weeks</ToggleGroupItem>
+      <ToggleGroupItem value="month" className="h-10 px-3">Months</ToggleGroupItem>
+    </ToggleGroup>
   )
 
   return (
     <PageShell title="Analytics" width="wide" actions={bucketToggle}>
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className={CARD} aria-label="Net worth">
-          {accts.length === 0 ? (
-            <div className="flex flex-col gap-2">
-              <h2 className="text-sm font-semibold">Net worth</h2>
-              <p className="text-sm text-muted-foreground">
-                Add your accounts in <Link href="/settings/accounts" className="text-accent-2 underline-offset-4 hover:underline">Settings → Accounts</Link> to see net worth over time.
-              </p>
-            </div>
-          ) : (
-            <NetWorthLine data={netWorthSeriesData} symbol={symbol} jpy={jpy} />
-          )}
-        </section>
+        {accts.length === 0 ? (
+          <Card role="region" aria-labelledby="networth-heading">
+            <CardHeader>
+              <CardTitle><h2 id="networth-heading" className="text-sm font-semibold">Net worth</h2></CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Empty className="border p-4">
+                <EmptyHeader>
+                  <EmptyDescription>
+                    Add your accounts in <Link href="/settings/accounts" className="text-accent-2 underline-offset-4 hover:underline">Settings → Accounts</Link> to see net worth over time.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            </CardContent>
+          </Card>
+        ) : (
+          <NetWorthLine data={netWorthSeriesData} symbol={symbol} jpy={jpy} />
+        )}
 
-        <section className={CARD} aria-label="Income and spend">
-          <DualSeriesTrend spend={spendSeries} income={incomeSeries} symbol={symbol} jpy={jpy} />
-        </section>
+        <DualSeriesTrend spend={spendSeries} income={incomeSeries} symbol={symbol} jpy={jpy} />
 
-        <section className={CARD} aria-label="Spend per period">
-          <BarTrend data={spendSeries} symbol={symbol} jpy={jpy} label={bucket === 'week' ? 'Spend per week' : 'Spend per month'} />
-        </section>
+        <BarTrend data={spendSeries} symbol={symbol} jpy={jpy} label={bucket === 'week' ? 'Spend per week' : 'Spend per month'} />
 
-        <section className={CARD} aria-label="Biggest changes">
-          <MoversBars movers={movers} symbol={symbol} jpy={jpy} />
-        </section>
+        <MoversBars movers={movers} symbol={symbol} jpy={jpy} />
 
-        <section className={`${CARD} lg:col-span-2`} aria-labelledby="unusual-heading">
-          <div className="flex flex-col gap-3">
-            <h2 id="unusual-heading" className="text-sm font-semibold">Unusual spending this month</h2>
+        <Card role="region" aria-labelledby="unusual-heading" className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle><h2 id="unusual-heading" className="text-sm font-semibold">Unusual spending this month</h2></CardTitle>
+          </CardHeader>
+          <CardContent>
             {anomalies.length > 0 ? (
               <ul className="flex flex-col gap-3">
                 {anomalies.map(anomaly => {
@@ -251,7 +252,7 @@ export default function AnalyticsPage() {
                       </span>
                       <span className="text-sm text-muted-foreground">
                         <span className="font-mono tabular-nums text-foreground">{fmt(anomaly.current)}</span>, {' '}
-                        <span className="font-medium text-destructive">{anomaly.pct}% above</span> your usual{' '}
+                        <Badge variant="destructive" className="align-middle">{anomaly.pct}% above</Badge> your usual{' '}
                         <span className="font-mono tabular-nums">{fmt(anomaly.baseline)}</span>
                       </span>
                     </li>
@@ -259,14 +260,18 @@ export default function AnalyticsPage() {
                 })}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">Nothing unusual: every category is close to its normal level.</p>
+              <Empty className="border p-4">
+                <EmptyHeader>
+                  <EmptyDescription>Nothing unusual: every category is close to its normal level.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className={`${CARD} lg:col-span-2`} aria-label="Spending by category">
+        <div className="lg:col-span-2">
           <CategorySmallMultiples series={catSeries} periods={periods} symbol={symbol} jpy={jpy} />
-        </section>
+        </div>
       </div>
     </PageShell>
   )

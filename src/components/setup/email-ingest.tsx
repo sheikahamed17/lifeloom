@@ -15,9 +15,9 @@ export function EmailIngest({ onNext }: { onNext: () => void }) {
         </p>
       </div>
 
-      <Link href="/settings/sms-import" className="text-center text-sm text-accent-2 underline">
+      <Button variant="link" render={<Link href="/settings/sms-import" />} nativeButton={false} className="h-auto min-h-10 whitespace-normal text-center">
         See the setup guide in Settings → Auto-import
-      </Link>
+      </Button>
 
       <Button onClick={onNext} className="w-full">Skip for now</Button>
     </div>

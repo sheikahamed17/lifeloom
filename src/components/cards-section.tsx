@@ -3,6 +3,10 @@
 import { formatDay } from '@/lib/format'
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
+import { cn } from '@/lib/utils'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
@@ -53,40 +57,42 @@ export function CardsSection({ userId }: Props) {
     `${currencySymbol(cur)}${(amt / (cur === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
   return (
-    <section className="glass rounded-2xl p-4 flex flex-col gap-3" aria-labelledby="cards-heading">
+    <Card role="region" aria-labelledby="cards-heading" className="gap-3 p-4">
       <h2 id="cards-heading" className="text-sm font-semibold">Cards &amp; debts</h2>
       <ul className="flex flex-col gap-2">
         {summaries.map(({ acct, s }) => (
-          <li key={acct.id} className="flex flex-col gap-1 border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1 text-sm min-w-0">
-                {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
-                <span className="truncate">{acct.name}</span>
-              </span>
-              <span className="flex flex-col items-end">
+          <li key={acct.id} className="border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
+            <Item size="xs" className="flex-nowrap items-start p-0">
+              <ItemContent className="min-w-0 gap-1">
+                <ItemTitle className="max-w-full text-sm font-normal">
+                  {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
+                  <span className="truncate">{acct.name}</span>
+                </ItemTitle>
+                <ItemDescription className="text-xs">
+                  This month <span className="font-mono tabular-nums">{fmtIn(s.monthSpend, acct.currency)}</span>
+                </ItemDescription>
+                {s.recentPayments.length > 0 && (
+                  <ItemDescription className="text-xs">
+                    Last payment {fmtIn(s.recentPayments[0].amount, acct.currency)} on {formatDay(s.recentPayments[0].occurred_at)}
+                  </ItemDescription>
+                )}
+              </ItemContent>
+              <ItemActions className="flex-col items-end gap-0">
                 <span className="text-xs text-muted-foreground">You owe</span>
                 <span className={`font-mono tabular-nums text-sm font-medium ${s.owed > 0 ? 'text-destructive' : 'text-income'}`}>
                   {fmtIn(s.owed, acct.currency)}
                 </span>
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>This month <span className="font-mono tabular-nums">{fmtIn(s.monthSpend, acct.currency)}</span></span>
-              <Link
-                href="/settings/transfers"
-                className="-mr-2 flex min-h-11 items-center gap-1 rounded-lg px-2 text-accent-2 outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
-              >
-                Pay it off
-              </Link>
-            </div>
-            {s.recentPayments.length > 0 && (
-              <div className="text-xs text-muted-foreground">
-                Last payment {fmtIn(s.recentPayments[0].amount, acct.currency)} on {formatDay(s.recentPayments[0].occurred_at)}
-              </div>
-            )}
+                <Link
+                  href="/settings/transfers"
+                  className={cn(buttonVariants({ variant: 'ghost' }), '-mr-2 min-h-11 px-2 font-normal text-accent-2')}
+                >
+                  Pay it off
+                </Link>
+              </ItemActions>
+            </Item>
           </li>
         ))}
       </ul>
-    </section>
+    </Card>
   )
 }

@@ -16,6 +16,9 @@ if (process.env.NODE_ENV === 'development') {
 const withSerwist = withSerwistInit({
   swSrc: 'src/app/sw.ts',
   swDest: 'public/sw.js',
+  // Dev has no service worker (Serwist doesn't support Turbopack and would rewrite
+  // public/sw.js on every compile). The production build still generates it.
+  disable: process.env.NODE_ENV !== 'production',
   cacheOnNavigation: true,
   reloadOnOnline: true,
 })

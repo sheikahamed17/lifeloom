@@ -12,9 +12,15 @@ const SCHEMA_VERSION = 1
 export async function getDeviceId(): Promise<string> {
   const row = await db.sync_meta.get('device_id')
   if (row) return row.value
-  const id = newDeviceId()
-  await db.sync_meta.put({ key: 'device_id', value: id })
-  return id
+  // Get-or-create inside one rw transaction: on a fresh browser the page and
+  // the app-wide background sync both ask at once, and only one id may win.
+  return db.transaction('rw', db.sync_meta, async () => {
+    const again = await db.sync_meta.get('device_id')
+    if (again) return again.value
+    const id = newDeviceId()
+    await db.sync_meta.put({ key: 'device_id', value: id })
+    return id
+  })
 }
 
 async function readLocalHlc(deviceId: string) {
@@ -53,13 +59,16 @@ export async function generateOp(input: {
 }
 
 export async function applyLocalOp(op: Op): Promise<void> {
-  const existing = await db.op_log.get(op.id)
-  if (existing) return
+  if (await db.op_log.get(op.id)) return   // fast path: already applied
 
   await db.transaction(
     'rw',
     [db.op_log, db.widgets, db.money_entries, db.recurring_rules, db.categories, db.tasks, db.insights, db.learning_entries, db.note_entries, db.budgets, db.accounts, db.goals, db.transfers, db.habits, db.habit_logs, db.journal_entries, db.projects, db.people, db.expense_shares],
     async () => {
+      // Re-check INSIDE the rw transaction: two syncs can receive the same server
+      // op at once, and Dexie serialises rw transactions on op_log, so only the
+      // first applies it (the check above alone raced into a ConstraintError).
+      if (await db.op_log.get(op.id)) return
       await db.op_log.add(op)
 
       switch (op.entity_kind) {
@@ -186,10 +195,13 @@ export async function getPendingOps(): Promise<Op[]> {
 }
 
 async function markSynced(opIds: string[]) {
-  const existing = (await db.sync_meta.get('synced_op_ids'))?.value ?? ''
-  const combined = new Set(existing.split(',').filter(Boolean))
-  for (const id of opIds) combined.add(id)
-  await db.sync_meta.put({ key: 'synced_op_ids', value: [...combined].join(',') })
+  // Read-modify-write in one transaction so two concurrent syncs can't drop each other's acks.
+  await db.transaction('rw', db.sync_meta, async () => {
+    const existing = (await db.sync_meta.get('synced_op_ids'))?.value ?? ''
+    const combined = new Set(existing.split(',').filter(Boolean))
+    for (const id of opIds) combined.add(id)
+    await db.sync_meta.put({ key: 'synced_op_ids', value: [...combined].join(',') })
+  })
 }
 
 async function readLastSyncedHlc(): Promise<string | undefined> {

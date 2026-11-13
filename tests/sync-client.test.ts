@@ -13,6 +13,12 @@ describe('sync-client local pipeline', () => {
     expect(id1.length).toBeGreaterThanOrEqual(8)
   })
 
+  it('hands concurrent first callers the same device id', async () => {
+    const ids = await Promise.all([getDeviceId(), getDeviceId(), getDeviceId()])
+    expect(new Set(ids).size).toBe(1)
+    expect(await getDeviceId()).toBe(ids[0])
+  })
+
   it('generateOp + applyLocalOp persists both op_log and entity row', async () => {
     const op = await generateOp({
       entity_kind: 'widget',
@@ -28,6 +34,13 @@ describe('sync-client local pipeline', () => {
 
     const widget = await db.widgets.get('w1')
     expect(widget?.label).toBe('first')
+  })
+
+  it('applies the same op twice concurrently without a ConstraintError (two syncs racing)', async () => {
+    const op = await generateOp({ entity_kind: 'widget', entity_id: 'w-race', op_type: 'create', payload: { label: 'once' }, user_id: 'u1' })
+    await expect(Promise.all([applyLocalOp(op), applyLocalOp(op), applyLocalOp(op)])).resolves.toBeDefined()
+    expect(await db.op_log.where('id').equals(op.id).count()).toBe(1)
+    expect((await db.widgets.get('w-race'))?.label).toBe('once')
   })
 
   it('generateOp issues strictly monotonically-increasing HLCs', async () => {

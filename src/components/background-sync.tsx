@@ -7,8 +7,8 @@ import { pushPullOnce } from '@/lib/sync-client'
 
 const PUBLIC_PREFIXES = ['/login', '/setup']
 const INTERVAL_MS = 10_000
-// /api/sync is incremental and bounded per request: a fresh browser may need
-// several rounds to catch up. Stop when a round brings nothing new.
+// Keep pulling until a round brings nothing new (normally two rounds: the
+// catch-up, then an empty confirmation), with a cap as a safety net.
 const MAX_CATCH_UP_ROUNDS = 25
 
 /**
@@ -52,7 +52,8 @@ export function BackgroundSync() {
       })
       .catch(err => console.error('session', err))
 
-    const interval = setInterval(() => { void sync(false) }, INTERVAL_MS)
+    // Hidden tabs and backgrounded PWA windows don't poll; coming back catches up.
+    const interval = setInterval(() => { if (document.visibilityState === 'visible') void sync(false) }, INTERVAL_MS)
     const onOnline = () => { void sync(true) }
     const onVisible = () => { if (document.visibilityState === 'visible') void sync(true) }
     window.addEventListener('online', onOnline)

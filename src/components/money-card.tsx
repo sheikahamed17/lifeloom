@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
 import { withYourShare } from '@/lib/shares'
@@ -91,41 +92,35 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
   const symbol = currencySymbol(prefs.primary_currency)
 
   return (
-    <section className="glass flex flex-col gap-4 rounded-2xl p-4">
-      <header className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between">
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">Spent · {period}</span>
-          {delta !== null && (
-            <span className={`text-xs font-medium font-mono ${delta > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-              {delta > 0 ? '↑' : '↓'}{Math.abs(delta).toFixed(0)}% vs last
-            </span>
-          )}
-        </div>
-        <div className="flex gap-2">
+    <section className="glass flex flex-col gap-4 rounded-2xl p-4" aria-labelledby="spent-heading">
+      <header className="flex items-center justify-between gap-2">
+        <h2 id="spent-heading" className="text-sm font-semibold">Spent this {period}</h2>
+        <div className="glass-soft flex rounded-lg p-0.5" role="group" aria-label="Period">
           {(['week', 'month'] as const).map(p => (
             <button
               key={p}
+              type="button"
+              aria-pressed={period === p}
               onClick={() => setPeriod(p)}
-              className={`min-h-[44px] px-3 py-1 text-xs font-medium uppercase tracking-wide rounded transition-colors ${
-                period === p ? 'text-accent-2' : 'text-muted-foreground hover:text-foreground'
+              className={`min-h-9 rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 ${
+                period === p ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {p}
+              {p === 'week' ? 'Week' : 'Month'}
             </button>
           ))}
         </div>
       </header>
 
-      <div>
-        <div
-          className="text-[38px] font-semibold font-mono tabular-nums leading-tight"
-          style={{
-            textShadow: '0 0 20px rgb(52 230 255 / 0.4), 0 0 40px rgb(52 230 255 / 0.2)',
-          }}
-        >
-          <span className="text-accent-2">{symbol}</span>
-          {fmt(bd.spend)}
-        </div>
+      {/* The figure carries its own name; no neon glow (glow is for the primary action only). */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="font-mono text-4xl font-semibold tabular-nums leading-tight">{symbol}{fmt(bd.spend)}</span>
+        {delta !== null && (
+          <span className={`inline-flex items-center gap-0.5 text-sm ${delta > 0 ? 'text-destructive' : 'text-income'}`}>
+            {delta > 0 ? <ArrowUp className="size-3.5" aria-hidden /> : <ArrowDown className="size-3.5" aria-hidden />}
+            {Math.abs(delta).toFixed(0)}%<span className="text-muted-foreground"> {delta > 0 ? 'more' : 'less'} than last {period}</span>
+          </span>
+        )}
       </div>
 
       <WeeklyBars values={weeklyBars} symbol={symbol} jpy={prefs.primary_currency === 'JPY'} />
@@ -133,18 +128,20 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
       <ul className="flex flex-col gap-1">
         {displayRows.length === 0 && <li className="text-xs text-muted-foreground">No entries yet this {period}.</li>}
         {displayRows.map(row => (
-          <li key={row.name} className="flex items-center gap-2 text-xs">
+          <li key={row.name} className="flex items-center gap-2 text-sm">
             <button
+              type="button"
               onClick={() => onSelectCategory?.(row.name)}
-              className="flex-1 min-h-[44px] flex items-center gap-2 px-2 -mx-2 rounded hover:bg-white/5 active:bg-white/10 transition-colors text-left"
+              title={`${row.count} ${row.count === 1 ? 'entry' : 'entries'}. Show them in the list`}
+              aria-label={`${row.name}: ${symbol}${fmt(row.amount)}, ${row.pct.toFixed(0)}% of spending, ${row.count} ${row.count === 1 ? 'entry' : 'entries'}. Show them in the list`}
+              className="-mx-2 flex min-h-11 flex-1 items-center gap-2 rounded-lg px-2 text-left outline-none transition-colors hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
             >
-              <span className="flex-shrink-0 whitespace-nowrap">{row.icon ?? ''} {row.name}</span>
+              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">{row.icon && <span aria-hidden="true">{row.icon}</span>}{row.name}</span>
               <div className="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
                 <div className="absolute inset-y-0 left-0 bg-foreground/70" style={{ width: `${(row.amount / Math.max(1, ...bd.rows.map(r => r.amount))) * 100}%` }} />
               </div>
               <span className="font-mono tabular-nums flex-shrink-0">{symbol}{fmt(row.amount)}</span>
-              <span className="text-muted-foreground flex-shrink-0 w-8 text-right">{row.pct.toFixed(0)}%</span>
-              <span className="text-muted-foreground flex-shrink-0 w-6 text-right">×{row.count}</span>
+              <span className="w-10 shrink-0 text-right text-muted-foreground tabular-nums">{row.pct.toFixed(0)}%</span>
             </button>
           </li>
         ))}
@@ -152,27 +149,27 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
           <li className="flex items-center pt-1">
             <button
               onClick={() => setExpanded(true)}
-              className="min-h-[44px] flex-1 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
+              className="-mx-2 min-h-11 flex-1 rounded-lg px-2 text-left text-sm text-accent-2 outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
             >
-              Show all ({bd.rows.length})
+              Show all {bd.rows.length} categories
             </button>
           </li>
         )}
       </ul>
 
       {bd.income > 0 && (
-        <div className="border-t border-white/10 pt-3 flex gap-3 text-xs">
+        <div className="flex gap-4 border-t border-white/10 pt-3 text-sm">
           <span>
-            Earned <span className="font-mono font-medium">{symbol}{fmt(bd.income)}</span>
+            Earned <span className="font-mono font-medium tabular-nums">{symbol}{fmt(bd.income)}</span>
           </span>
-          <span className={bd.net >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
-            Net <span className="font-mono font-medium">{symbol}{fmt(Math.abs(bd.net))}</span>
+          <span className={bd.net >= 0 ? 'text-income' : 'text-destructive'}>
+            {bd.net >= 0 ? 'Saved' : 'Overspent'} <span className="font-mono font-medium tabular-nums">{symbol}{fmt(Math.abs(bd.net))}</span>
           </span>
         </div>
       )}
 
       {(conversionApplied || skippedCurrencies.size > 0) && (
-        <p className="border-t border-white/10 pt-2 text-[10px] text-muted-foreground">
+        <p className="border-t border-white/10 pt-2 text-xs text-muted-foreground">
           {conversionApplied && conversionDate && <>Includes conversion via ECB {conversionDate}. </>}
           {skippedCurrencies.size > 0 && <>Excluded {[...skippedCurrencies].join(', ')} (no FX rate yet).</>}
         </p>
@@ -208,7 +205,7 @@ function WeeklyBars({ values, symbol, jpy }: { values: number[]; symbol: string;
           )
         })}
       </div>
-      <span className="text-[10px] text-muted-foreground">Last {values.length} weeks</span>
+      <span className="text-xs text-muted-foreground">Last {values.length} weeks</span>
     </div>
   )
 }

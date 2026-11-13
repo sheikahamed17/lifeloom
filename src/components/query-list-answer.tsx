@@ -22,7 +22,7 @@ export function QueryListAnswer({ title, count, onDismiss, children }: Props) {
   return (
     <div className="glass rounded-2xl p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-accent-2">
+        <h3 className="text-sm font-semibold text-accent-2">
           {title}
         </h3>
         <span className="font-mono text-xs text-accent-2">{count}</span>
@@ -40,7 +40,7 @@ export function QueryListAnswer({ title, count, onDismiss, children }: Props) {
         variant="outline"
         size="sm"
         onClick={onDismiss}
-        className="w-full min-h-[44px] flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-accent-2"
+        className="w-full min-h-11 flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-accent-2"
         aria-label="Dismiss results"
       >
         <X className="h-4 w-4" />

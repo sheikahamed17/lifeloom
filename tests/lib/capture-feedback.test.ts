@@ -38,3 +38,12 @@ describe('savedLabel', () => {
     expect(savedLabel({ kind: 'edit' })).toBe('Changes saved')
   })
 })
+
+describe('formatMinor sign placement', () => {
+  it('puts a real minus before the symbol for negative amounts', async () => {
+    const { formatMinor } = await import('@/lib/currency')
+    expect(formatMinor(-850000, 'INR')).toBe('−₹8,500')
+    expect(formatMinor(850000, 'INR')).toBe('₹8,500')
+    expect(formatMinor(-1500, 'JPY')).toBe('−¥1,500')
+  })
+})

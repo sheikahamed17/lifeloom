@@ -1,5 +1,6 @@
 'use client'
 
+import { ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { useGoals } from '@/hooks/use-goals'
@@ -69,13 +70,11 @@ export function GoalsWidget({ userId }: Props) {
 
   if (goals.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
-        <p>Add goals in Settings → Goals</p>
-        <Link
-          href="/settings/goals"
-          className="text-xs text-blue-500 hover:underline"
-        >
-          Go to Settings
+      <div className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold">Goals</h2>
+        <p className="text-sm text-muted-foreground">Set a savings target (a trip, a new laptop) and watch your progress here.</p>
+        <Link href="/settings/goals" className="inline-flex min-h-11 items-center gap-1 self-start rounded-lg text-sm text-accent-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent-2">
+          Add a goal<ChevronRight className="size-4" aria-hidden />
         </Link>
       </div>
     )
@@ -86,19 +85,20 @@ export function GoalsWidget({ userId }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
+      <h2 className="text-sm font-semibold">Goals</h2>
       {goals.map(goal => {
         const p = goalProgress(goal, accountLikes, entries, transfers, toAcct)
         const pctDisplay = Math.round(p.pct)
 
         return (
           <div key={goal.id} className="flex flex-col gap-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1">
-                {goal.icon && <span>{goal.icon}</span>}
-                <span>{goal.name}</span>
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className="flex min-w-0 items-center gap-1.5">
+                {goal.icon && <span aria-hidden="true">{goal.icon}</span>}
+                <span className="truncate">{goal.name}</span>
               </span>
-              <span className="font-mono tabular-nums text-muted-foreground">
-                {fmt(p.current, goal.currency)} / {fmt(goal.target_amount, goal.currency)}
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {fmt(p.current, goal.currency)} of {fmt(goal.target_amount, goal.currency)}
               </span>
             </div>
             <div
@@ -117,7 +117,7 @@ export function GoalsWidget({ userId }: Props) {
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{pctDisplay}%</span>
               {p.remaining > 0 && (
-                <span>remaining {fmt(p.remaining, goal.currency)}</span>
+                <span>{fmt(p.remaining, goal.currency)} to go</span>
               )}
             </div>
           </div>

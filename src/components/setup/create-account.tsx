@@ -56,7 +56,7 @@ export function CreateAccount({ emailConfigured }: { emailConfigured: boolean })
       </div>
 
       {!emailConfigured && (
-        <p className="rounded-lg bg-amber-500/10 p-2 text-xs text-amber-400">
+        <p className="rounded-lg bg-warning/10 p-2 text-xs text-warning">
           Email isn&apos;t configured on this instance yet — the sign-in link will be printed to your <b>deploy logs</b> instead of emailed.
         </p>
       )}

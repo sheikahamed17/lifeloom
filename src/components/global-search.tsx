@@ -43,7 +43,7 @@ export function GlobalSearch({ userId, onClose, onSelect }: { userId: string; on
             onChange={e => setQ(e.target.value)}
             placeholder="Search everything…"
             aria-label="Search everything"
-            className="min-h-[44px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="min-h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           <button type="button" aria-label="Close" onClick={onClose} className="rounded-lg p-2 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none">
             <X className="h-4 w-4" />
@@ -58,14 +58,14 @@ export function GlobalSearch({ userId, onClose, onSelect }: { userId: string; on
             const Icon = ICON[g.kind]
             return (
               <section key={g.kind} className="flex flex-col gap-1">
-                <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g.heading}</h3>
+                <h3 className="px-1 text-sm font-semibold">{g.heading}</h3>
                 <ul className="flex flex-col gap-1">
                   {g.items.map(it => (
                     <li key={it.id}>
                       <button
                         type="button"
                         onClick={() => onSelect(it.kind, it.id)}
-                        className="glass-soft flex w-full items-center gap-2 rounded-xl px-3 py-2 min-h-[44px] text-left text-sm hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+                        className="glass-soft flex w-full items-center gap-2 rounded-lg px-3 py-2 min-h-11 text-left text-sm hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
                       >
                         <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                         <span className="flex-1 truncate">{it.label}</span>

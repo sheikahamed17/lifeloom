@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Loader2, Sparkles } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
 import { InsightCard } from '@/components/insight-card'
+import { Button } from '@/components/ui/button'
 import { useInsights } from '@/hooks/use-insights'
 import { pushPullOnce } from '@/lib/sync-client'
 
@@ -37,37 +39,33 @@ export default function InsightsPage() {
   }
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-4 p-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Insights</h1>
-          <button
-            type="button"
-            onClick={generate}
-            disabled={generating || !userId}
-            aria-busy={generating}
-            className="glass rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium hover:bg-white/15 transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none disabled:opacity-50"
-          >
-            {generating ? 'Generating…' : 'Generate / refresh this week'}
-          </button>
-        </div>
-        {msg && <p className="text-xs text-muted-foreground" role="status">{msg}</p>}
-        {insights.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No insights yet — they arrive every Monday, or generate this week now.</p>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {insights.map(i => (
-              <li key={i.id}>
-                <Link href={`/insights/${i.id}`} className="block focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded-lg">
-                  <InsightCard insight={i} variant="card" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link href="/app" className="text-sm text-muted-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">← Back to Lifeloom</Link>
-      </main>
-    </>
+    <PageShell
+      title="Insights"
+      actions={
+        // The page's one primary action, so it is the one thing that glows.
+        <Button onClick={generate} disabled={generating || !userId} aria-busy={generating} className="glow-cta">
+          {generating
+            ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
+            : <Sparkles className="size-4" aria-hidden />}
+          {generating ? 'Generating…' : 'Generate this week'}
+        </Button>
+      }
+    >
+      {/* Always mounted so screen readers announce the result; takes no space while empty. */}
+      <p role="status" className="text-sm text-muted-foreground empty:sr-only">{msg}</p>
+      {insights.length === 0 ? (
+        <p className="glass rounded-2xl p-4 text-sm text-muted-foreground">No insights yet — they arrive every Monday, or generate this week now.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {insights.map(i => (
+            <li key={i.id}>
+              <Link href={`/insights/${i.id}`} className="block rounded-2xl outline-none transition-shadow hover:ring-1 hover:ring-white/20 focus-visible:ring-2 focus-visible:ring-accent-2">
+                <InsightCard insight={i} variant="card" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </PageShell>
   )
 }

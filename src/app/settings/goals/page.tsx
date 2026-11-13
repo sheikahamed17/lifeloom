@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Archive, ChevronDown, Pencil } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useGoals } from '@/hooks/use-goals'
 import { useArchivedGoals } from '@/hooks/use-archived-goals'
@@ -9,14 +10,29 @@ import { useAccounts } from '@/hooks/use-accounts'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { parseAmountInput } from '@/lib/parse-amount'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
-import { currencySymbol } from '@/lib/currency'
+import { formatMinor } from '@/lib/currency'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
+import { RowMenu } from '@/components/row-menu'
+import { FIELD_SELECT } from '@/components/sort-control'
+import { UndoProvider, useUndo } from '@/components/undo-provider'
 import type { GoalRow } from '@/lib/dexie'
 
+const BACK = { href: '/settings', label: 'Settings' }
+
 export default function GoalsPage() {
+  return (
+    <UndoProvider>
+      <GoalsPageInner />
+    </UndoProvider>
+  )
+}
+
+function GoalsPageInner() {
   const router = useRouter()
+  const undo = useUndo()
   const [userId, setUserId] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('')
@@ -85,122 +101,119 @@ export default function GoalsPage() {
   }
 
   async function archiveGoal(id: string) {
+    const name = goals.find(g => g.id === id)?.name
     await updateGoal(id, { is_archived: 1 })
+    undo.push(`Archived ${name ?? 'goal'}`, () => restoreGoal(id))
   }
 
   async function restoreGoal(id: string) {
     await updateGoal(id, { is_archived: 0 })
   }
 
-  if (!userId) return <p className="p-8">Loading…</p>
+  if (!userId) {
+    return (
+      <PageShell title="Goals" back={BACK}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </PageShell>
+    )
+  }
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-6 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Goals</h1>
-          <Button size="sm" variant="ghost" onClick={() => router.push('/settings')}>← Settings</Button>
-        </header>
-
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <Input
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                placeholder="Name…"
-                maxLength={40}
-                aria-label="Goal name"
-              />
-              <Input
-                value={newIcon}
-                onChange={e => setNewIcon(e.target.value)}
-                placeholder="Emoji"
-                maxLength={8}
-                className="w-20 text-center"
-                aria-label="Goal icon"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Input
-                value={newTargetAmount}
-                onChange={e => setNewTargetAmount(e.target.value)}
-                placeholder="Target amount…"
-                type="text"
-                inputMode="decimal"
-                aria-label="Target amount"
-              />
-              <select
-                value={newAccountId ?? 'none'}
-                onChange={e => {
-                  const val = e.target.value
-                  setNewAccountId(val === 'none' ? null : val)
-                }}
-                className="glass-soft rounded-lg border border-input px-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2"
-                aria-label="Link to account"
-              >
-                <option value="none">Not linked</option>
-                {assetAccounts.map(acc => (
-                  <option key={acc.id} value={acc.id}>{acc.name}</option>
-                ))}
-              </select>
-            </div>
-            {!newAccountId && (
-              <div className="flex gap-2">
-                <Input
-                  value={newSavedAmount}
-                  onChange={e => setNewSavedAmount(e.target.value)}
-                  placeholder="Saved so far…"
-                  type="text"
-                  inputMode="decimal"
-                  aria-label="Saved amount"
-                />
-              </div>
-            )}
-            {!newAccountId && (
-              <select
-                value={newCurrency}
-                onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
-                className="glass-soft rounded-lg border border-input px-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2"
-                aria-label="Currency"
-              >
-                {SUPPORTED_CURRENCIES.map(curr => (
-                  <option key={curr} value={curr}>{curr}</option>
-                ))}
-              </select>
-            )}
-            <div className="flex gap-2">
-              <Button onClick={addGoal} className="flex-1">Add</Button>
-            </div>
-          </div>
-        </section>
-
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold uppercase text-muted-foreground">Active Goals</h2>
-          <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
-            {goals.length === 0 && <li className="p-3 text-sm text-muted-foreground">Add your first goal.</li>}
-            {goals.map(g => (
-              <GoalRow
-                key={g.id}
-                goal={g}
-                accounts={accounts}
-                onArchive={archiveGoal}
-                onUpdate={updateGoal}
-              />
+    <PageShell title="Goals" back={BACK}>
+      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Add a goal</h2>
+        <div className="flex gap-2">
+          <Input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="Name"
+            maxLength={40}
+            aria-label="Goal name"
+          />
+          <Input
+            value={newIcon}
+            onChange={e => setNewIcon(e.target.value)}
+            placeholder="Emoji"
+            maxLength={8}
+            className="w-20 text-center"
+            aria-label="Goal emoji"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={newTargetAmount}
+            onChange={e => setNewTargetAmount(e.target.value)}
+            placeholder="Target amount"
+            type="text"
+            inputMode="decimal"
+            className="h-11"
+            aria-label="Target amount"
+          />
+          <select
+            value={newAccountId ?? 'none'}
+            onChange={e => {
+              const val = e.target.value
+              setNewAccountId(val === 'none' ? null : val)
+            }}
+            className={cn(FIELD_SELECT, 'w-auto max-w-[50%]')}
+            aria-label="Linked account"
+          >
+            <option value="none">No linked account</option>
+            {assetAccounts.map(acc => (
+              <option key={acc.id} value={acc.id}>{acc.name}</option>
             ))}
-          </ul>
-        </section>
-
-        {archived.length > 0 && (
-          <ArchivedSection archived={archived} onRestore={restoreGoal} />
+          </select>
+        </div>
+        {!newAccountId && (
+          <div className="flex gap-2">
+            <Input
+              value={newSavedAmount}
+              onChange={e => setNewSavedAmount(e.target.value)}
+              placeholder="Saved so far"
+              type="text"
+              inputMode="decimal"
+              className="h-11"
+              aria-label="Saved so far"
+            />
+            <select
+              value={newCurrency}
+              onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
+              className={cn(FIELD_SELECT, 'w-auto')}
+              aria-label="Currency"
+            >
+              {SUPPORTED_CURRENCIES.map(curr => (
+                <option key={curr} value={curr}>{curr}</option>
+              ))}
+            </select>
+          </div>
         )}
-      </main>
-    </>
+        <Button onClick={addGoal} className="w-full">Add</Button>
+      </section>
+
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Active goals</h2>
+        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+          {goals.length === 0 && <li className="p-3 text-sm text-muted-foreground">Add your first goal.</li>}
+          {goals.map(g => (
+            <GoalRowItem
+              key={g.id}
+              goal={g}
+              accounts={accounts}
+              onArchive={archiveGoal}
+              onUpdate={updateGoal}
+            />
+          ))}
+        </ul>
+      </section>
+
+      {archived.length > 0 && (
+        <ArchivedSection archived={archived} onRestore={restoreGoal} />
+      )}
+    </PageShell>
   )
 }
 
-function GoalRow({
+function GoalRowItem({
   goal,
   accounts,
   onArchive,
@@ -216,6 +229,7 @@ function GoalRow({
   const [editIcon, setEditIcon] = useState('')
   const [editTargetAmount, setEditTargetAmount] = useState('')
   const [editSavedAmount, setEditSavedAmount] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const divisor = goal.currency === 'JPY' ? 1 : 100
   const linkedAccount = goal.account_id ? accounts.find(a => a.id === goal.account_id) : null
@@ -256,16 +270,16 @@ function GoalRow({
 
   if (editingId === goal.id) {
     return (
-      <li className="flex flex-col gap-2 py-3 px-3">
+      <li className="flex flex-col gap-2 p-3">
         <div className="flex gap-2">
           <Input
             value={editName}
             onChange={e => setEditName(e.target.value)}
-            placeholder="Name…"
+            placeholder="Name"
             maxLength={40}
             autoFocus
             className="flex-1"
-            aria-label="Edit goal name"
+            aria-label="Goal name"
           />
           <Input
             value={editIcon}
@@ -273,78 +287,59 @@ function GoalRow({
             placeholder="Emoji"
             maxLength={8}
             className="w-20 text-center"
-            aria-label="Edit goal icon"
+            aria-label="Goal emoji"
           />
         </div>
         <Input
           value={editTargetAmount}
           onChange={e => setEditTargetAmount(e.target.value)}
-          placeholder="Target amount…"
+          placeholder="Target amount"
           type="text"
           inputMode="decimal"
-          aria-label="Edit target amount"
+          aria-label="Target amount"
         />
         {!goal.account_id && (
           <Input
             value={editSavedAmount}
             onChange={e => setEditSavedAmount(e.target.value)}
-            placeholder="Saved so far…"
+            placeholder="Saved so far"
             type="text"
             inputMode="decimal"
-            aria-label="Edit saved amount"
+            aria-label="Saved so far"
           />
         )}
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={() => saveEdit(goal.id)}
-            className="flex-1"
-            style={{ minHeight: '44px' }}
-          >
-            Save
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEditingId(null)}
-            className="flex-1"
-            style={{ minHeight: '44px' }}
-          >
-            Cancel
-          </Button>
+          <Button onClick={() => saveEdit(goal.id)} className="flex-1">Save</Button>
+          <Button variant="outline" onClick={() => setEditingId(null)} className="flex-1">Cancel</Button>
         </div>
       </li>
     )
   }
 
+  const target = formatMinor(goal.target_amount, goal.currency)
+
   return (
-    <li className="flex items-center justify-between p-3">
-      <span className="text-sm">
-        {goal.icon && <span className="mr-1">{goal.icon}</span>}
-        {goal.name} · {currencySymbol(goal.currency)} {(goal.target_amount / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-        {linkedAccount && <span className="ml-2 text-xs text-muted-foreground">({linkedAccount.name})</span>}
-        {!linkedAccount && <span className="ml-2 text-xs text-muted-foreground">saved {currencySymbol(goal.currency)} {(goal.saved_amount / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
-      </span>
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => startEdit(goal)}
-          style={{ height: '44px', minWidth: '44px' }}
-          aria-label={`Edit ${goal.name}`}
-        >
-          Edit
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => onArchive(goal.id)}
-          style={{ height: '44px', minWidth: '44px' }}
-          aria-label={`Archive ${goal.name}`}
-        >
-          Archive
-        </Button>
+    <li className="flex items-center gap-1 py-2 pl-3 pr-1">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">
+          {goal.icon && <span aria-hidden="true" className="mr-1.5">{goal.icon}</span>}
+          {goal.name}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          {linkedAccount
+            ? `Target ${target} · tracks ${linkedAccount.name}`
+            : `${formatMinor(goal.saved_amount, goal.currency)} saved of ${target}`}
+        </p>
       </div>
+      <RowMenu
+        label={`Actions for ${goal.name}`}
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        items={[
+          { label: 'Edit', icon: Pencil, onSelect: () => startEdit(goal) },
+          { label: 'Archive', icon: Archive, onSelect: () => onArchive(goal.id) },
+        ]}
+      />
     </li>
   )
 }
@@ -361,29 +356,23 @@ function ArchivedSection({
   return (
     <section className="glass flex flex-col gap-2 rounded-2xl p-4">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between text-left text-sm font-semibold uppercase text-muted-foreground hover:text-foreground transition-colors"
+        aria-expanded={isOpen}
+        className="-mx-2 flex min-h-11 items-center justify-between rounded-lg px-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
       >
         <span>Archived ({archived.length})</span>
-        <span>{isOpen ? '−' : '+'}</span>
+        <ChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} aria-hidden />
       </button>
       {isOpen && (
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
+        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
           {archived.map(g => (
-            <li key={g.id} className="flex items-center justify-between p-3">
-              <span className="text-sm">
-                {g.icon && <span className="mr-1">{g.icon}</span>}
+            <li key={g.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
+              <span className="min-w-0 truncate text-sm">
+                {g.icon && <span aria-hidden="true" className="mr-1.5">{g.icon}</span>}
                 {g.name}
               </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onRestore(g.id)}
-                style={{ height: '44px', minWidth: '44px' }}
-                aria-label={`Restore ${g.name}`}
-              >
-                Restore
-              </Button>
+              <Button variant="ghost" onClick={() => onRestore(g.id)} aria-label={`Restore ${g.name}`}>Restore</Button>
             </li>
           ))}
         </ul>

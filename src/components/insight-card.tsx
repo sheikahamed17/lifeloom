@@ -18,8 +18,15 @@ export function InsightCard({ insight, variant = 'card' }: { insight: InsightRow
     <div className="glass-accent rounded-2xl p-4">
       <div className="mb-2 flex items-center gap-2">
         <Sparkles className="size-4 text-accent-2" aria-hidden />
-        <h3 className="text-sm font-semibold">Week in review</h3>
-        <span className="ml-auto text-xs text-muted-foreground tabular-nums">{weekLabel}</span>
+        {/* On the detail page the page title already says "Week in review": show the dates instead, once. */}
+        {variant === 'card' ? (
+          <>
+            <h3 className="text-sm font-semibold">Week in review</h3>
+            <span className="ml-auto text-xs text-muted-foreground tabular-nums">{weekLabel}</span>
+          </>
+        ) : (
+          <h2 className="text-sm font-semibold tabular-nums">{weekLabel}</h2>
+        )}
       </div>
       <p className="mb-3 text-sm text-foreground">{insight.summary}</p>
       {metrics && (

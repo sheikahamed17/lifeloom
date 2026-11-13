@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { CircleCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
 import { runBackfill, BackfillHttpError, type BackfillResult } from '@/lib/backfill-driver'
 
 // Workers Free plan: 10 ms CPU per request, tolerated only "infrequently" —
@@ -20,7 +20,6 @@ const COOLDOWN_MS = [15_000, 30_000, 60_000, 60_000, 60_000, 60_000]
 const MAX_PAGES = 2000   // far above a single user's op_log
 
 export default function RebuildPage() {
-  const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [processed, setProcessed] = useState(0)
   const [waitingSec, setWaitingSec] = useState<number | null>(null)
@@ -50,41 +49,36 @@ export default function RebuildPage() {
   }
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-6 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Rebuild server data</h1>
-          <Button size="sm" variant="ghost" onClick={() => router.push('/settings')}>← Settings</Button>
-        </header>
+    <PageShell title="Rebuild server data" back={{ href: '/settings', label: 'Settings' }}>
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
+        <p>Rebuilds the server&apos;s copy of your data from your history. Use it if budgets or insights look out of date. Safe to run any time; the data on this device isn&apos;t touched.</p>
+        <p className="text-xs text-muted-foreground">It works in batches and pauses whenever Cloudflare&apos;s free plan asks it to slow down, so it can take a few minutes. Keep this page open.</p>
+      </section>
 
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4 text-sm">
-          <p>Re-sync your history into the server tables (fixes stale budgets/insights). Safe to run anytime — your on-device data isn&apos;t touched.</p>
-          <p className="text-xs text-muted-foreground">It works in batches and pauses whenever Cloudflare&apos;s free plan asks it to slow down, so it can take a few minutes. Keep this page open.</p>
-        </section>
-
-        <section className="glass flex flex-col gap-3 rounded-2xl p-4" aria-live="polite">
-          <Button onClick={() => rebuild()} disabled={busy}>{busy ? 'Rebuilding…' : 'Start rebuild'}</Button>
-          {busy && <p className="text-sm text-muted-foreground">Rebuilt {processed} ops so far…</p>}
-          {busy && waitingSec !== null && (
-            <p className="text-sm text-muted-foreground">Cloudflare&apos;s free plan asked us to slow down — trying again in {waitingSec} s. Nothing is lost.</p>
-          )}
-          {result?.completed && (
-            <div className="flex flex-col gap-2 text-sm">
-              <p className="text-green-400">Rebuilt {result.totalProcessed} ops ✓</p>
-              {result.totalErrors > 0 && <p className="text-amber-400">…{result.totalErrors} ops could not be projected (they stay safe in your history)</p>}
-            </div>
-          )}
-          {result && !result.completed && (
-            <div role="alert" className="flex flex-col gap-2 text-sm">
-              <p className="text-amber-400">
-                Paused after {result.totalProcessed} ops{result.error ? ` (${result.error})` : ''}. Nothing is lost — continue where it stopped.
-              </p>
-              <Button variant="outline" onClick={() => rebuild(result.after)} disabled={busy}>Continue rebuild</Button>
-            </div>
-          )}
-        </section>
-      </main>
-    </>
+      <section className="glass flex flex-col gap-3 rounded-2xl p-4" aria-live="polite">
+        <Button onClick={() => rebuild()} disabled={busy}>{busy ? 'Rebuilding…' : 'Start rebuild'}</Button>
+        {busy && <p className="text-sm text-muted-foreground">Rebuilt {processed} saved changes so far…</p>}
+        {busy && waitingSec !== null && (
+          <p className="text-sm text-muted-foreground">Cloudflare&apos;s free plan asked us to slow down. Trying again in {waitingSec} s; nothing is lost.</p>
+        )}
+        {result?.completed && (
+          <div className="flex flex-col gap-2 text-sm">
+            <p className="flex items-center gap-2 text-income">
+              <CircleCheck className="size-4 shrink-0" aria-hidden />
+              Rebuilt {result.totalProcessed} saved changes.
+            </p>
+            {result.totalErrors > 0 && <p className="text-warning">{result.totalErrors} changes couldn&apos;t be rebuilt. They stay safe in your history.</p>}
+          </div>
+        )}
+        {result && !result.completed && (
+          <div role="alert" className="flex flex-col gap-2 text-sm">
+            <p className="text-warning">
+              Paused after {result.totalProcessed} saved changes{result.error ? ` (${result.error})` : ''}. Nothing is lost; continue where it stopped.
+            </p>
+            <Button variant="outline" onClick={() => rebuild(result.after)} disabled={busy}>Continue rebuild</Button>
+          </div>
+        )}
+      </section>
+    </PageShell>
   )
 }

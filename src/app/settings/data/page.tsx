@@ -7,8 +7,10 @@ import { db } from '@/lib/dexie'
 import { applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { buildBackup, parseBackup, moneyEntriesToCsv } from '@/lib/data-export'
 import { Button } from '@/components/ui/button'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
 import type { Op } from '@/types/ops'
+
+const BACK = { href: '/settings', label: 'Settings' }
 
 export default function DataPage() {
   const router = useRouter()
@@ -124,7 +126,7 @@ export default function DataPage() {
         return
       }
 
-      if (!window.confirm(`Import ${res.ops.length} entries? This merges into your current data and can't remove anything.`)) {
+      if (!window.confirm(`Import ${res.ops.length} saved changes? They're added to your current data and can't remove anything.`)) {
         e.target.value = ''
         return
       }
@@ -137,7 +139,7 @@ export default function DataPage() {
       // Sync to server
       await pushPullOnce({ userId: userId! })
 
-      setImportSuccess(`Imported ${res.ops.length} entries.`)
+      setImportSuccess(`Imported ${res.ops.length} saved changes.`)
       e.target.value = ''
 
       // Refresh counts
@@ -153,78 +155,72 @@ export default function DataPage() {
     }
   }
 
-  if (!userId) return <p className="p-8">Loading…</p>
+  if (!userId) {
+    return (
+      <PageShell title="Data & backup" back={BACK}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </PageShell>
+    )
+  }
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-6 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Data & Backup</h1>
-          <Button size="sm" variant="ghost" onClick={() => router.push('/settings')}>← Settings</Button>
-        </header>
+    <PageShell title="Data & backup" back={BACK}>
+      {/* Export backup (JSON) */}
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Back up everything</h2>
+        <p className="text-xs text-muted-foreground">Download a complete backup of your data as one JSON file ({opCount} saved changes).</p>
+        <Button
+          onClick={handleExportBackup}
+          disabled={isExporting}
+          className="w-full"
+        >
+          {isExporting ? 'Exporting…' : 'Download backup'}
+        </Button>
+      </section>
 
-        {/* Export backup (JSON) */}
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold uppercase text-muted-foreground">Export backup (JSON)</h2>
-          <p className="text-xs text-muted-foreground">Download a complete backup of your data ({opCount} entries).</p>
-          <Button
-            onClick={handleExportBackup}
-            disabled={isExporting}
-            className="w-full"
-            style={{ minHeight: '44px' }}
-            aria-label="Export backup"
-          >
-            {isExporting ? 'Exporting…' : 'Export backup'}
-          </Button>
-        </section>
+      {/* Export money (CSV) */}
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Export money</h2>
+        <p className="text-xs text-muted-foreground">Download your money entries as a CSV spreadsheet ({moneyCount} entries).</p>
+        <Button
+          variant="outline"
+          onClick={handleExportMoney}
+          disabled={isExporting}
+          className="w-full"
+        >
+          {isExporting ? 'Exporting…' : 'Download money CSV'}
+        </Button>
+      </section>
 
-        {/* Export money (CSV) */}
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold uppercase text-muted-foreground">Export money (CSV)</h2>
-          <p className="text-xs text-muted-foreground">Download your money entries as a spreadsheet ({moneyCount} entries).</p>
-          <Button
-            onClick={handleExportMoney}
-            disabled={isExporting}
-            className="w-full"
-            style={{ minHeight: '44px' }}
-            aria-label="Export money"
-          >
-            {isExporting ? 'Exporting…' : 'Export money'}
-          </Button>
-        </section>
+      {/* Import backup */}
+      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Restore from a backup</h2>
+        <div>
+          <label htmlFor="import-file" className="mb-2 block text-xs text-muted-foreground">
+            Choose a .json backup file to import
+          </label>
+          <input
+            id="import-file"
+            type="file"
+            accept=".json,application/json"
+            onChange={handleImportFile}
+            disabled={isImporting}
+            className="w-full text-sm text-muted-foreground file:mr-3 file:min-h-10 file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:text-sm file:font-medium file:text-foreground hover:file:bg-white/15 disabled:opacity-50"
+          />
+        </div>
 
-        {/* Import backup */}
-        <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold uppercase text-muted-foreground">Import backup</h2>
-          <div>
-            <label htmlFor="import-file" className="text-xs text-muted-foreground mb-2 block">
-              Choose a .json backup file to import
-            </label>
-            <input
-              id="import-file"
-              type="file"
-              accept=".json,application/json"
-              onChange={handleImportFile}
-              disabled={isImporting}
-              aria-label="Import backup file"
-              className="w-full"
-            />
-          </div>
+        {importError && (
+          <p role="alert" className="text-xs text-destructive">{importError}</p>
+        )}
 
-          {importError && (
-            <p className="text-xs text-rose-400">{importError}</p>
-          )}
+        {importSuccess && (
+          <p role="status" className="text-xs text-income">{importSuccess}</p>
+        )}
 
-          {importSuccess && (
-            <p className="text-xs text-emerald-400">{importSuccess}</p>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            Import is safe — it merges by last-writer-wins and never deletes.
-          </p>
-        </section>
-      </main>
-    </>
+        <p className="text-xs text-muted-foreground">
+          Importing is safe: it adds to what you already have and never deletes anything.
+        </p>
+      </section>
+    </PageShell>
   )
 }

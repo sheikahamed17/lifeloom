@@ -80,12 +80,12 @@ export function MoneyControls({ userId, filter, sort, onFilter, onSort }: Props)
           <option value="__UNCATEGORIZED__">Uncategorized</option>
           {spendCats.length > 0 && (
             <optgroup label="Spend">
-              {spendCats.map(c => <option key={c.id} value={c.name}>{c.icon ? `${c.icon} ` : ''}{c.name}</option>)}
+              {spendCats.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
             </optgroup>
           )}
           {incomeCats.length > 0 && (
             <optgroup label="Income">
-              {incomeCats.map(c => <option key={c.id} value={c.name}>{c.icon ? `${c.icon} ` : ''}{c.name}</option>)}
+              {incomeCats.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
             </optgroup>
           )}
         </select>
@@ -128,7 +128,7 @@ export function MoneyControls({ userId, filter, sort, onFilter, onSort }: Props)
                 type="button"
                 aria-pressed={pressed}
                 onClick={() => onFilter({ ...filter, direction: d === 'all' ? null : d })}
-                className={`min-h-9 flex-1 rounded-md text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 ${pressed ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`min-h-9 flex-1 rounded-lg text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 ${pressed ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 {d === 'all' ? 'All' : d === 'out' ? 'Spent' : 'Earned'}
               </button>

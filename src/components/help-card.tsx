@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react'
 import { HELP_EXAMPLES } from '@/lib/help-examples'
+import { Button } from '@/components/ui/button'
 
 export function HelpCard({
   onPick,
@@ -23,14 +24,15 @@ export function HelpCard({
             Type or say one line — I&rsquo;ll file it in the right place.
           </p>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-lg"
           onClick={onDismiss}
-          className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+          className="-mr-2 -mt-2 text-muted-foreground hover:text-foreground"
           aria-label="Dismiss help"
         >
-          <X className="h-5 w-5" />
-        </button>
+          <X className="size-4" aria-hidden />
+        </Button>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -39,9 +41,9 @@ export function HelpCard({
             key={`${example.domain}-${example.prompt}`}
             type="button"
             onClick={() => onPick(example.prompt)}
-            className="flex flex-col gap-1 items-start min-h-[44px] px-3 py-2 rounded bg-white/5 hover:bg-white/10 transition-colors text-left"
+            className="glass-soft flex min-h-11 flex-col items-start gap-1 rounded-lg px-3 py-2 text-left outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2"
           >
-            <span className="text-xs font-medium">{example.label}</span>
+            <span className="text-sm font-medium">{example.label}</span>
             <code className="text-xs text-muted-foreground font-mono">
               {example.prompt}
             </code>

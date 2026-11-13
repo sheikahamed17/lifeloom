@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
+import { ChevronRight, Users } from 'lucide-react'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
 import { useAllPeople } from '@/hooks/use-all-people'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
@@ -44,8 +45,8 @@ export function OwedWidget({ userId }: Props) {
   if (rows.length === 0) {
     return (
       <div className="flex flex-col gap-1">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Owed to you</span>
-        <p className="text-sm text-muted-foreground">Nobody owes you anything. Share an expense from the capture chip to track it here.</p>
+        <h2 className="text-sm font-semibold">Owed to you</h2>
+        <p className="text-sm text-muted-foreground">Nobody owes you anything. Use “Share with…” when you add a spend to track who owes what.</p>
       </div>
     )
   }
@@ -53,7 +54,7 @@ export function OwedWidget({ userId }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Owed to you</span>
+        <h2 className="text-sm font-semibold">Owed to you</h2>
         <span className="font-mono text-2xl font-semibold tabular-nums">{fmt(headline.total, prefs.primary_currency)}</span>
       </div>
       {headline.skipped.length > 0 && (
@@ -64,16 +65,16 @@ export function OwedWidget({ userId }: Props) {
           <li key={r.personId}>
             <Link
               href={`/settings/people#${r.personId}`}
-              className="flex min-h-[44px] items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+              className="-mx-2 flex min-h-11 items-center justify-between gap-2 rounded-lg px-2 text-sm outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
             >
-              <span className="truncate"><span aria-hidden="true">👥 </span>{r.name}</span>
+              <span className="flex min-w-0 items-center gap-2"><Users className="size-4 shrink-0 text-muted-foreground" aria-hidden /><span className="truncate">{r.name}</span></span>
               <span className="font-mono tabular-nums">{Object.entries(r.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
             </Link>
           </li>
         ))}
       </ul>
-      <Link href="/settings/people" className="text-xs text-accent-2 hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">
-        {rows.length > 3 ? `All ${rows.length} people →` : 'Mark paid →'}
+      <Link href="/settings/people" className="inline-flex min-h-11 items-center gap-1 self-start rounded-lg text-sm text-accent-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent-2">
+        {rows.length > 3 ? `All ${rows.length} people` : 'Mark repayments paid'}<ChevronRight className="size-4" aria-hidden />
       </Link>
     </div>
   )

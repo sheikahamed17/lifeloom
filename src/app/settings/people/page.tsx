@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Archive, ChevronDown, Pencil } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useAllPeople } from '@/hooks/use-all-people'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
@@ -14,20 +15,34 @@ import { owedByPerson, owedTotal } from '@/lib/shares'
 import { pickDefaultAccountId } from '@/lib/default-account'
 import { convertViaRates } from '@/lib/fx'
 import { formatMinor } from '@/lib/currency'
+import { formatDay } from '@/lib/format'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
+import { RowMenu } from '@/components/row-menu'
+import { FIELD_SELECT } from '@/components/sort-control'
+import { UndoProvider, useUndo } from '@/components/undo-provider'
 import type { ExpenseShareRow, MoneyEntryRow, PersonRow } from '@/lib/dexie'
 
 const fmt = formatMinor
+const BACK = { href: '/settings', label: 'Settings' }
 
 export default function PeoplePage() {
+  return (
+    <UndoProvider>
+      <PeoplePageInner />
+    </UndoProvider>
+  )
+}
+
+function PeoplePageInner() {
   const router = useRouter()
+  const undo = useUndo()
   const [userId, setUserId] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
-  const [status, setStatus] = useState<{ text: string; undo?: () => Promise<void> } | null>(null)
 
   useEffect(() => {
     authClient.getSession().then(res => {
@@ -59,6 +74,9 @@ export default function PeoplePage() {
     [prefs.primary_currency, rates, prefs.fx_overrides],
   )
   const headline = useMemo(() => owedTotal(owed, toPrimary), [owed, toPrimary])
+  // Each figure has one home: the page total only when it adds up more than one
+  // person (otherwise it repeats that person's card).
+  const showTotal = owed.length > 1
 
   // Jump to the person a money-row pill linked to (#<personId>).
   useEffect(() => {
@@ -93,10 +111,10 @@ export default function PeoplePage() {
       const total = shares.filter(s => shareIds.includes(s.id)).reduce((n, s) => n + s.amount, 0)
       const currency = entryById.get(shares.find(s => s.id === shareIds[0])?.money_entry_id ?? '')?.currency ?? prefs.primary_currency
       const acc = accounts.find(a => a.id === accountId)
-      setStatus({
-        text: `Marked ${fmt(total, currency)} paid${acc ? ` into ${acc.name}` : ''}.`,
-        undo: async () => { for (const id of shareIds) await op('expense_share', id, 'update', { settled_at: null, settled_account_id: null }); setStatus({ text: 'Undone.' }); sync() },
-      })
+      undo.push(
+        `Marked ${fmt(total, currency)} paid${acc ? ` into ${acc.name}` : ''}`,
+        async () => { for (const id of shareIds) await op('expense_share', id, 'update', { settled_at: null, settled_account_id: null }); sync() },
+      )
       sync()
     } finally { setBusy(false) }
   }
@@ -106,96 +124,95 @@ export default function PeoplePage() {
     setBusy(true)
     try {
       await op('expense_share', shareId, 'update', { settled_at: null, settled_account_id: null })
-      setStatus({ text: 'Marked as still owed.' })
+      undo.push('Marked as still owed')
       sync()
     } finally { setBusy(false) }
   }
 
   async function rename(id: string, name: string) { await op('person', id, 'update', { name }); sync() }
-  async function archive(id: string, archived: boolean) { await op('person', id, 'update', { is_archived: archived ? 1 : 0 }); sync() }
+  async function archive(id: string, archived: boolean) {
+    await op('person', id, 'update', { is_archived: archived ? 1 : 0 })
+    sync()
+    if (archived) undo.push(`Archived ${live.find(p => p.id === id)?.name ?? 'person'}`, () => archive(id, false))
+  }
 
-  if (!userId) return <p className="p-8">Loading…</p>
+  if (!userId) {
+    return (
+      <PageShell title="People" back={BACK}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </PageShell>
+    )
+  }
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-6 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">People</h1>
-          <Button size="sm" variant="ghost" onClick={() => router.push('/settings')}>← Settings</Button>
-        </header>
-
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">Owed to you</span>
+    <PageShell title="People" back={BACK}>
+      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
+        {showTotal && (
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold">Owed to you</h2>
             <span className="font-mono text-2xl font-semibold tabular-nums">{fmt(headline.total, prefs.primary_currency)}</span>
           </div>
-          {headline.skipped.length > 0 && (
-            <p className="text-xs text-muted-foreground">Not converted (no FX rate yet): {headline.skipped.join(', ')}</p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Share an expense from the capture chip (“Share with…”). When someone pays you back, mark it paid here: the money returns to the account you pick, and nothing is counted as income.
-          </p>
-          <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground empty:hidden">
-            {status?.text}
-            {status?.undo && (
-              <button type="button" onClick={() => status.undo?.()} className="min-h-[44px] px-2 text-accent-2 hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">Undo</button>
-            )}
-          </p>
-          <div className="mt-1 flex gap-2">
-            <Input
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPerson() } }}
-              placeholder="Add a person…"
-              maxLength={60}
-              aria-label="New person name"
-            />
-            <Button onClick={addPerson} disabled={!newName.trim()}>Add</Button>
-          </div>
-        </section>
-
-        {active.length === 0 && (
-          <p className="text-sm text-muted-foreground">No people yet. Add someone above, or share an expense from the capture chip.</p>
         )}
-
-        {active.map(p => (
-          <PersonCard
-            key={p.id}
-            person={p}
-            owed={owedFor.get(p.id)}
-            shares={shares.filter(s => s.person_id === p.id)}
-            entryById={entryById}
-            accounts={accounts}
-            defaultAccountId={defaultAccountId}
-            busy={busy}
-            onSettle={settle}
-            onUnsettle={unsettle}
-            onRename={rename}
-            onArchive={id => archive(id, true)}
+        {showTotal && headline.skipped.length > 0 && (
+          <p className="text-xs text-muted-foreground">Not converted (no exchange rate yet): {headline.skipped.join(', ')}</p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Share an expense from the capture chip (“Share with…”). When someone pays you back, mark it paid here: the money returns to the account you pick, and nothing is counted as income.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPerson() } }}
+            placeholder="Add a person…"
+            maxLength={60}
+            aria-label="New person name"
           />
-        ))}
+          <Button onClick={addPerson} disabled={!newName.trim()}>Add</Button>
+        </div>
+      </section>
 
-        {archived.length > 0 && (
-          <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-            <h2 className="text-sm font-semibold uppercase text-muted-foreground">Archived ({archived.length})</h2>
-            <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
-              {archived.map(p => (
-                <li key={p.id} id={p.id} className="flex items-center justify-between p-3 text-sm">
-                  <span>{p.name}{owedFor.get(p.id) ? ` · still owes ${Object.entries(owedFor.get(p.id)!.byCurrency).map(([c, a]) => fmt(a, c)).join(', ')}` : ''}</span>
-                  <Button size="sm" variant="ghost" onClick={() => archive(p.id, false)} style={{ height: '44px' }} aria-label={`Restore ${p.name}`}>Restore</Button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </main>
-    </>
+      {active.length === 0 && (
+        <p className="text-sm text-muted-foreground">No people yet. Add someone above, or share an expense from the capture chip.</p>
+      )}
+
+      {active.map(p => (
+        <PersonCard
+          key={p.id}
+          person={p}
+          owed={owedFor.get(p.id)}
+          shares={shares.filter(s => s.person_id === p.id)}
+          entryById={entryById}
+          accounts={accounts}
+          defaultAccountId={defaultAccountId}
+          tz={prefs.tz}
+          busy={busy}
+          onSettle={settle}
+          onUnsettle={unsettle}
+          onRename={rename}
+          onArchive={id => archive(id, true)}
+        />
+      ))}
+
+      {archived.length > 0 && (
+        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+          <h2 className="text-sm font-semibold text-muted-foreground">Archived ({archived.length})</h2>
+          <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+            {archived.map(p => (
+              <li key={p.id} id={p.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1 text-sm">
+                <span className="min-w-0">{p.name}{owedFor.get(p.id) ? ` · still owes ${Object.entries(owedFor.get(p.id)!.byCurrency).map(([c, a]) => fmt(a, c)).join(', ')}` : ''}</span>
+                <Button variant="ghost" onClick={() => archive(p.id, false)} aria-label={`Restore ${p.name}`}>Restore</Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </PageShell>
   )
 }
 
 function PersonCard({
-  person, owed, shares, entryById, accounts, defaultAccountId, busy, onSettle, onUnsettle, onRename, onArchive,
+  person, owed, shares, entryById, accounts, defaultAccountId, tz, busy, onSettle, onUnsettle, onRename, onArchive,
 }: {
   person: PersonRow
   busy: boolean
@@ -204,6 +221,7 @@ function PersonCard({
   entryById: Map<string, MoneyEntryRow>
   accounts: { id: string; name: string; icon: string | null }[]
   defaultAccountId: string | null
+  tz: string
   onSettle: (shareIds: string[], accountId: string | null) => void
   onUnsettle: (shareId: string) => void
   onRename: (id: string, name: string) => void
@@ -214,6 +232,7 @@ function PersonCard({
   const [historyOpen, setHistoryOpen] = useState(false)
   const [accountTouched, setAccountTouched] = useState(false)
   const [accountId, setAccountId] = useState<string | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const receiveInto = accountTouched ? accountId : defaultAccountId
 
   const settled = useMemo(
@@ -226,53 +245,64 @@ function PersonCard({
 
   return (
     <section id={person.id} className="glass flex flex-col gap-3 rounded-2xl p-4 scroll-mt-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         {editing ? (
           <div className="flex flex-1 gap-2">
             <Input value={name} onChange={e => setName(e.target.value)} maxLength={60} autoFocus aria-label={`Rename ${person.name}`} />
-            <Button size="sm" onClick={() => { const n = name.trim(); if (n && n !== person.name) onRename(person.id, n); setEditing(false) }} style={{ minHeight: '44px' }}>Save</Button>
-            <Button size="sm" variant="outline" onClick={() => { setName(person.name); setEditing(false) }} style={{ minHeight: '44px' }}>Cancel</Button>
+            <Button onClick={() => { const n = name.trim(); if (n && n !== person.name) onRename(person.id, n); setEditing(false) }}>Save</Button>
+            <Button variant="outline" onClick={() => { setName(person.name); setEditing(false) }}>Cancel</Button>
           </div>
         ) : (
           <>
-            <h2 className="min-w-0 flex-1 basis-full sm:basis-auto truncate text-lg font-semibold">{person.name}</h2>
-            <span className="font-mono tabular-nums text-sm whitespace-nowrap">
-              {owed ? Object.entries(owed.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ') : <span className="text-muted-foreground">settled up</span>}
-            </span>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(true)} style={{ height: '44px', minWidth: '44px' }} aria-label={`Rename ${person.name}`}>Rename</Button>
-            <Button size="sm" variant="ghost" onClick={() => onArchive(person.id)} style={{ height: '44px', minWidth: '44px' }} aria-label={`Archive ${person.name}`}>Archive</Button>
+            <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">{person.name}</h2>
+            {/* A person's total only when it sums more than one row; one row already says it. */}
+            {owed && outstanding.length > 1 && (
+              <span className="whitespace-nowrap text-sm text-muted-foreground">
+                owes <span className="font-mono tabular-nums text-foreground">{Object.entries(owed.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
+              </span>
+            )}
+            {!owed && <span className="text-sm text-muted-foreground">Settled up</span>}
+            <RowMenu
+              label={`Actions for ${person.name}`}
+              open={menuOpen}
+              onOpenChange={setMenuOpen}
+              items={[
+                { label: 'Rename', icon: Pencil, onSelect: () => setEditing(true) },
+                { label: 'Archive', icon: Archive, onSelect: () => onArchive(person.id) },
+              ]}
+            />
           </>
         )}
       </div>
 
       {outstanding.length > 0 && (
         <>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <label className="text-muted-foreground" htmlFor={`receive-${person.id}`}>Paid into</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-sm text-muted-foreground" htmlFor={`receive-${person.id}`}>Paid into</label>
             <select
               id={`receive-${person.id}`}
               value={receiveInto ?? ''}
               onChange={e => { setAccountTouched(true); setAccountId(e.target.value || null) }}
-              className="rounded-md border bg-muted px-2 py-1 text-base md:text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+              className={cn(FIELD_SELECT, 'w-auto min-w-0 flex-1 sm:flex-none')}
             >
               <option value="">No account</option>
               {accounts.map(a => <option key={a.id} value={a.id}>{a.icon ? `${a.icon} ${a.name}` : a.name}</option>)}
             </select>
             {outstanding.length > 1 && (
-              <Button size="sm" variant="outline" className="ml-auto" style={{ minHeight: '44px' }} disabled={busy} onClick={() => onSettle(outstanding.map(s => s.shareId), receiveInto)}>
+              <Button variant="outline" className="ml-auto" disabled={busy} onClick={() => onSettle(outstanding.map(s => s.shareId), receiveInto)}>
                 Mark all paid
               </Button>
             )}
           </div>
-          <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
+          <ul className="glass-soft divide-y divide-white/10 rounded-lg">
             {outstanding.map(s => (
               <li key={s.shareId} className="flex items-center justify-between gap-2 p-3 text-sm">
                 <div className="min-w-0 flex-1">
                   <div className="truncate">{s.description || 'Untitled'}</div>
-                  <div className="text-xs text-muted-foreground">{s.occurred_at.slice(0, 10)}{s.note ? ` · ${s.note}` : ''}</div>
+                  <div className="text-xs text-muted-foreground">{formatDay(s.occurred_at, tz)}{s.note ? ` · ${s.note}` : ''}</div>
                 </div>
                 <span className="font-mono tabular-nums">{fmt(s.amount, s.currency)}</span>
-                <Button size="sm" disabled={busy} onClick={() => onSettle([s.shareId], receiveInto)} style={{ minHeight: '44px' }} aria-label={`Mark paid: ${s.description || 'entry'} ${fmt(s.amount, s.currency)}`}>
+                <Button disabled={busy} onClick={() => onSettle([s.shareId], receiveInto)} aria-label={`Mark paid: ${s.description || 'entry'} ${fmt(s.amount, s.currency)}`}>
                   Mark paid
                 </Button>
               </li>
@@ -286,26 +316,26 @@ function PersonCard({
           <button
             type="button"
             onClick={() => setHistoryOpen(o => !o)}
-            className="flex min-h-[44px] items-center justify-between text-left text-xs font-semibold uppercase text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+            className="-mx-2 flex min-h-11 items-center justify-between rounded-lg px-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
             aria-expanded={historyOpen}
           >
             <span>Paid ({settled.length})</span>
-            <span aria-hidden="true">{historyOpen ? '−' : '+'}</span>
+            <ChevronDown className={cn('size-4 transition-transform', historyOpen && 'rotate-180')} aria-hidden />
           </button>
           {historyOpen && (
-            <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
+            <ul className="glass-soft divide-y divide-white/10 rounded-lg">
               {settled.map(s => {
                 const e = entryById.get(s.money_entry_id)!
                 const acc = accounts.find(a => a.id === s.settled_account_id)
                 return (
-                  <li key={s.id} className="flex items-center justify-between gap-2 p-3 text-sm">
+                  <li key={s.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1 text-sm">
                     <div className="min-w-0 flex-1">
                       <div className="truncate">{e.description || 'Untitled'}</div>
-                      <div className="text-xs text-muted-foreground">paid {s.settled_at?.slice(0, 10)}{acc ? ` into ${acc.name}` : ''}</div>
+                      <div className="text-xs text-muted-foreground">Paid {s.settled_at ? formatDay(s.settled_at, tz) : ''}{acc ? ` into ${acc.name}` : ''}</div>
                     </div>
                     <span className="font-mono tabular-nums text-muted-foreground">{fmt(s.amount, e.currency)}</span>
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => onUnsettle(s.id)} style={{ minHeight: '44px' }} aria-label={`Unsettle: ${e.description || 'entry'}`}>
-                      Unsettle
+                    <Button variant="ghost" disabled={busy} onClick={() => onUnsettle(s.id)} aria-label={`Mark unpaid: ${e.description || 'entry'}`}>
+                      Mark unpaid
                     </Button>
                   </li>
                 )

@@ -35,7 +35,7 @@ export function LearningSummary({ userId }: Props) {
   return (
     <section className="glass flex flex-col gap-2 rounded-2xl p-4">
       <header>
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Learnings</span>
+        <span className="text-sm font-semibold">Learnings</span>
       </header>
       <ul className="flex flex-col gap-1.5 text-sm">
         <li className="flex items-center justify-between">

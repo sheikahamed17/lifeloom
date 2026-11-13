@@ -1,5 +1,6 @@
 'use client'
 
+import { ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { useAccounts } from '@/hooks/use-accounts'
@@ -13,6 +14,8 @@ import { convertViaRates } from '@/lib/fx'
 import { currencySymbol } from '@/lib/currency'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { netWorth, type AccountLike } from '@/lib/accounts'
+
+const LINK = 'inline-flex min-h-11 items-center gap-1 rounded-lg text-sm text-accent-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent-2'
 
 type Props = { userId: string }
 
@@ -76,14 +79,10 @@ export function AccountsWidget({ userId }: Props) {
 
   if (accounts.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
-        <p>Add accounts in Settings → Accounts</p>
-        <Link
-          href="/settings/accounts"
-          className="text-xs text-blue-500 hover:underline"
-        >
-          Go to Settings
-        </Link>
+      <div className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold">Accounts</h2>
+        <p className="text-sm text-muted-foreground">Add your bank accounts and cards to see balances and net worth.</p>
+        <Link href="/settings/accounts" className={`${LINK} self-start`}>Add an account<ChevronRight className="size-4" aria-hidden /></Link>
       </div>
     )
   }
@@ -100,10 +99,9 @@ export function AccountsWidget({ userId }: Props) {
     <div className="flex flex-col gap-4">
       {/* Net worth headline */}
       <div className="flex flex-col gap-1">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Net worth</span>
-        <div className="text-2xl font-bold font-mono">
-          {symbol}
-          {fmt(nw.net)}
+        <h2 className="text-sm font-semibold">Net worth</h2>
+        <div className="font-mono text-2xl font-semibold tabular-nums">
+          {nw.net < 0 ? '−' : ''}{symbol}{fmt(Math.abs(nw.net))}
         </div>
       </div>
 
@@ -113,12 +111,12 @@ export function AccountsWidget({ userId }: Props) {
         {nw.perAccount
           .filter(a => a.type === 'asset')
           .map(acct => (
-            <div key={acct.id} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                {acct.icon && <span>{acct.icon}</span>}
-                <span>{acct.name}</span>
+            <div key={acct.id} className="flex items-center justify-between gap-2 text-sm">
+              <div className="flex min-w-0 items-center gap-2">
+                {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
+                <span className="truncate">{acct.name}</span>
               </div>
-              <span className="font-mono">
+              <span className="font-mono tabular-nums">
                 {fmtIn(acct.balance, acct.currency)}
               </span>
             </div>
@@ -128,17 +126,17 @@ export function AccountsWidget({ userId }: Props) {
         {nw.perAccount
           .filter(a => a.type === 'liability')
           .length > 0 && (
-          <div className="border-t pt-2">
-            <div className="text-xs font-medium text-muted-foreground mb-2">Owed</div>
+          <div className="flex flex-col gap-2 border-t border-white/10 pt-2">
+            <h3 className="text-xs text-muted-foreground">Cards and loans</h3>
             {nw.perAccount
               .filter(a => a.type === 'liability')
               .map(acct => (
-                <div key={acct.id} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    {acct.icon && <span>{acct.icon}</span>}
-                    <span>{acct.name}</span>
+                <div key={acct.id} className="flex items-center justify-between gap-2 text-sm">
+                  <div className="flex min-w-0 items-center gap-2">
+                    {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
+                    <span className="truncate">{acct.name}</span>
                   </div>
-                  <span className="font-mono">
+                  <span className="font-mono tabular-nums text-destructive">
                     {fmtIn(acct.balance, acct.currency)}
                   </span>
                 </div>
@@ -148,12 +146,9 @@ export function AccountsWidget({ userId }: Props) {
       </div>
 
       {accounts.length > 0 && (
-        <div className="border-t pt-2">
-          <Link
-            href="/settings/transfers"
-            className="text-xs text-blue-500 hover:underline"
-          >
-            Transfer →
+        <div className="border-t border-white/10 pt-1">
+          <Link href="/settings/transfers" className={LINK}>
+            Move money between accounts<ChevronRight className="size-4" aria-hidden />
           </Link>
         </div>
       )}

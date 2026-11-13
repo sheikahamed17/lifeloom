@@ -178,7 +178,7 @@ function ConfirmationChipMoney({
       </div>
 
       {d.receiptPreviewUrl && (
-        <div className="relative mb-3 h-40 w-full overflow-hidden rounded-md">
+        <div className="relative mb-3 h-40 w-full overflow-hidden rounded-lg">
           <Image
             src={d.receiptPreviewUrl}
             alt="receipt"
@@ -264,7 +264,7 @@ function ConfirmationChipMoney({
           <option value="">No account</option>
           {accounts.map(acc => (
             <option key={acc.id} value={acc.id}>
-              {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
+              {acc.name}
             </option>
           ))}
         </select>
@@ -299,11 +299,11 @@ function ConfirmationChipMoney({
                 value={row.category_id ?? ''}
                 onChange={e => { const v = e.target.value || null; setSplitRows(prev => prev.map((r, j) => (j === i ? { ...r, category_id: v } : r))) }}
                 aria-label={`Category for split part ${i + 1}`}
-                className="flex-1 min-w-0 rounded-md border bg-muted px-2 py-1 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+                className="flex-1 min-w-0 rounded-lg border bg-muted px-2 py-1 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
               >
                 <option value="">Uncategorized</option>
                 {splitCats.map(c => (
-                  <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ` : ''}{c.name}</option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
               <Input
@@ -371,7 +371,7 @@ function ConfirmationChipMoney({
                   setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, personId: person ? person.id : null, name: person ? person.name : '' } : r)))
                 }}
                 aria-label={`Person ${i + 1}`}
-                className="min-w-0 flex-1 rounded-md border bg-muted px-2 py-1 text-base md:text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+                className="min-w-0 flex-1 rounded-lg border bg-muted px-2 py-1 text-base md:text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
               >
                 <option value="__new__">New person…</option>
                 {people.filter(p => p.id === row.personId || !shareRows.some(r => r.personId === p.id)).map(p => (
@@ -747,7 +747,7 @@ function ConfirmationChipLearning({
             if (v) setD(s => ({ ...s, text: v }))
             setEditingText(false)
           }}
-          className="mb-3 w-full rounded-md border bg-background p-2 font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none resize-none"
+          className="mb-3 w-full rounded-lg border bg-background p-2 font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none resize-none"
           rows={3}
         />
       ) : (
@@ -819,7 +819,7 @@ function ConfirmationChipLearning({
           type="button"
           onClick={() => setEditingAttribution(true)}
           aria-label="Edit source or attribution"
-          className="mb-3 block w-full min-h-[44px] flex items-center text-left rounded-md border bg-muted px-2 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+          className="mb-3 block w-full min-h-11 flex items-center text-left rounded-lg border bg-muted px-2 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
         >
           {d.attribution || '+ source / attribution'}
         </button>
@@ -891,7 +891,7 @@ function ConfirmationChipNote({
             if (v) setD(s => ({ ...s, body: v }))
             setEditingBody(false)
           }}
-          className="mb-3 w-full rounded-md border bg-background p-2 font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none resize-none"
+          className="mb-3 w-full rounded-lg border bg-background p-2 font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none resize-none"
           rows={3}
           aria-label="Note body"
         />
@@ -899,7 +899,7 @@ function ConfirmationChipNote({
         <button
           type="button"
           onClick={() => setEditingBody(true)}
-          className="mb-3 block w-full min-h-[44px] whitespace-pre-wrap text-left font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded flex items-center"
+          className="mb-3 block w-full min-h-11 whitespace-pre-wrap text-left font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded flex items-center"
           aria-label="Edit note body"
         >
           {d.body}
@@ -923,7 +923,7 @@ function ConfirmationChipNote({
         <button
           type="button"
           onClick={() => setEditingTitle(true)}
-          className="mb-3 block w-full min-h-[44px] flex items-center text-left rounded-md border bg-muted px-2 text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+          className="mb-3 block w-full min-h-11 flex items-center text-left rounded-lg border bg-muted px-2 text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
           aria-label="Edit note title"
         >
           {d.title ? <span className="font-semibold">{d.title}</span> : <span className="text-muted-foreground">+ title (optional)</span>}
@@ -1015,11 +1015,11 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
         <select
           value={receiveInto ?? ''}
           onChange={e => { setTouched(true); setAccountId(e.target.value || null) }}
-          className="rounded-md border bg-muted px-2 py-1 text-base md:text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+          className="rounded-lg border bg-muted px-2 py-1 text-base md:text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
           aria-label="Account the repayment landed in"
         >
           <option value="">No account</option>
-          {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon ? `${acc.icon} ${acc.name}` : acc.name}</option>)}
+          {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
         </select>
       </label>
       <p className="text-xs text-muted-foreground">This clears the debt and tops up the account. It isn’t counted as income.</p>
@@ -1056,8 +1056,8 @@ function ConfirmationChipBudget({ draft, onConfirm, onCancel }: {
         <span className="font-mono tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>/mo
       </span>
       <span className="flex items-center gap-2">
-        <button type="button" aria-label="Confirm budget" className="min-h-[44px] px-3 text-xs rounded-lg bg-accent-2/20 text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none" onClick={handleConfirm} disabled={busy}>Set</button>
-        <button type="button" aria-label="Cancel" className="min-h-[44px] px-3 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded-lg" onClick={onCancel} disabled={busy}>Cancel</button>
+        <button type="button" aria-label="Confirm budget" className="min-h-11 px-3 text-xs rounded-lg bg-accent-2/20 text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none" onClick={handleConfirm} disabled={busy}>Set</button>
+        <button type="button" aria-label="Cancel" className="min-h-11 px-3 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded-lg" onClick={onCancel} disabled={busy}>Cancel</button>
       </span>
     </div>
   )

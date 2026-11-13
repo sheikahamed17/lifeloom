@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { BellRing, Check } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { usePushSubscription } from '@/hooks/use-push-subscription'
@@ -9,10 +10,15 @@ import { pushTestMessage, type PushTestResult } from '@/lib/push-test-message'
 import { isVoiceAnswersEnabled, setVoiceAnswersEnabled } from '@/lib/speak'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { IANA_TIMEZONES } from '@/lib/iana-timezones'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AuroraBackground } from '@/components/aurora-background'
 import { Label } from '@/components/ui/label'
+import { PageShell } from '@/components/page-shell'
+import { FIELD_SELECT } from '@/components/sort-control'
+
+const BACK = { href: '/settings', label: 'Settings' }
+const SECTION_TITLE = 'text-sm font-semibold text-muted-foreground'
 
 export default function PreferencesPage() {
   const router = useRouter()
@@ -102,191 +108,190 @@ export default function PreferencesPage() {
     }
   }
 
-  if (!userId) return <p className="p-8">Loading…</p>
+  if (!userId) {
+    return (
+      <PageShell title="Preferences" back={BACK}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </PageShell>
+    )
+  }
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-6 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Preferences</h1>
-          <Button size="sm" variant="ghost" onClick={() => router.push('/settings')}>← Settings</Button>
-        </header>
+    <PageShell title="Preferences" back={BACK}>
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <Label htmlFor="pref-currency" className="font-semibold">Primary currency</Label>
+        <select
+          id="pref-currency"
+          value={state.primaryCurrency}
+          onChange={e => { const v = e.target.value; setState(s => ({ ...s, primaryCurrency: v })); setDirty(true); setSaveError(null) }}
+          className={FIELD_SELECT}
+        >
+          {SUPPORTED_CURRENCIES.map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Totals are shown in this currency; entries in other currencies are converted at the daily exchange rate.
+        </p>
+      </section>
 
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <Label className="uppercase text-xs">Primary currency</Label>
-          <select
-            value={state.primaryCurrency}
-            onChange={e => { const v = e.target.value; setState(s => ({ ...s, primaryCurrency: v })); setDirty(true); setSaveError(null) }}
-            className="glass-soft rounded-lg border border-input px-3 py-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2"
-          >
-            {SUPPORTED_CURRENCIES.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <p className="text-xs text-muted-foreground">
-            Dashboard sums convert non-primary entries via ECB rates (Phase 2.4).
-          </p>
-        </section>
-
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <label className="flex items-center justify-between gap-3 min-h-[44px]">
-            <span className="flex flex-col">
-              <span className="text-sm font-medium">Remind me to log my salary</span>
-              <span className="text-xs text-muted-foreground">A push on the last working day of each month — for income that doesn&apos;t arrive by email. Needs notifications enabled.</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={state.salaryReminder}
-              onChange={e => { const v = e.currentTarget.checked; setState(s => ({ ...s, salaryReminder: v })); setDirty(true); setSaveError(null) }}
-              className="h-5 w-5 flex-shrink-0 accent-accent-2"
-              aria-label="Remind me to log my salary on the last working day of the month"
-            />
-          </label>
-        </section>
-
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <Label className="uppercase text-xs">Manual exchange rates</Label>
-          <p className="text-xs text-muted-foreground">Used only when the daily ECB feed has no rate for a currency (e.g. AED).</p>
-          <ul className="flex flex-col gap-1">
-            {Object.entries(state.fxOverrides).map(([cur, rate]) => (
-              <li key={cur} className="flex items-center justify-between text-sm">
-                <span className="font-mono tabular-nums">1 EUR = {rate} {cur}</span>
-                <button
-                  type="button"
-                  aria-label={`Remove ${cur} rate`}
-                  onClick={() => { setState(s => { const n = { ...s.fxOverrides }; delete n[cur]; return { ...s, fxOverrides: n } }); setDirty(true); setSaveError(null) }}
-                  className="text-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded px-2 py-1"
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-            {Object.keys(state.fxOverrides).length === 0 && <li className="text-xs text-muted-foreground">None set.</li>}
-          </ul>
-          <FxAddRow onAdd={(cur, rate) => { setState(s => ({ ...s, fxOverrides: { ...s.fxOverrides, [cur]: rate } })); setDirty(true); setSaveError(null) }} />
-        </section>
-
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <Label className="uppercase text-xs">Time zone</Label>
-          <Input
-            value={tzQuery}
-            onChange={e => setTzQuery(e.target.value)}
-            placeholder="Search timezones…"
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <label className="flex min-h-11 items-center justify-between gap-3">
+          <span className="flex flex-col">
+            <span className="text-sm font-medium">Remind me to log my salary</span>
+            <span className="text-xs text-muted-foreground">A push on the last working day of each month, for income that doesn&apos;t arrive by email. Needs notifications turned on.</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={state.salaryReminder}
+            onChange={e => { const v = e.currentTarget.checked; setState(s => ({ ...s, salaryReminder: v })); setDirty(true); setSaveError(null) }}
+            className="size-5 shrink-0 accent-accent-2"
+            aria-label="Remind me to log my salary on the last working day of the month"
           />
-          <div role="listbox" aria-label="Time zone" className="glass-soft max-h-48 overflow-y-auto rounded-lg border border-input">
-            {filteredTzs.map(z => (
-              <button
-                key={z}
-                type="button"
-                role="option"
-                aria-selected={state.tz === z}
-                onClick={() => { setState(s => ({ ...s, tz: z })); setTzQuery(''); setDirty(true); setSaveError(null) }}
-                className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-sm transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none ${
-                  state.tz === z ? 'bg-white/15 font-medium' : ''
-                }`}
-              >
-                <span>{z}</span>
-                {state.tz === z && <span aria-hidden>✓</span>}
-              </button>
-            ))}
-            {filteredTzs.length === 0 && (
-              <p className="px-3 py-2 text-xs text-muted-foreground">No matches.</p>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Current: <code className="font-mono">{state.tz}</code>.
-            {' '}
-            <button type="button" className="underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded" onClick={detectBrowserTz}>
-              Detect from browser
-            </button>
-          </p>
-        </section>
+        </label>
+      </section>
 
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <Label className="uppercase text-xs">Notifications</Label>
-          {pushStatus === 'unsupported' && (
-            <p className="text-xs text-muted-foreground">
-              Web Push is not supported on this device.
-            </p>
-          )}
-          {pushStatus === 'denied' && (
-            <p className="text-xs text-rose-500">
-              Notifications are blocked in your browser settings. Unblock &quot;Lifeloom&quot; in notification permissions to enable.
-            </p>
-          )}
-          {pushStatus === 'subscribed' && (
-            <>
-              <button
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <h2 className={SECTION_TITLE}>Manual exchange rates</h2>
+        <p className="text-xs text-muted-foreground">Used only when the daily rates don&apos;t include a currency (for example AED).</p>
+        <ul className="flex flex-col">
+          {Object.entries(state.fxOverrides).map(([cur, rate]) => (
+            <li key={cur} className="flex items-center justify-between text-sm">
+              <span className="font-mono tabular-nums">1 EUR = {rate} {cur}</span>
+              <Button
                 type="button"
-                onClick={pushUnsubscribe}
-                className="glass rounded-lg px-3 py-2 text-sm font-medium text-emerald-400 hover:bg-white/15 transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+                variant="ghost"
+                aria-label={`Remove ${cur} rate`}
+                onClick={() => { setState(s => { const n = { ...s.fxOverrides }; delete n[cur]; return { ...s, fxOverrides: n } }); setDirty(true); setSaveError(null) }}
+                className="text-muted-foreground"
               >
-                ✓ Notifications enabled — tap to disable
-              </button>
-              <button
-                type="button"
-                onClick={sendTest}
-                disabled={testing}
-                className="glass rounded-lg px-3 py-2 text-sm font-medium hover:bg-white/15 transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none disabled:opacity-50"
-              >
-                {testing ? 'Sending…' : 'Send test notification'}
-              </button>
-              {testMsg && <p className="text-xs text-muted-foreground">{testMsg}</p>}
-            </>
-          )}
-          {pushStatus === 'unsubscribed' && (
-            <>
-              <Button onClick={pushSubscribe}>
-                Enable notifications
+                Remove
               </Button>
-              {pushError && (
-                <p role="alert" className="mt-2 text-xs text-rose-500 break-words">{pushError}</p>
+            </li>
+          ))}
+          {Object.keys(state.fxOverrides).length === 0 && <li className="text-xs text-muted-foreground">None set.</li>}
+        </ul>
+        <FxAddRow onAdd={(cur, rate) => { setState(s => ({ ...s, fxOverrides: { ...s.fxOverrides, [cur]: rate } })); setDirty(true); setSaveError(null) }} />
+      </section>
+
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <Label htmlFor="pref-tz-search" className="font-semibold">Time zone</Label>
+        <Input
+          id="pref-tz-search"
+          value={tzQuery}
+          onChange={e => setTzQuery(e.target.value)}
+          placeholder="Search time zones…"
+        />
+        <div role="listbox" aria-label="Time zone" className="glass-soft max-h-56 overflow-y-auto rounded-lg">
+          {filteredTzs.map(z => (
+            <button
+              key={z}
+              type="button"
+              role="option"
+              aria-selected={state.tz === z}
+              onClick={() => { setState(s => ({ ...s, tz: z })); setTzQuery(''); setDirty(true); setSaveError(null) }}
+              className={cn(
+                'flex min-h-10 w-full items-center justify-between px-3 text-left text-sm outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-2',
+                state.tz === z && 'bg-white/10 font-medium',
               )}
-            </>
+            >
+              <span>{z}</span>
+              {state.tz === z && <Check className="size-4 text-accent-2" aria-hidden />}
+            </button>
+          ))}
+          {filteredTzs.length === 0 && (
+            <p className="px-3 py-2 text-xs text-muted-foreground">No matches.</p>
           )}
-          {pushStatus === 'pending' && (
-            <p className="text-xs text-muted-foreground">Loading…</p>
-          )}
-        </section>
-
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <h2 className="text-sm font-medium">Voice answers</h2>
-          <p className="text-xs text-muted-foreground">Read spoken query answers aloud after a voice question.</p>
-          <button
-            type="button"
-            aria-pressed={speakAnswers}
-            onClick={() => { const next = !speakAnswers; setSpeakAnswers(next); setVoiceAnswersEnabled(next) }}
-            className="glass rounded-lg px-3 py-2 min-h-[44px] text-sm font-medium hover:bg-white/15 transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none w-fit"
-          >
-            {speakAnswers ? '🔊 Speaking enabled — tap to mute' : '🔇 Muted — tap to enable'}
-          </button>
-        </section>
-
-        <div className="flex flex-col gap-2">
-          {saveError && (
-            <p role="alert" className="text-sm text-rose-600">{saveError}</p>
-          )}
-          <div className="flex gap-2">
-            <Button onClick={save} disabled={!dirty || busy}>
-              {busy ? 'Saving…' : 'Save'}
-            </Button>
-            {dirty && (
-              <Button variant="ghost" onClick={() => {
-                setState({
-                  primaryCurrency: prefs.primary_currency,
-                  tz: prefs.tz,
-                  fxOverrides: prefs.fx_overrides,
-                  salaryReminder: prefs.salary_reminder,
-                })
-                setDirty(false)
-                setSaveError(null)
-              }}>Discard</Button>
-            )}
-          </div>
         </div>
-      </main>
-    </>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm">
+            <span className="text-muted-foreground">Current: </span>
+            <span className="font-mono">{state.tz}</span>
+          </p>
+          <Button type="button" variant="outline" onClick={detectBrowserTz}>Use this device&apos;s time zone</Button>
+        </div>
+      </section>
+
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <h2 className={SECTION_TITLE}>Notifications</h2>
+        {pushStatus === 'unsupported' && (
+          <p className="text-sm text-muted-foreground">
+            This device doesn&apos;t support notifications.
+          </p>
+        )}
+        {pushStatus === 'denied' && (
+          <p className="text-sm text-destructive">
+            Notifications are blocked in your browser settings. Allow them for &quot;Lifeloom&quot; to turn them on.
+          </p>
+        )}
+        {pushStatus === 'subscribed' && (
+          <>
+            <p className="flex items-center gap-2 text-sm text-income">
+              <BellRing className="size-4" aria-hidden />
+              Notifications are on.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={sendTest} disabled={testing}>
+                {testing ? 'Sending…' : 'Send a test'}
+              </Button>
+              <Button variant="ghost" onClick={pushUnsubscribe}>Turn off</Button>
+            </div>
+            {testMsg && <p role="status" className="text-xs text-muted-foreground">{testMsg}</p>}
+          </>
+        )}
+        {pushStatus === 'unsubscribed' && (
+          <>
+            <Button onClick={pushSubscribe} className="w-fit">
+              Turn on notifications
+            </Button>
+            {pushError && (
+              <p role="alert" className="text-xs text-destructive break-words">{pushError}</p>
+            )}
+          </>
+        )}
+        {pushStatus === 'pending' && (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        )}
+      </section>
+
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <label className="flex min-h-11 items-center justify-between gap-3">
+          <span className="flex flex-col">
+            <span className="text-sm font-medium">Read answers aloud</span>
+            <span className="text-xs text-muted-foreground">When you ask a question by voice, the answer is spoken too.</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={speakAnswers}
+            onChange={e => { const next = e.currentTarget.checked; setSpeakAnswers(next); setVoiceAnswersEnabled(next) }}
+            className="size-5 shrink-0 accent-accent-2"
+          />
+        </label>
+      </section>
+
+      <div className="flex flex-col gap-2">
+        {saveError && (
+          <p role="alert" className="text-sm text-destructive">{saveError}</p>
+        )}
+        <div className="flex gap-2">
+          <Button onClick={save} disabled={!dirty || busy}>
+            {busy ? 'Saving…' : 'Save'}
+          </Button>
+          {dirty && (
+            <Button variant="ghost" onClick={() => {
+              setState({
+                primaryCurrency: prefs.primary_currency,
+                tz: prefs.tz,
+                fxOverrides: prefs.fx_overrides,
+                salaryReminder: prefs.salary_reminder,
+              })
+              setDirty(false)
+              setSaveError(null)
+            }}>Discard</Button>
+          )}
+        </div>
+      </div>
+    </PageShell>
   )
 }
 
@@ -294,14 +299,14 @@ function FxAddRow({ onAdd }: { onAdd: (cur: string, rate: number) => void }) {
   const [cur, setCur] = useState<string>(SUPPORTED_CURRENCIES[0])
   const [rate, setRate] = useState('')
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground">1 EUR =</span>
-      <Input value={rate} onChange={e => setRate(e.target.value)} inputMode="decimal" placeholder="rate" aria-label="Rate" className="h-8 w-24 text-sm" />
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="shrink-0 text-sm text-muted-foreground">1 EUR =</span>
+      <Input value={rate} onChange={e => setRate(e.target.value)} inputMode="decimal" placeholder="Rate" aria-label="Rate for 1 EUR" className="h-11 w-24" />
       <select value={cur} onChange={e => setCur(e.target.value)} aria-label="Currency"
-        className="glass-soft rounded-lg border border-input px-2 py-1 text-sm">
+        className={cn(FIELD_SELECT, 'w-auto')}>
         {SUPPORTED_CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
       </select>
-      <Button type="button" size="sm" onClick={() => { const r = parseFloat(rate); if (isFinite(r) && r > 0) { onAdd(cur, r); setRate('') } }}>Add</Button>
+      <Button type="button" size="lg" onClick={() => { const r = parseFloat(rate); if (isFinite(r) && r > 0) { onAdd(cur, r); setRate('') } }}>Add</Button>
     </div>
   )
 }

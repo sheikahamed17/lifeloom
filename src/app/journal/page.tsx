@@ -6,12 +6,29 @@ import { authClient } from '@/lib/auth-client'
 import { useJournal } from '@/hooks/use-journal'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
-import { formatLocalDateOnly } from '@/lib/format'
+import { formatDay } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
 import type { JournalRow } from '@/lib/dexie'
 
-const MOODS = ['😀', '🙂', '😐', '😕', '😢'] as const
+// The stored value stays the emoji (unchanged data); each mood gets a visible word.
+const MOODS = [
+  { value: '😀', label: 'Great' },
+  { value: '🙂', label: 'Good' },
+  { value: '😐', label: 'Okay' },
+  { value: '😕', label: 'Low' },
+  { value: '😢', label: 'Sad' },
+] as const
+
+// Some entries (the demo seed) store the mood as a word; read those onto the same scale.
+const MOOD_WORDS: Record<string, string> = { great: '😀', good: '🙂', ok: '😐', okay: '😐', low: '😕', sad: '😢' }
+
+function findMood(stored: string | null | undefined) {
+  if (!stored) return undefined
+  const value = MOOD_WORDS[stored.trim().toLowerCase()] ?? stored
+  return MOODS.find(m => m.value === value)
+}
 
 export default function JournalPage() {
   const router = useRouter()
@@ -75,76 +92,102 @@ export default function JournalPage() {
     pushPullOnce({ userId }).catch(err => console.error('sync', err))
   }
 
-  if (!userId) return <p className="p-8">Loading…</p>
+  if (!userId) {
+    return (
+      <PageShell title="Journal">
+        <p role="status" className="text-sm text-muted-foreground">Loading…</p>
+      </PageShell>
+    )
+  }
+
+  const selectedMood = findMood(mood)?.value
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-6 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Journal</h1>
-          <Button size="sm" variant="ghost" onClick={() => router.push('/app')}>← Back</Button>
-        </header>
-
-        <section className="glass flex flex-col gap-3 rounded-2xl p-4">
-          <textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            placeholder="How was your day?"
-            rows={4}
-            aria-label="Journal entry"
-            className="w-full rounded-md border bg-background p-2 text-sm resize-none focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-          />
-          <div className="flex items-center gap-1" role="group" aria-label="Mood">
-            {MOODS.map(m => (
+    <PageShell title="Journal">
+      <section aria-label="Write an entry" className="glass flex flex-col gap-3 rounded-2xl p-4">
+        <textarea
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          placeholder="How was your day?"
+          rows={4}
+          aria-label="Journal entry"
+          className="glass-soft w-full resize-none rounded-lg border border-input px-3 py-2 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 md:text-sm"
+        />
+        <div className="grid grid-cols-5 gap-1" role="group" aria-label="Mood">
+          {MOODS.map(m => {
+            const pressed = selectedMood === m.value
+            return (
               <button
-                key={m}
+                key={m.value}
                 type="button"
-                onClick={() => setMood(mood === m ? null : m)}
-                aria-label={`Mood ${m}`}
-                aria-pressed={mood === m}
-                className={`min-h-[44px] min-w-[44px] rounded-lg text-xl transition ${mood === m ? 'bg-accent-2/25 ring-2 ring-accent-2' : 'hover:bg-white/5'}`}
+                onClick={() => setMood(pressed ? null : m.value)}
+                aria-pressed={pressed}
+                className={cn(
+                  'flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-lg border text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2',
+                  pressed
+                    ? 'border-accent-2 bg-accent-2/15 font-medium text-foreground'
+                    : 'border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground',
+                )}
               >
-                {m}
+                <span aria-hidden="true" className="text-xl leading-none">{m.value}</span>
+                {m.label}
               </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              aria-label="Entry date"
-              className="glass-soft rounded-lg border border-input px-2 py-2 text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-            />
-            <Button onClick={save} disabled={!body.trim()} className="flex-1">
-              {editingId ? 'Save changes' : 'Add entry'}
-            </Button>
-            {editingId && <Button variant="ghost" onClick={resetForm}>Cancel</Button>}
-          </div>
-        </section>
+            )
+          })}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            aria-label="Entry date"
+            className="glass-soft h-10 rounded-lg border border-input px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-accent-2 md:text-sm"
+          />
+          <Button onClick={save} disabled={!body.trim()} className="flex-1">
+            {editingId ? 'Save changes' : 'Add entry'}
+          </Button>
+          {editingId && <Button variant="ghost" onClick={resetForm}>Cancel</Button>}
+        </div>
+      </section>
 
-        <ul className="flex flex-col gap-2">
+      <section aria-labelledby="journal-entries" className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <h2 id="journal-entries" className="text-sm font-semibold text-muted-foreground">Entries</h2>
+        <ul className="divide-y divide-white/10">
           {entries.length === 0 && (
-            <li className="p-4 text-sm text-muted-foreground">No journal entries yet. Write your first above.</li>
+            <li className="py-3 text-sm text-muted-foreground">No journal entries yet. Write your first above.</li>
           )}
-          {entries.map(e => (
-            <li key={e.id} className="glass-soft flex flex-col gap-1 rounded-2xl p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {e.mood && <span className="text-base">{e.mood}</span>}
-                  <span className="font-mono">{formatLocalDateOnly(e.occurred_at, prefs.tz)}</span>
-                </span>
-                <span className="flex gap-1">
-                  <button type="button" onClick={() => startEdit(e)} aria-label="Edit entry" className="min-h-[44px] px-2 text-xs text-muted-foreground hover:text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">Edit</button>
-                  <button type="button" onClick={() => remove(e.id)} aria-label="Delete entry" className="min-h-[44px] px-2 text-xs text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">Delete</button>
-                </span>
-              </div>
-              <p className="whitespace-pre-wrap text-sm">{e.body}</p>
-            </li>
-          ))}
+          {entries.map(e => {
+            const day = formatDay(e.occurred_at, prefs.tz)
+            const entryMood = findMood(e.mood)
+            return (
+              <li key={e.id} className="flex flex-col gap-1 py-3 first:pt-1 last:pb-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                    <span className="tabular-nums">{day}</span>
+                    {entryMood ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span aria-hidden="true" className="text-base leading-none">{entryMood.value}</span>
+                        {entryMood.label}
+                      </span>
+                    ) : e.mood ? (
+                      <span>{e.mood}</span>
+                    ) : null}
+                  </span>
+                  <span className="flex shrink-0 gap-1">
+                    <Button variant="ghost" className="px-3 text-muted-foreground hover:text-foreground" onClick={() => startEdit(e)} aria-label={`Edit entry from ${day}`}>
+                      Edit
+                    </Button>
+                    <Button variant="ghost" className="px-3 text-muted-foreground hover:text-destructive" onClick={() => remove(e.id)} aria-label={`Delete entry from ${day}`}>
+                      Delete
+                    </Button>
+                  </span>
+                </div>
+                <p className="whitespace-pre-wrap text-sm">{e.body}</p>
+              </li>
+            )
+          })}
         </ul>
-      </main>
-    </>
+      </section>
+    </PageShell>
   )
 }

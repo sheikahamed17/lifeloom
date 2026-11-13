@@ -175,7 +175,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
 
   // Mode-specific rendering
   const headerText = useMemo(() => {
-    const directionText = plan.direction === 'out' ? '💸 Spent' : '💰 Earned'
+    const directionText = plan.direction === 'out' ? 'Spent' : 'Earned'
     const categoryText = plan.category_name ? ` in ${plan.category_name}` : ''
     const periodText = plan.period.label
     const modeText = plan.mode !== 'total' ? ` (${plan.mode})` : ''
@@ -191,7 +191,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
     return (
       <div className="glass rounded-2xl p-5">
         <div className="mb-2 flex items-center justify-between text-xs">
-          <span className="font-semibold uppercase tracking-wide text-accent-2">{headerText}</span>
+          <span className="text-sm font-semibold text-accent-2">{headerText}</span>
         </div>
 
         <div className="mb-2 text-4xl font-semibold font-mono tabular-nums text-accent-2">
@@ -203,13 +203,13 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
         </p>
 
         {plan.category_name && !targetCategoryId && (
-          <p className="mb-3 text-[10px] text-destructive">
+          <p className="mb-3 text-xs text-destructive">
             Category &quot;{plan.category_name}&quot; not found — showing all categories instead.
           </p>
         )}
 
         {multiCurrency && rates.length > 0 && (
-          <p className="mb-3 text-[10px] text-muted-foreground">
+          <p className="mb-3 text-xs text-muted-foreground">
             *Converted from multiple currencies via ECB {rates[0]?.date}
           </p>
         )}
@@ -236,7 +236,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
 
     return (
       <div className="glass rounded-2xl p-5">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-accent-2">{headerText}</div>
+        <div className="mb-2 text-sm font-semibold text-accent-2">{headerText}</div>
 
         {breakdown.length === 0 ? (
           <p className="mb-3 text-xs text-muted-foreground">No entries found.</p>
@@ -286,26 +286,26 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
 
     return (
       <div className="glass rounded-2xl p-5">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-accent-2">{headerText}</div>
+        <div className="mb-3 text-sm font-semibold text-accent-2">{headerText}</div>
 
         <div className="mb-4 flex items-baseline justify-between gap-2">
           <div>
-            <p className="text-[10px] text-muted-foreground mb-1">Current period</p>
+            <p className="text-xs text-muted-foreground mb-1">Current period</p>
             <div className="text-3xl font-semibold font-mono tabular-nums text-accent-2">
               {currencySymbol(prefs.primary_currency)}{currentMajor}
             </div>
           </div>
           {deltaPct !== null && (
             <div className="text-right">
-              <p className="text-[10px] text-muted-foreground mb-1">Change</p>
-              <div className={`text-2xl font-semibold font-mono tabular-nums ${deltaPct > 0 ? 'text-destructive' : 'text-emerald-500'}`}>
+              <p className="text-xs text-muted-foreground mb-1">Change</p>
+              <div className={`text-2xl font-semibold font-mono tabular-nums ${deltaPct > 0 ? 'text-destructive' : 'text-income'}`}>
                 {deltaPct > 0 ? '↑' : '↓'}{Math.abs(deltaPct).toFixed(1)}%
               </div>
             </div>
           )}
         </div>
 
-        <p className="mb-3 text-[10px] text-muted-foreground">
+        <p className="mb-3 text-xs text-muted-foreground">
           vs previous period: {currencySymbol(prefs.primary_currency)}{previousMajor}
         </p>
 
@@ -330,7 +330,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
 
     return (
       <div className="glass rounded-2xl p-5">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-accent-2">{headerText}</div>
+        <div className="mb-3 text-sm font-semibold text-accent-2">{headerText}</div>
 
         {series.length > 0 && (
           <div className="mb-4">
@@ -338,7 +338,7 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
           </div>
         )}
 
-        <p className="mb-3 text-[10px] text-muted-foreground">
+        <p className="mb-3 text-xs text-muted-foreground">
           {series.filter(d => d.amount > 0).length} buckets with activity
         </p>
 
@@ -392,8 +392,8 @@ function FilteredMoneyList({
             >
               <div className="flex flex-col flex-1 min-w-0">
                 {cat && (
-                  <div className="mb-1.5 inline-flex w-fit items-center gap-1 rounded-xl bg-white/8 px-2 py-1 text-xs">
-                    <span>{cat.icon ?? ''}</span>
+                  <div className="mb-1.5 inline-flex w-fit items-center gap-1 rounded-lg bg-white/8 px-2 py-1 text-xs">
+                    {cat.icon && <span aria-hidden="true">{cat.icon}</span>}
                     <span className="text-muted-foreground">{cat.name}</span>
                   </div>
                 )}
@@ -407,7 +407,7 @@ function FilteredMoneyList({
                   {e.currency !== prefs.primary_currency && (
                     <button
                       type="button"
-                      className="text-[10px] text-muted-foreground hover:text-accent-2 transition text-left focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+                      className="text-xs text-muted-foreground hover:text-accent-2 transition text-left focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
                       onClick={(ev) => { ev.stopPropagation(); setExpandedFx(expandedFx === e.id ? null : e.id) }}
                       aria-label={expandedFx === e.id ? `Hide currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}` : `Show currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}`}
                     >

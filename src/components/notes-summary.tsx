@@ -34,7 +34,7 @@ export function NotesSummary({ userId }: Props) {
   return (
     <section className="glass flex flex-col gap-2 rounded-2xl p-4">
       <header>
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Notes</span>
+        <span className="text-sm font-semibold">Notes</span>
       </header>
       <ul className="flex flex-col gap-1.5 text-sm">
         <li className="flex items-center justify-between">

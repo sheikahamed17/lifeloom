@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Star } from 'lucide-react'
+import { Archive, ChevronDown, Pencil, Star } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useArchivedAccounts } from '@/hooks/use-archived-accounts'
@@ -12,14 +12,33 @@ import { planAccountBackfill } from '@/lib/account-match'
 import { tagEntries } from '@/lib/account-autotag'
 import { defaultToggleUpdates, pickDefaultAccountId } from '@/lib/default-account'
 import { parseAmountInput } from '@/lib/parse-amount'
+import { formatMinor } from '@/lib/currency'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
+import { RowMenu } from '@/components/row-menu'
+import { FIELD_SELECT } from '@/components/sort-control'
+import { UndoProvider, useUndo } from '@/components/undo-provider'
 import { db, type AccountRow } from '@/lib/dexie'
 
+const BACK = { href: '/settings', label: 'Settings' }
+
+/** Plain words for the account type: no "asset"/"liability" in the UI. */
+const TYPE_WORD: Record<AccountRow['type'], string> = { asset: 'Bank or cash', liability: 'Card or loan' }
+
 export default function AccountsPage() {
+  return (
+    <UndoProvider>
+      <AccountsPageInner />
+    </UndoProvider>
+  )
+}
+
+function AccountsPageInner() {
   const router = useRouter()
+  const undo = useUndo()
   const [userId, setUserId] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('')
@@ -109,136 +128,138 @@ export default function AccountsPage() {
   }
 
   async function archiveAccount(id: string) {
+    const name = accounts.find(a => a.id === id)?.name
     await updateAccount(id, { is_archived: 1 })
+    undo.push(`Archived ${name ?? 'account'}`, () => restoreAccount(id))
   }
 
   async function restoreAccount(id: string) {
     await updateAccount(id, { is_archived: 0 })
   }
 
-  if (!userId) return <p className="p-8">Loading…</p>
+  if (!userId) {
+    return (
+      <PageShell title="Accounts" back={BACK}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </PageShell>
+    )
+  }
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-6 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Accounts</h1>
-          <Button size="sm" variant="ghost" onClick={() => router.push('/settings')}>← Settings</Button>
-        </header>
-
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <Input
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                placeholder="Name…"
-                maxLength={40}
-                aria-label="Account name"
-              />
-              <Input
-                value={newIcon}
-                onChange={e => setNewIcon(e.target.value)}
-                placeholder="Emoji"
-                maxLength={8}
-                className="w-20 text-center"
-                aria-label="Account icon"
-              />
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={newType}
-                onChange={e => setNewType(e.target.value as 'asset' | 'liability')}
-                className="glass-soft rounded-lg border border-input px-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2"
-                aria-label="Account type"
-              >
-                <option value="asset">Asset</option>
-                <option value="liability">Liability</option>
-              </select>
-              <select
-                value={newCurrency}
-                onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
-                className="glass-soft rounded-lg border border-input px-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2"
-                aria-label="Currency"
-              >
-                {SUPPORTED_CURRENCIES.map(curr => (
-                  <option key={curr} value={curr}>{curr}</option>
-                ))}
-              </select>
-            </div>
-            <Input
-              value={matchHints}
-              onChange={e => setMatchHints(e.target.value)}
-              placeholder="Auto-match hints, e.g. 5678, hdfc credit"
-              maxLength={200}
-              aria-label="Auto-match hints"
-            />
-            <p className="text-xs text-muted-foreground">
-              A card/account last-4 in the name (e.g. “Tata Neo 5872”) is matched automatically — hints are only needed for extra numbers, like a debit card’s last-4 on a bank account.
-            </p>
-            <div className="flex gap-2">
-              <Input
-                value={newOpeningBalance}
-                onChange={e => setNewOpeningBalance(e.target.value)}
-                placeholder="Opening balance…"
-                type="text"
-                inputMode="decimal"
-                aria-label="Opening balance"
-              />
-              <Button onClick={addAccount} className="flex-1">Add</Button>
-            </div>
-          </div>
-        </section>
-
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold uppercase text-muted-foreground">Active Accounts</h2>
-          <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
-            {accounts.length === 0 && <li className="p-3 text-sm text-muted-foreground">Add your first account.</li>}
-            {accounts.map(a => (
-              <AccountRow
-                key={a.id}
-                account={a}
-                isDefault={a.id === defaultId}
-                onToggleDefault={toggleDefault}
-                onArchive={archiveAccount}
-                onUpdate={updateAccount}
-              />
+    <PageShell title="Accounts" back={BACK}>
+      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Add an account</h2>
+        <div className="flex gap-2">
+          <Input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="Name"
+            maxLength={40}
+            aria-label="Account name"
+          />
+          <Input
+            value={newIcon}
+            onChange={e => setNewIcon(e.target.value)}
+            placeholder="Emoji"
+            maxLength={8}
+            className="w-20 text-center"
+            aria-label="Account emoji"
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={newType}
+            onChange={e => setNewType(e.target.value as 'asset' | 'liability')}
+            className={cn(FIELD_SELECT, 'flex-1')}
+            aria-label="Account type"
+          >
+            <option value="asset">{TYPE_WORD.asset}</option>
+            <option value="liability">{TYPE_WORD.liability}</option>
+          </select>
+          <select
+            value={newCurrency}
+            onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
+            className={cn(FIELD_SELECT, 'w-auto')}
+            aria-label="Currency"
+          >
+            {SUPPORTED_CURRENCIES.map(curr => (
+              <option key={curr} value={curr}>{curr}</option>
             ))}
-          </ul>
-          {accounts.length > 0 && (
-            <p className="text-xs text-muted-foreground">★ marks the default account, pre-selected when you add an entry by hand, voice or receipt.</p>
-          )}
-        </section>
+          </select>
+        </div>
+        <Input
+          value={matchHints}
+          onChange={e => setMatchHints(e.target.value)}
+          placeholder="Auto-match hints, e.g. 5678, hdfc credit"
+          maxLength={200}
+          aria-label="Auto-match hints"
+        />
+        <p className="text-xs text-muted-foreground">
+          The last four digits in the name (e.g. “Tata Neo 5872”) are matched automatically. Add hints only for extra numbers, like a debit card’s last four on a bank account.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={newOpeningBalance}
+            onChange={e => setNewOpeningBalance(e.target.value)}
+            placeholder="Opening balance"
+            type="text"
+            inputMode="decimal"
+            aria-label="Opening balance"
+          />
+          <Button onClick={addAccount} className="flex-1">Add</Button>
+        </div>
+      </section>
 
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold uppercase text-muted-foreground">Past alerts</h2>
-          {backfill.length > 0 ? (
-            <div className="flex items-center justify-between gap-3">
-              <p className="min-w-0 text-sm">
-                {backfill.length} past SMS/email {backfill.length === 1 ? 'entry matches' : 'entries match'} your accounts but {backfill.length === 1 ? 'has' : 'have'} no account yet.
-              </p>
-              <Button size="sm" onClick={runBackfill} disabled={tagging} style={{ minHeight: '44px' }}>
-                {tagging ? 'Tagging…' : `Tag ${backfill.length}`}
-              </Button>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No untagged past alerts match your accounts.</p>
-          )}
-          <p role="status" className="text-sm text-muted-foreground empty:hidden">
-            {tagged ? `Tagged ${tagged} past ${tagged === 1 ? 'entry' : 'entries'}.` : ''}
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Active accounts</h2>
+        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+          {accounts.length === 0 && <li className="p-3 text-sm text-muted-foreground">Add your first account.</li>}
+          {accounts.map(a => (
+            <AccountRowItem
+              key={a.id}
+              account={a}
+              isDefault={a.id === defaultId}
+              onToggleDefault={toggleDefault}
+              onArchive={archiveAccount}
+              onUpdate={updateAccount}
+            />
+          ))}
+        </ul>
+        {accounts.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            <Star className="mr-1 inline size-3.5 fill-accent-2 align-[-2px] text-accent-2" aria-hidden />
+            The starred account is picked for you when you add an entry by hand, voice or receipt.
           </p>
-        </section>
-
-        {archived.length > 0 && (
-          <ArchivedSection archived={archived} onRestore={restoreAccount} />
         )}
-      </main>
-    </>
+      </section>
+
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Past alerts</h2>
+        {backfill.length > 0 ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="min-w-0 text-sm">
+              {backfill.length} past SMS or email {backfill.length === 1 ? 'entry matches' : 'entries match'} your accounts but {backfill.length === 1 ? 'has' : 'have'} no account yet.
+            </p>
+            <Button onClick={runBackfill} disabled={tagging}>
+              {tagging ? 'Tagging…' : `Tag ${backfill.length}`}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No untagged past alerts match your accounts.</p>
+        )}
+        <p role="status" className="text-sm text-muted-foreground empty:hidden">
+          {tagged ? `Tagged ${tagged} past ${tagged === 1 ? 'entry' : 'entries'}.` : ''}
+        </p>
+      </section>
+
+      {archived.length > 0 && (
+        <ArchivedSection archived={archived} onRestore={restoreAccount} />
+      )}
+    </PageShell>
   )
 }
 
-function AccountRow({
+function AccountRowItem({
   account,
   isDefault,
   onToggleDefault,
@@ -256,6 +277,7 @@ function AccountRow({
   const [editIcon, setEditIcon] = useState('')
   const [editOpeningBalance, setEditOpeningBalance] = useState('')
   const [editMatchHints, setEditMatchHints] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const divisor = account.currency === 'JPY' ? 1 : 100
 
@@ -283,16 +305,16 @@ function AccountRow({
 
   if (editingId === account.id) {
     return (
-      <li className="flex flex-col gap-2 py-3 px-3">
+      <li className="flex flex-col gap-2 p-3">
         <div className="flex gap-2">
           <Input
             value={editName}
             onChange={e => setEditName(e.target.value)}
-            placeholder="Name…"
+            placeholder="Name"
             maxLength={40}
             autoFocus
             className="flex-1"
-            aria-label="Edit account name"
+            aria-label="Account name"
           />
           <Input
             value={editIcon}
@@ -300,16 +322,16 @@ function AccountRow({
             placeholder="Emoji"
             maxLength={8}
             className="w-20 text-center"
-            aria-label="Edit account icon"
+            aria-label="Account emoji"
           />
         </div>
         <Input
           value={editOpeningBalance}
           onChange={e => setEditOpeningBalance(e.target.value)}
-          placeholder="Opening balance…"
+          placeholder="Opening balance"
           type="text"
           inputMode="decimal"
-          aria-label="Edit opening balance"
+          aria-label="Opening balance"
         />
         <Input
           value={editMatchHints}
@@ -319,70 +341,49 @@ function AccountRow({
           aria-label="Auto-match hints"
         />
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={() => saveEdit(account.id)}
-            className="flex-1"
-            style={{ minHeight: '44px' }}
-          >
-            Save
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEditingId(null)}
-            className="flex-1"
-            style={{ minHeight: '44px' }}
-          >
-            Cancel
-          </Button>
+          <Button onClick={() => saveEdit(account.id)} className="flex-1">Save</Button>
+          <Button variant="outline" onClick={() => setEditingId(null)} className="flex-1">Cancel</Button>
         </div>
       </li>
     )
   }
 
+  // One line for name + figure, one muted line for what the figure is; actions stay compact.
+  const meta = [TYPE_WORD[account.type], 'opening balance', account.match_hints ? `matches ${account.match_hints}` : null]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <li className="flex flex-col gap-1 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="min-w-0 flex-1 break-words text-sm">
-          {account.icon && <span className="mr-1">{account.icon}</span>}
-          {account.name} ({account.type}) · {account.currency} {(account.opening_balance / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-        </span>
-        <div className="flex shrink-0 gap-1 sm:gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onToggleDefault(account.id)}
-            style={{ height: '44px', minWidth: '44px' }}
-            aria-pressed={isDefault}
-            aria-label={`Default account: ${account.name}`}
-            title={isDefault ? 'Default account' : 'Make default'}
-          >
-            <Star className={isDefault ? 'h-4 w-4 fill-accent-2 text-accent-2' : 'h-4 w-4 text-muted-foreground'} />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => startEdit(account)}
-            style={{ height: '44px', minWidth: '44px' }}
-            aria-label={`Edit ${account.name}`}
-          >
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onArchive(account.id)}
-            style={{ height: '44px', minWidth: '44px' }}
-            aria-label={`Archive ${account.name}`}
-          >
-            Archive
-          </Button>
+    <li className="flex items-center gap-1 py-2 pl-3 pr-1">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="min-w-0 truncate text-sm font-medium">
+            {account.icon && <span aria-hidden="true" className="mr-1.5">{account.icon}</span>}
+            {account.name}
+          </span>
+          <span className="shrink-0 font-mono text-sm tabular-nums">{formatMinor(account.opening_balance, account.currency)}</span>
         </div>
+        <p className="truncate text-xs text-muted-foreground">{meta}</p>
       </div>
-      {account.match_hints && (
-        <span className="text-xs text-muted-foreground">matches: {account.match_hints}</span>
-      )}
+      <Button
+        variant="ghost"
+        size="icon-lg"
+        onClick={() => onToggleDefault(account.id)}
+        aria-pressed={isDefault}
+        aria-label={`Default account: ${account.name}`}
+        title={isDefault ? 'Default account' : 'Make default'}
+      >
+        <Star className={isDefault ? 'size-4 fill-accent-2 text-accent-2' : 'size-4 text-muted-foreground'} aria-hidden />
+      </Button>
+      <RowMenu
+        label={`Actions for ${account.name}`}
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        items={[
+          { label: 'Edit', icon: Pencil, onSelect: () => startEdit(account) },
+          { label: 'Archive', icon: Archive, onSelect: () => onArchive(account.id) },
+        ]}
+      />
     </li>
   )
 }
@@ -399,29 +400,26 @@ function ArchivedSection({
   return (
     <section className="glass flex flex-col gap-2 rounded-2xl p-4">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between text-left text-sm font-semibold uppercase text-muted-foreground hover:text-foreground transition-colors"
+        aria-expanded={isOpen}
+        className="-mx-2 flex min-h-11 items-center justify-between rounded-lg px-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
       >
         <span>Archived ({archived.length})</span>
-        <span>{isOpen ? '−' : '+'}</span>
+        <ChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} aria-hidden />
       </button>
       {isOpen && (
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
+        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
           {archived.map(a => (
-            <li key={a.id} className="flex items-center justify-between p-3">
-              <span className="text-sm">
-                {a.icon && <span className="mr-1">{a.icon}</span>}
-                {a.name} ({a.type})
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onRestore(a.id)}
-                style={{ height: '44px', minWidth: '44px' }}
-                aria-label={`Restore ${a.name}`}
-              >
-                Restore
-              </Button>
+            <li key={a.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm">
+                  {a.icon && <span aria-hidden="true" className="mr-1.5">{a.icon}</span>}
+                  {a.name}
+                </p>
+                <p className="text-xs text-muted-foreground">{TYPE_WORD[a.type]}</p>
+              </div>
+              <Button variant="ghost" onClick={() => onRestore(a.id)} aria-label={`Restore ${a.name}`}>Restore</Button>
             </li>
           ))}
         </ul>

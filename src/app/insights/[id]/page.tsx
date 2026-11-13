@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
 import { InsightCard } from '@/components/insight-card'
 import { useInsights } from '@/hooks/use-insights'
 
@@ -23,12 +22,14 @@ export default function InsightDetailPage() {
   }, [router])
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-4 p-6">
-        <Link href="/insights" className="text-sm text-muted-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">← All insights</Link>
-        {insight ? <InsightCard insight={insight} variant="detail" /> : <p className="text-sm text-muted-foreground">Insight not found.</p>}
-      </main>
-    </>
+    <PageShell title="Week in review" back={{ href: '/insights', label: 'Insights' }}>
+      {insight ? (
+        <InsightCard insight={insight} variant="detail" />
+      ) : !userId ? (
+        <p role="status" className="text-sm text-muted-foreground">Loading…</p>
+      ) : (
+        <p className="glass rounded-2xl p-4 text-sm text-muted-foreground">Insight not found.</p>
+      )}
+    </PageShell>
   )
 }

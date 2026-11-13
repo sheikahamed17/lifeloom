@@ -2,26 +2,41 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Archive, ChevronDown, Merge, Pencil } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useCategories } from '@/hooks/use-categories'
 import { useArchivedCategories } from '@/hooks/use-archived-categories'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { planCategoryMerge } from '@/lib/category-merge'
 import { db } from '@/lib/dexie'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
+import { RowMenu } from '@/components/row-menu'
+import { FIELD_SELECT } from '@/components/sort-control'
+import { UndoProvider, useUndo } from '@/components/undo-provider'
 import type { CategoryRow } from '@/lib/dexie'
 
+const BACK = { href: '/settings', label: 'Settings' }
+
 export default function CategoriesPage() {
+  return (
+    <UndoProvider>
+      <CategoriesPageInner />
+    </UndoProvider>
+  )
+}
+
+function CategoriesPageInner() {
   const router = useRouter()
+  const undo = useUndo()
   const [userId, setUserId] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('')
   const [kind, setKind] = useState<'spend' | 'income'>('spend')
   const [mergingId, setMergingId] = useState<string | null>(null)
   const [mergeTargetId, setMergeTargetId] = useState<string | null>(null)
-  const [mergeResult, setMergeResult] = useState<{ targetName: string; movedCount: number } | null>(null)
   const [isMerging, setIsMerging] = useState(false)
 
   useEffect(() => {
@@ -56,13 +71,13 @@ export default function CategoriesPage() {
         await applyLocalOp(await generateOp({ entity_kind: op.entity_kind, entity_id: op.entity_id, op_type: op.op_type, payload: op.payload, user_id: userId }))
       }
       const targetCategory = categories.find(c => c.id === targetId)
-      setMergeResult({ targetName: targetCategory?.name ?? 'target', movedCount })
+      undo.push(`Merged into ${targetCategory?.name ?? 'the other category'}: moved ${movedCount} ${movedCount === 1 ? 'entry' : 'entries'}`)
       setMergingId(null)
       setMergeTargetId(null)
       pushPullOnce({ userId }).catch(err => console.error('sync', err))
-      setTimeout(() => setMergeResult(null), 3000)
     } catch (err) {
       console.error('merge', err)
+      undo.push('Couldn’t merge those categories. Please try again.')
     } finally {
       setIsMerging(false)
     }
@@ -98,82 +113,76 @@ export default function CategoriesPage() {
   }
 
   async function archiveCategory(id: string) {
+    const name = categories.find(c => c.id === id)?.name
     await updateCategory(id, { is_archived: 1 })
+    undo.push(`Archived ${name ?? 'category'}`, () => restoreCategory(id))
   }
 
   async function restoreCategory(id: string) {
     await updateCategory(id, { is_archived: 0 })
   }
 
-  if (!userId) return <p className="p-8">Loading…</p>
+  if (!userId) {
+    return (
+      <PageShell title="Categories" back={BACK}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </PageShell>
+    )
+  }
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-6 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Categories</h1>
-          <Button size="sm" variant="ghost" onClick={() => router.push('/settings')}>← Settings</Button>
-        </header>
+    <PageShell title="Categories" back={BACK}>
+      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Add a category</h2>
+        <div className="flex gap-2">
+          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name" maxLength={40} aria-label="Category name" />
+          <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} placeholder="Emoji" maxLength={8} className="w-20 text-center" aria-label="Category emoji" />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={kind}
+            onChange={e => setKind(e.target.value as 'spend' | 'income')}
+            className={cn(FIELD_SELECT, 'w-auto')}
+            aria-label="Spend or income"
+          >
+            <option value="spend">Spend</option>
+            <option value="income">Income</option>
+          </select>
+          <Button size="lg" onClick={addCategory} className="flex-1">Add</Button>
+        </div>
+      </section>
 
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name…" maxLength={40} />
-              <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} placeholder="Emoji" maxLength={8} className="w-20 text-center" aria-label="Category emoji" />
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={kind}
-                onChange={e => setKind(e.target.value as 'spend' | 'income')}
-                className="glass-soft rounded-lg border border-input px-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2"
-              >
-                <option value="spend">Spend</option>
-                <option value="income">Income</option>
-              </select>
-              <Button onClick={addCategory} className="flex-1">Add</Button>
-            </div>
-          </div>
-        </section>
+      <CategorySection
+        title="Spend"
+        categories={spend}
+        allCategories={categories}
+        onArchive={archiveCategory}
+        onUpdate={updateCategory}
+        mergingId={mergingId}
+        mergeTargetId={mergeTargetId}
+        onMergeChange={setMergingId}
+        onMergeTargetChange={setMergeTargetId}
+        onMergeConfirm={doMerge}
+        isMerging={isMerging}
+      />
+      <CategorySection
+        title="Income"
+        categories={income}
+        allCategories={categories}
+        onArchive={archiveCategory}
+        onUpdate={updateCategory}
+        mergingId={mergingId}
+        mergeTargetId={mergeTargetId}
+        onMergeChange={setMergingId}
+        onMergeTargetChange={setMergeTargetId}
+        onMergeConfirm={doMerge}
+        isMerging={isMerging}
+      />
 
-        {mergeResult && (
-          <div className="glass rounded-2xl p-4 text-sm text-foreground">
-            Merged into {mergeResult.targetName} — moved {mergeResult.movedCount} entries
-          </div>
-        )}
-
-        <CategorySection
-          title="Spend"
-          categories={spend}
-          allCategories={categories}
-          onArchive={archiveCategory}
-          onUpdate={updateCategory}
-          mergingId={mergingId}
-          mergeTargetId={mergeTargetId}
-          onMergeChange={setMergingId}
-          onMergeTargetChange={setMergeTargetId}
-          onMergeConfirm={doMerge}
-          isMerging={isMerging}
-        />
-        <CategorySection
-          title="Income"
-          categories={income}
-          allCategories={categories}
-          onArchive={archiveCategory}
-          onUpdate={updateCategory}
-          mergingId={mergingId}
-          mergeTargetId={mergeTargetId}
-          onMergeChange={setMergingId}
-          onMergeTargetChange={setMergeTargetId}
-          onMergeConfirm={doMerge}
-          isMerging={isMerging}
-        />
-
-        {archived.length > 0 && (
-          <ArchivedSection archived={archived} onRestore={restoreCategory} />
-        )}
-      </main>
-    </>
+      {archived.length > 0 && (
+        <ArchivedSection archived={archived} onRestore={restoreCategory} />
+      )}
+    </PageShell>
   )
 }
 
@@ -205,6 +214,7 @@ function CategorySection({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editIcon, setEditIcon] = useState('')
+  const [menuFor, setMenuFor] = useState<string | null>(null)
 
   function startEdit(c: CategoryRow) {
     setEditingId(c.id)
@@ -228,126 +238,89 @@ function CategorySection({
 
   return (
     <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-      <h2 className="text-sm font-semibold uppercase text-muted-foreground">{title}</h2>
-      <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
+      <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
+      <ul className="glass-soft divide-y divide-white/10 rounded-lg">
         {categories.length === 0 && <li className="p-3 text-sm text-muted-foreground">No {title.toLowerCase()} categories.</li>}
         {categories.map(c => {
           const sameKindActive = allCategories.filter(cat => cat.kind === c.kind)
           const canMerge = sameKindActive.length >= 2
-          return (
-            <li
-              key={c.id}
-              className={`flex items-center justify-between ${
-                editingId === c.id || mergingId === c.id ? 'flex-col gap-2 py-3 px-3' : 'p-3'
-              }`}
-            >
-              {editingId === c.id ? (
-                <>
-                  <div className="flex w-full gap-2">
-                    <Input
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      placeholder="Name…"
-                      maxLength={40}
-                      autoFocus
-                      className="flex-1"
-                    />
-                    <Input
-                      value={editIcon}
-                      onChange={e => setEditIcon(e.target.value)}
-                      placeholder="Emoji"
-                      maxLength={8}
-                      className="w-20 text-center"
-                    />
-                  </div>
-                  <div className="flex w-full gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => saveEdit(c.id)}
-                      className="flex-1"
-                      style={{ minHeight: '44px' }}
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setEditingId(null)}
-                      className="flex-1"
-                      style={{ minHeight: '44px' }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </>
-              ) : mergingId === c.id ? (
-                <>
-                  <select
-                    value={mergeTargetId ?? ''}
-                    onChange={e => onMergeTargetChange(e.target.value || null)}
-                    className="w-full glass-soft rounded-lg border border-input px-2 py-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2"
+          if (editingId === c.id) {
+            return (
+              <li key={c.id} className="flex flex-col gap-2 p-3">
+                <div className="flex w-full gap-2">
+                  <Input
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    placeholder="Name"
+                    maxLength={40}
+                    autoFocus
+                    className="flex-1"
+                    aria-label={`New name for ${c.name}`}
+                  />
+                  <Input
+                    value={editIcon}
+                    onChange={e => setEditIcon(e.target.value)}
+                    placeholder="Emoji"
+                    maxLength={8}
+                    className="w-20 text-center"
+                    aria-label={`Emoji for ${c.name}`}
+                  />
+                </div>
+                <div className="flex w-full gap-2">
+                  <Button onClick={() => saveEdit(c.id)} className="flex-1">Save</Button>
+                  <Button variant="outline" onClick={() => setEditingId(null)} className="flex-1">Cancel</Button>
+                </div>
+              </li>
+            )
+          }
+          if (mergingId === c.id) {
+            return (
+              <li key={c.id} className="flex flex-col gap-2 p-3">
+                <label htmlFor={`merge-${c.id}`} className="text-sm">Merge {c.name} into</label>
+                <select
+                  id={`merge-${c.id}`}
+                  value={mergeTargetId ?? ''}
+                  onChange={e => onMergeTargetChange(e.target.value || null)}
+                  className={FIELD_SELECT}
+                >
+                  <option value="">Choose a category…</option>
+                  {sameKindActive
+                    .filter(cat => cat.id !== c.id)
+                    .map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.icon ? `${cat.icon} ${cat.name}` : cat.name}
+                      </option>
+                    ))}
+                </select>
+                <div className="flex w-full gap-2">
+                  <Button
+                    onClick={() => onMergeConfirm(c.id, mergeTargetId ?? '')}
+                    disabled={!mergeTargetId || isMerging}
+                    className="flex-1"
                   >
-                    <option value="">Select target category…</option>
-                    {sameKindActive
-                      .filter(cat => cat.id !== c.id)
-                      .map(cat => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.icon ? `${cat.icon} ${cat.name}` : cat.name}
-                        </option>
-                      ))}
-                  </select>
-                  <div className="flex w-full gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => onMergeConfirm(c.id, mergeTargetId ?? '')}
-                      disabled={!mergeTargetId || isMerging}
-                      className="flex-1"
-                    >
-                      {isMerging ? 'Merging…' : 'Confirm'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onMergeChange(null)}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm">{c.icon && <span className="mr-1">{c.icon}</span>}{c.name}</span>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => startEdit(c)}
-                      style={{ height: '44px', minWidth: '44px' }}
-                    >
-                      Edit
-                    </Button>
-                    {canMerge && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => startMerge(c)}
-                        style={{ height: '44px', minWidth: '44px' }}
-                      >
-                        Merge
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onArchive(c.id)}
-                      style={{ height: '44px', minWidth: '44px' }}
-                    >
-                      Archive
-                    </Button>
-                  </div>
-                </>
-              )}
+                    {isMerging ? 'Merging…' : 'Merge'}
+                  </Button>
+                  <Button variant="outline" onClick={() => onMergeChange(null)} className="flex-1">Cancel</Button>
+                </div>
+              </li>
+            )
+          }
+          return (
+            <li key={c.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
+              <span className="min-w-0 truncate text-sm">
+                {c.icon && <span aria-hidden="true" className="mr-1.5">{c.icon}</span>}
+                {c.name}
+              </span>
+              <RowMenu
+                label={`Actions for ${c.name}`}
+                open={menuFor === c.id}
+                onOpenChange={o => setMenuFor(o ? c.id : null)}
+                items={[
+                  { label: 'Edit', icon: Pencil, onSelect: () => startEdit(c) },
+                  ...(canMerge ? [{ label: 'Merge into…', icon: Merge, onSelect: () => startMerge(c) }] : []),
+                  { label: 'Archive', icon: Archive, onSelect: () => onArchive(c.id) },
+                ]}
+              />
             </li>
           )
         })}
@@ -368,18 +341,23 @@ function ArchivedSection({
   return (
     <section className="glass flex flex-col gap-2 rounded-2xl p-4">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between text-left text-sm font-semibold uppercase text-muted-foreground hover:text-foreground transition-colors"
+        aria-expanded={isOpen}
+        className="-mx-2 flex min-h-11 items-center justify-between rounded-lg px-2 text-left text-sm font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
       >
         <span>Archived ({archived.length})</span>
-        <span>{isOpen ? '−' : '+'}</span>
+        <ChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} aria-hidden />
       </button>
       {isOpen && (
-        <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
+        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
           {archived.map(c => (
-            <li key={c.id} className="flex items-center justify-between p-3">
-              <span className="text-sm">{c.icon && <span className="mr-1">{c.icon}</span>}{c.name}</span>
-              <Button size="sm" variant="ghost" onClick={() => onRestore(c.id)} style={{ height: '44px', minWidth: '44px' }}>Restore</Button>
+            <li key={c.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
+              <span className="min-w-0 truncate text-sm">
+                {c.icon && <span aria-hidden="true" className="mr-1.5">{c.icon}</span>}
+                {c.name}
+              </span>
+              <Button variant="ghost" onClick={() => onRestore(c.id)} aria-label={`Restore ${c.name}`}>Restore</Button>
             </li>
           ))}
         </ul>

@@ -2,20 +2,37 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowRight, Trash2 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useAllAccounts } from '@/hooks/use-all-accounts'
 import { useTransfers } from '@/hooks/use-transfers'
+import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { parseAmountInput } from '@/lib/parse-amount'
 import { computeNextDue } from '@/lib/recurring'
-import { currencySymbol } from '@/lib/currency'
+import { formatMinor } from '@/lib/currency'
+import { formatDay } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
+import { FIELD_SELECT } from '@/components/sort-control'
+import { UndoProvider, useUndo } from '@/components/undo-provider'
+
+const BACK = { href: '/settings', label: 'Settings' }
 
 export default function TransfersPage() {
+  return (
+    <UndoProvider>
+      <TransfersPageInner />
+    </UndoProvider>
+  )
+}
+
+function TransfersPageInner() {
   const router = useRouter()
+  const undo = useUndo()
+  const { prefs } = useUserPrefs()
   const [userId, setUserId] = useState<string | null>(null)
   const [fromAccountId, setFromAccountId] = useState<string | null>(null)
   const [toAccountId, setToAccountId] = useState<string | null>(null)
@@ -114,6 +131,7 @@ export default function TransfersPage() {
 
   async function deleteTransfer(id: string) {
     if (!userId) return
+    const deleted = transfers.find(t => t.id === id)
     const op = await generateOp({
       entity_kind: 'transfer',
       entity_id: id,
@@ -123,169 +141,166 @@ export default function TransfersPage() {
     })
     await applyLocalOp(op)
     pushPullOnce({ userId }).catch(err => console.error('sync', err))
+    // Undo re-asserts one field with a newer clock, which clears the tombstone.
+    undo.push('Deleted transfer', async () => {
+      await applyLocalOp(await generateOp({ entity_kind: 'transfer', entity_id: id, op_type: 'update', payload: { note: deleted?.note ?? null }, user_id: userId }))
+      pushPullOnce({ userId }).catch(err => console.error('sync', err))
+    })
   }
 
-  if (!userId) return <p className="p-8">Loading…</p>
+  if (!userId) {
+    return (
+      <PageShell title="Transfers" back={BACK}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </PageShell>
+    )
+  }
 
   const canSubmit = fromAccountId && toAccountId && amount.trim() && parseAmountInput(amount) !== null && parseAmountInput(amount)! > 0
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-6 p-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Transfers</h1>
-          <Button size="sm" variant="ghost" onClick={() => router.push('/settings')}>← Settings</Button>
-        </header>
+    <PageShell title="Transfers" back={BACK}>
+      <section className="glass flex flex-col gap-3 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">Move money</h2>
+        <select
+          value={fromAccountId ?? 'none'}
+          onChange={e => {
+            const val = e.target.value
+            setFromAccountId(val === 'none' ? null : val)
+            setToAccountId(null) // Reset to-account when from changes
+          }}
+          className={FIELD_SELECT}
+          aria-label="From account"
+        >
+          <option value="none">From account…</option>
+          {accounts.map(acc => (
+            <option key={acc.id} value={acc.id}>
+              {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
+            </option>
+          ))}
+        </select>
 
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <div className="flex flex-col gap-2">
-            <select
-              value={fromAccountId ?? 'none'}
-              onChange={e => {
-                const val = e.target.value
-                setFromAccountId(val === 'none' ? null : val)
-                setToAccountId(null) // Reset to-account when from changes
-              }}
-              className="glass-soft rounded-lg border border-input px-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2"
-              aria-label="From account"
-            >
-              <option value="none">From account…</option>
-              {accounts.map(acc => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.icon && <span>{acc.icon}</span>} {acc.name}
-                </option>
-              ))}
-            </select>
+        <select
+          value={toAccountId ?? 'none'}
+          onChange={e => {
+            const val = e.target.value
+            setToAccountId(val === 'none' ? null : val)
+          }}
+          disabled={eligibleToAccounts.length === 0}
+          className={`${FIELD_SELECT} disabled:opacity-50`}
+          aria-label="To account"
+        >
+          <option value="none">To account…</option>
+          {eligibleToAccounts.map(acc => (
+            <option key={acc.id} value={acc.id}>
+              {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
+            </option>
+          ))}
+        </select>
 
-            <select
-              value={toAccountId ?? 'none'}
-              onChange={e => {
-                const val = e.target.value
-                setToAccountId(val === 'none' ? null : val)
-              }}
-              disabled={eligibleToAccounts.length === 0}
-              className="glass-soft rounded-lg border border-input px-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2 disabled:opacity-50"
-              aria-label="To account"
-            >
-              <option value="none">To account…</option>
-              {eligibleToAccounts.map(acc => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.icon && <span>{acc.icon}</span>} {acc.name}
-                </option>
-              ))}
-            </select>
+        {fromAccount && eligibleToAccounts.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            You have no other {fromAccount.currency} account to move money into.
+          </p>
+        )}
 
-            {fromAccount && eligibleToAccounts.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                No eligible destination accounts with currency {fromAccount.currency}
-              </p>
-            )}
+        <Input
+          value={amount}
+          onChange={e => setAmount(e.target.value)}
+          placeholder="Amount"
+          type="text"
+          inputMode="decimal"
+          aria-label="Transfer amount"
+        />
 
-            <Input
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              placeholder="Amount…"
-              type="text"
-              inputMode="decimal"
-              aria-label="Transfer amount"
-            />
+        <Input
+          value={occurredAt}
+          onChange={e => setOccurredAt(e.target.value)}
+          type="date"
+          aria-label="Transfer date"
+        />
 
-            <Input
-              value={occurredAt}
-              onChange={e => setOccurredAt(e.target.value)}
-              type="date"
-              aria-label="Transfer date"
-            />
+        <Input
+          value={note}
+          onChange={e => setNote(e.target.value.slice(0, 120))}
+          placeholder="Note (optional)"
+          maxLength={120}
+          aria-label="Transfer note"
+        />
 
-            <Input
-              value={note}
-              onChange={e => setNote(e.target.value.slice(0, 120))}
-              placeholder="Note (optional)…"
-              maxLength={120}
-              aria-label="Transfer note"
-            />
+        <label className="flex min-h-11 items-center justify-between gap-3 rounded-lg bg-white/5 px-3 text-sm">
+          <span>Repeat</span>
+          <input
+            type="checkbox"
+            checked={repeat}
+            onChange={e => { const v = e.currentTarget.checked; setRepeat(v) }}
+            className="size-5 shrink-0 accent-accent-2"
+            aria-label="Repeat this transfer on a schedule"
+          />
+        </label>
+        {repeat && (
+          <select
+            value={period}
+            onChange={e => { const v = e.target.value as typeof period; setPeriod(v) }}
+            aria-label="Repeat period"
+            className={FIELD_SELECT}
+          >
+            <option value="daily">Every day</option>
+            <option value="weekly">Every week</option>
+            <option value="monthly">Every month</option>
+            <option value="yearly">Every year</option>
+          </select>
+        )}
 
-            <label className="flex items-center justify-between rounded-md bg-white/5 px-3 py-2 text-sm">
-              <span>Repeat</span>
-              <input
-                type="checkbox"
-                checked={repeat}
-                onChange={e => { const v = e.currentTarget.checked; setRepeat(v) }}
-                aria-label="Repeat this transfer on a schedule"
-              />
-            </label>
-            {repeat && (
-              <select
-                value={period}
-                onChange={e => { const v = e.target.value as typeof period; setPeriod(v) }}
-                aria-label="Repeat period"
-                className="glass-soft rounded-lg border border-input px-2 py-2 text-sm transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent-2"
-              >
-                <option value="daily">Every day</option>
-                <option value="weekly">Every week</option>
-                <option value="monthly">Every month</option>
-                <option value="yearly">Every year</option>
-              </select>
-            )}
+        <Button
+          onClick={addTransfer}
+          disabled={!canSubmit}
+          className="w-full"
+        >
+          {repeat ? 'Transfer and repeat' : 'Transfer'}
+        </Button>
+      </section>
 
-            <Button
-              onClick={addTransfer}
-              disabled={!canSubmit}
-              className="w-full"
-            >
-              {repeat ? 'Transfer + schedule' : 'Transfer'}
-            </Button>
-          </div>
-        </section>
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4">
+        <h2 className="text-sm font-semibold text-muted-foreground">History</h2>
+        <ul className="glass-soft divide-y divide-white/10 rounded-lg">
+          {transfers.length === 0 && (
+            <li className="p-3 text-sm text-muted-foreground">No transfers yet.</li>
+          )}
+          {transfers.map(t => {
+            const fromName = accountNameMap.get(t.from_account_id) || 'Unknown account'
+            const toName = accountNameMap.get(t.to_account_id) || 'Unknown account'
 
-        <section className="glass flex flex-col gap-2 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold uppercase text-muted-foreground">Transfers</h2>
-          <ul className="glass-soft divide-y divide-white/10 rounded-lg border border-white/10">
-            {transfers.length === 0 && (
-              <li className="p-3 text-sm text-muted-foreground">No transfers yet.</li>
-            )}
-            {transfers.map(t => {
-              const fromName = accountNameMap.get(t.from_account_id) || 'Unknown account'
-              const toName = accountNameMap.get(t.to_account_id) || 'Unknown account'
-              const divisor = t.currency === 'JPY' ? 1 : 100
-              const symbol = currencySymbol(t.currency)
-              const dateStr = new Date(t.occurred_at).toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })
-
-              return (
-                <li key={t.id} className="flex items-center justify-between gap-3 p-3">
-                  <div className="flex-1">
-                    <div className="text-sm">
-                      {fromName} → {toName}
-                    </div>
-                    <div className="text-sm font-mono text-muted-foreground">
-                      {symbol}
-                      {(t.amount / divisor).toLocaleString(undefined, { maximumFractionDigits: t.currency === 'JPY' ? 0 : 2 })}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{dateStr}</span>
-                      {t.note && <span className="text-xs text-muted-foreground">· {t.note}</span>}
-                    </div>
+            return (
+              <li key={t.id} className="flex items-center gap-2 py-2 pl-3 pr-1">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-1.5 text-sm">
+                      <span className="truncate">{fromName}</span>
+                      <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                      <span className="sr-only">to</span>
+                      <span className="truncate">{toName}</span>
+                    </span>
+                    <span className="shrink-0 font-mono text-sm tabular-nums">{formatMinor(t.amount, t.currency)}</span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => deleteTransfer(t.id)}
-                    style={{ height: '44px', minWidth: '44px' }}
-                    aria-label={`Delete transfer from ${fromName} to ${toName}`}
-                  >
-                    Delete
-                  </Button>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      </main>
-    </>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {formatDay(t.occurred_at, prefs.tz)}{t.note ? ` · ${t.note}` : ''}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-lg"
+                  onClick={() => deleteTransfer(t.id)}
+                  aria-label={`Delete transfer from ${fromName} to ${toName}`}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </Button>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+    </PageShell>
   )
 }

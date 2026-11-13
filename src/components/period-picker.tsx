@@ -26,11 +26,12 @@ export function PeriodPicker({ period, intervalCount, onChange }: Props) {
             key={p.value}
             type="button"
             onClick={() => onChange(p.value, intervalCount)}
+            aria-pressed={p.value === period}
             className={cn(
-              'flex-1 rounded-md px-2 py-1 text-xs transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none',
+              'min-h-10 flex-1 rounded-lg border border-transparent px-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 outline-none',
               p.value === period
-                ? 'bg-[linear-gradient(150deg,rgb(111_123_255/.35),rgb(52_230_255/.22))] border border-[rgb(120_190_255/.4)] text-accent-2'
-                : 'hover:border-accent-2/50',
+                ? 'border-accent-2/50 bg-accent-2/15 text-accent-2'
+                : 'hover:bg-white/5',
             )}
           >
             {p.label}
@@ -45,7 +46,7 @@ export function PeriodPicker({ period, intervalCount, onChange }: Props) {
           max={365}
           value={intervalCount}
           onChange={e => onChange(period, Math.max(1, parseInt(e.target.value, 10) || 1))}
-          className="glass-soft w-16 rounded-md px-2 py-0.5 text-right font-mono tabular-nums focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+          className="glass-soft w-16 rounded-lg px-2 py-0.5 text-right font-mono tabular-nums focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
         />
         <span className="text-muted-foreground">{period === 'daily' ? 'day(s)' : period === 'weekly' ? 'week(s)' : period === 'monthly' ? 'month(s)' : 'year(s)'}</span>
       </label>

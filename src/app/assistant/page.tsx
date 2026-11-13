@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, Send, RotateCcw } from 'lucide-react'
+import { Loader2, MessageCircle, Send, RotateCcw } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { buildAgentHistory } from '@/lib/assistant'
 import type { AssistantTurn } from '@/lib/assistant'
@@ -15,10 +15,9 @@ import { QueryTaskListAnswer, QueryLearningListAnswer, QueryNotesListAnswer } fr
 import type { QueryPlan } from '@/lib/query-plans'
 import { isQueryPlan } from '@/lib/query-plans'
 import { LockGate } from '@/components/lock-gate'
-import { AuroraBackground } from '@/components/aurora-background'
+import { PageShell } from '@/components/page-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PulseLogo } from '@/components/pulse-logo'
 import { VoiceRecorder } from '@/components/voice-recorder'
 
 const EXAMPLE_QUESTIONS = [
@@ -165,163 +164,166 @@ function AssistantPageInner() {
     setInput(q)
   }
 
-  if (!userId) return <p className="p-8">Loading…</p>
+  if (!userId) return <AssistantLoading />
 
   const isEmpty = turns.length === 0
 
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex max-w-2xl w-full flex-col h-screen">
-        {/* Header */}
-        <header className="flex items-center justify-between gap-3 border-b border-white/10 p-4 md:p-6">
-          <div className="flex items-center gap-2">
-            <PulseLogo className="size-5" />
-            <h1 className="text-lg font-semibold">Assistant</h1>
+    <PageShell
+      title="Assistant"
+      actions={
+        <Button
+          variant="ghost"
+          size="icon-lg"
+          onClick={() => { cancelSpeech(); setTurns([]) }}
+          disabled={isEmpty}
+          aria-label="Clear conversation"
+        >
+          <RotateCcw className="size-4" aria-hidden />
+        </Button>
+      }
+    >
+      {/* Message thread: the page scrolls; the ask bar below stays in reach. */}
+      {isEmpty ? (
+        <section aria-labelledby="assistant-empty" className="glass flex flex-col gap-4 rounded-2xl p-4">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <MessageCircle className="size-10 text-muted-foreground" aria-hidden />
+            <h2 id="assistant-empty" className="text-lg font-semibold">Ask about your data</h2>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              I can help you understand your money, tasks, learning, and notes.
+            </p>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => { cancelSpeech(); setTurns([]) }}
-            disabled={isEmpty}
-            aria-label="Clear conversation"
-            style={{ height: '44px' }}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-        </header>
 
-        {/* Message thread — scrollable */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4">
-          {isEmpty ? (
-            <div className="flex flex-col gap-6 items-center justify-center h-full">
-              <div className="flex flex-col gap-2 items-center text-center">
-                <MessageCircle className="h-12 w-12 text-muted-foreground/50" />
-                <h2 className="text-xl font-semibold">Ask about your data</h2>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                  I can help you understand your money, tasks, learning, and notes.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2 w-full">
-                {EXAMPLE_QUESTIONS.map((q, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setExampleQuestion(q)}
-                    className="glass-soft rounded-xl px-4 py-3 text-left text-sm hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                    type="button"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <>
-              {turns.map(turn => (
-                <div
-                  key={turn.id}
-                  className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {turn.role === 'user' ? (
-                    // User bubble — right-aligned
-                    <div className="max-w-xs lg:max-w-md bg-accent-2/20 rounded-2xl px-4 py-3 text-sm">
-                      {turn.text}
-                    </div>
-                  ) : turn.intent === 'query_money' && isMoneyPlan(turn.payload) ? (
-                    // Money answer card
-                    <div className="w-full max-w-md">
-                      <QueryAnswerCard
-                        userId={userId}
-                        plan={turn.payload}
-                        onDismiss={() => removeTurn(turn.id)}
-                        onResult={onResultFor(turn)}
-                      />
-                    </div>
-                  ) : turn.intent === 'query_task' && isTaskPlan(turn.payload) ? (
-                    // Task answer card
-                    <div className="w-full max-w-md">
-                      <QueryTaskListAnswer
-                        userId={userId}
-                        plan={turn.payload}
-                        onDismiss={() => removeTurn(turn.id)}
-                        onResult={onResultFor(turn)}
-                      />
-                    </div>
-                  ) : turn.intent === 'query_learning' && isLearningPlan(turn.payload) ? (
-                    // Learning answer card
-                    <div className="w-full max-w-md">
-                      <QueryLearningListAnswer
-                        userId={userId}
-                        plan={turn.payload}
-                        onDismiss={() => removeTurn(turn.id)}
-                        onResult={onResultFor(turn)}
-                      />
-                    </div>
-                  ) : turn.intent === 'query_notes' && isNotesPlan(turn.payload) ? (
-                    // Notes answer card
-                    <div className="w-full max-w-md">
-                      <QueryNotesListAnswer
-                        userId={userId}
-                        plan={turn.payload}
-                        onDismiss={() => removeTurn(turn.id)}
-                        onResult={onResultFor(turn)}
-                      />
-                    </div>
-                  ) : (
-                    // Text bubble for chat/log/error/unknown
-                    <div className="max-w-xs lg:max-w-md bg-white/5 rounded-2xl px-4 py-3 text-sm text-muted-foreground">
-                      {turn.intent === 'chat' || turn.intent === null
-                        ? "I can answer questions about your money, tasks, learning, and notes — e.g. 'How much did I spend on food this month?'"
-                        : turn.intent?.startsWith('log_') || turn.intent === 'set_budget'
-                        ? "That sounds like something to record — use the + capture on the main app screen."
-                        : turn.text || 'Assistant response'}
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </>
-          )}
-        </div>
-
-        {/* Input — pinned bottom */}
-        <div className="border-t border-white/10 p-4 md:p-6">
-          <form onSubmit={handleSubmit} className="flex gap-2 items-end">
-            <div className="flex-1">
-              <Input
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Ask about your data…"
-                disabled={busy}
-                aria-label="Message input"
-                className="bg-white/5 border border-white/10 placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 focus-visible:ring-offset-0"
-              />
-            </div>
-            <VoiceRecorder
-              transcribeOnly
-              onTranscript={(t) => { void submitText(t, true) }}
-              disabled={busy || !userId}
-            />
-            <Button
-              type="submit"
-              disabled={!input.trim() || busy}
-              size="sm"
-              style={{ height: '44px', minWidth: '44px' }}
-              aria-label="Send message"
+          <div className="flex flex-col gap-2">
+            {EXAMPLE_QUESTIONS.map((q, idx) => (
+              <button
+                key={idx}
+                onClick={() => setExampleQuestion(q)}
+                className="glass-soft min-h-11 rounded-lg px-4 py-3 text-left text-sm outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2"
+                type="button"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {turns.map(turn => (
+            <div
+              key={turn.id}
+              className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
+              {turn.role === 'user' ? (
+                // User bubble — right-aligned
+                <div className="max-w-xs lg:max-w-md bg-accent-2/20 rounded-2xl px-4 py-3 text-sm">
+                  {turn.text}
+                </div>
+              ) : turn.intent === 'query_money' && isMoneyPlan(turn.payload) ? (
+                // Money answer card
+                <div className="w-full max-w-md">
+                  <QueryAnswerCard
+                    userId={userId}
+                    plan={turn.payload}
+                    onDismiss={() => removeTurn(turn.id)}
+                    onResult={onResultFor(turn)}
+                  />
+                </div>
+              ) : turn.intent === 'query_task' && isTaskPlan(turn.payload) ? (
+                // Task answer card
+                <div className="w-full max-w-md">
+                  <QueryTaskListAnswer
+                    userId={userId}
+                    plan={turn.payload}
+                    onDismiss={() => removeTurn(turn.id)}
+                    onResult={onResultFor(turn)}
+                  />
+                </div>
+              ) : turn.intent === 'query_learning' && isLearningPlan(turn.payload) ? (
+                // Learning answer card
+                <div className="w-full max-w-md">
+                  <QueryLearningListAnswer
+                    userId={userId}
+                    plan={turn.payload}
+                    onDismiss={() => removeTurn(turn.id)}
+                    onResult={onResultFor(turn)}
+                  />
+                </div>
+              ) : turn.intent === 'query_notes' && isNotesPlan(turn.payload) ? (
+                // Notes answer card
+                <div className="w-full max-w-md">
+                  <QueryNotesListAnswer
+                    userId={userId}
+                    plan={turn.payload}
+                    onDismiss={() => removeTurn(turn.id)}
+                    onResult={onResultFor(turn)}
+                  />
+                </div>
+              ) : (
+                // Text bubble for chat/log/error/unknown
+                <div className="max-w-xs lg:max-w-md bg-white/5 rounded-2xl px-4 py-3 text-sm text-muted-foreground">
+                  {turn.intent === 'chat' || turn.intent === null
+                    ? "I can answer questions about your money, tasks, learning, and notes — e.g. 'How much did I spend on food this month?'"
+                    : turn.intent?.startsWith('log_') || turn.intent === 'set_budget'
+                    ? "That sounds like something to record — add it from the capture bar on Money home."
+                    : turn.text || 'Assistant response'}
+                </div>
+              )}
+            </div>
+          ))}
+          {busy && (
+            <div role="status" className="flex w-fit items-center gap-2 rounded-2xl bg-white/5 px-4 py-3 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
+              Thinking…
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
-      </main>
-    </>
+      )}
+
+      {/* Ask bar: floating chrome, so it is the one glass layer here. */}
+      <form
+        onSubmit={handleSubmit}
+        className="glass sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 flex items-end gap-2 rounded-2xl p-2"
+      >
+        <Input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="Ask about your data…"
+          disabled={busy}
+          aria-label="Ask about your data"
+          enterKeyHint="send"
+          className="h-11 flex-1"
+        />
+        <VoiceRecorder
+          transcribeOnly
+          onTranscript={(t) => { void submitText(t, true) }}
+          disabled={busy || !userId}
+        />
+        <Button
+          type="submit"
+          disabled={!input.trim() || busy}
+          size="icon-lg"
+          aria-label="Send message"
+        >
+          <Send className="size-4" aria-hidden />
+        </Button>
+      </form>
+    </PageShell>
+  )
+}
+
+function AssistantLoading() {
+  return (
+    <PageShell title="Assistant">
+      <p role="status" className="text-sm text-muted-foreground">Loading…</p>
+    </PageShell>
   )
 }
 
 export default function AssistantPage() {
   return (
-    <Suspense fallback={<div className="p-8">Loading…</div>}>
+    <Suspense fallback={<AssistantLoading />}>
       <LockGate>
         <AssistantPageInner />
       </LockGate>

@@ -15,13 +15,13 @@ import { upcomingOccurrences, forecastSummary } from '@/lib/forecast'
 import { monthBounds } from '@/lib/money-filter-sort'
 import { makeCategoryResolver } from '@/lib/category-resolve'
 import { formatLocalDate } from '@/lib/format'
+import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 
 type Props = { userId: string }
 
-const DIRECTION_GLYPHS = {
-  in: '↑',
-  out: '↓',
-}
+const LINK = 'inline-flex min-h-11 items-center gap-1 rounded-lg text-sm text-accent-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent-2'
+
 
 export function UpcomingWidget({ userId }: Props) {
   const rules = useRecurringRules(userId)
@@ -91,38 +91,37 @@ export function UpcomingWidget({ userId }: Props) {
   const fmt = (amt: number) =>
     (amt / (prefs.primary_currency === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })
   const symbol = currencySymbol(prefs.primary_currency)
-  const netColor = summary.projectedNet >= 0 ? 'text-emerald-500' : 'text-rose-500'
-  const subColor = summary.projectedNet >= 0 ? 'text-emerald-500/60' : 'text-rose-500/60'
+  const netColor = summary.projectedNet >= 0 ? 'text-income' : 'text-destructive'
+  const signedFmt = (n: number) => `${n < 0 ? '−' : ''}${symbol}${fmt(Math.abs(n))}`
+  // Supporting figures wear the muted text token (a 60% status colour measured 2.7:1).
+  const subColor = 'text-muted-foreground'
 
   if (upcoming.length === 0) {
     return (
-      <section className="glass flex flex-col gap-4 rounded-2xl p-4">
-        <div className="text-center text-sm text-muted-foreground">
-          Set up recurring money entries to see your forecast.
-        </div>
+      <section className="glass flex flex-col gap-2 rounded-2xl p-4" aria-labelledby="upcoming-heading">
+        <h2 id="upcoming-heading" className="text-sm font-semibold">Upcoming</h2>
+        <p className="text-sm text-muted-foreground">Add a recurring entry (rent, salary, a subscription) to see what’s coming and how the month ends.</p>
+        <Link href="/settings/recurring" className={`${LINK} self-start`}>Recurring rules<ChevronRight className="size-4" aria-hidden /></Link>
       </section>
     )
   }
 
   return (
-    <section className="glass flex flex-col gap-4 rounded-2xl p-4">
-      <div className="flex flex-col gap-2">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Projected this month (net)</span>
-        <div className={`text-[32px] font-semibold font-mono tabular-nums leading-tight ${netColor}`}>
-          <span>{symbol}</span>
-          {fmt(summary.projectedNet)}
+    <section className="glass flex flex-col gap-4 rounded-2xl p-4" aria-labelledby="upcoming-heading">
+      <div className="flex flex-col gap-1">
+        <h2 id="upcoming-heading" className="text-sm font-semibold">Month end, projected</h2>
+        <div className={`font-mono text-3xl font-semibold tabular-nums leading-tight ${netColor}`}>
+          {summary.projectedNet < 0 ? '−' : ''}{symbol}{fmt(Math.abs(summary.projectedNet))}
         </div>
-        <div className={`text-xs font-mono tabular-nums ${subColor}`}>
-          actual {symbol}
-          {fmt(summary.actualNet)} · scheduled {symbol}
-          {fmt(summary.scheduledIn - summary.scheduledOut)}
-        </div>
+        <p className={`text-xs tabular-nums ${subColor}`}>
+          {signedFmt(summary.actualNet)} so far, {signedFmt(summary.scheduledIn - summary.scheduledOut)} still scheduled
+        </p>
       </div>
 
       <div className="border-t border-white/10" />
 
       <div className="flex flex-col gap-1">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground px-2">Upcoming</span>
+        <h3 className="text-sm font-semibold">Upcoming</h3>
         <ul className="flex flex-col gap-1">
           {upcoming.slice(0, 5).map((event, idx) => {
             const catName =
@@ -132,20 +131,14 @@ export function UpcomingWidget({ userId }: Props) {
             return (
               <li
                 key={`${event.ruleId}-${idx}`}
-                className="flex items-center gap-3 text-xs min-h-[44px] px-2 py-1 rounded hover:bg-white/5 transition-colors"
+                className="flex min-h-10 items-center gap-3 text-sm"
               >
-                <span className="text-muted-foreground flex-shrink-0 w-16">
-                  {formatLocalDate(event.date, prefs.tz)}
+                <span className="w-14 shrink-0 text-xs text-muted-foreground">
+                  {formatLocalDate(event.date, prefs.tz, { day: 'numeric', month: 'short' })}
                 </span>
-                <span className="flex-shrink-0 text-foreground/60">
-                  {DIRECTION_GLYPHS[event.direction]}
-                </span>
-                <span className="font-mono tabular-nums flex-shrink-0">
-                  {symbol}
-                  {fmt(toPrimary(event.amount, event.currency))}
-                </span>
-                <span className="flex-1 truncate text-foreground/70">
-                  {catName}
+                <span className="flex-1 truncate">{catName}</span>
+                <span className={`shrink-0 font-mono tabular-nums ${event.direction === 'in' ? 'text-income' : 'text-foreground'}`}>
+                  {event.direction === 'in' ? '+' : '−'}{symbol}{fmt(toPrimary(event.amount, event.currency))}
                 </span>
               </li>
             )

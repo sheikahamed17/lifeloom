@@ -51,13 +51,13 @@ export function VerifyAi({ onNext }: { onNext: () => void }) {
       )}
 
       {!checking && result?.ok && (
-        <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 p-3 text-sm text-emerald-400">
+        <div className="flex items-center gap-2 rounded-lg bg-income/10 p-3 text-sm text-income">
           <CheckCircle2 className="size-5 flex-shrink-0" aria-hidden /> AI is connected and working.
         </div>
       )}
 
       {!checking && result && !result.ok && (
-        <div className="flex flex-col gap-2 rounded-lg bg-rose-500/10 p-3 text-sm text-rose-400">
+        <div className="flex flex-col gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           <div className="flex items-center gap-2">
             <XCircle className="size-5 flex-shrink-0" aria-hidden /> AI isn&apos;t working yet.
           </div>
@@ -79,7 +79,7 @@ export function VerifyAi({ onNext }: { onNext: () => void }) {
       </div>
 
       {!checking && result && !result.ok && (
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-center text-xs text-muted-foreground">
           You can finish setup, but AI capture / voice / queries won&apos;t work until the key is fixed.
         </p>
       )}

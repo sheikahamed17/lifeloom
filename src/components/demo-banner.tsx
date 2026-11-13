@@ -24,7 +24,7 @@ export function DemoBanner() {
           rel="noopener"
           className="font-medium text-accent-2 underline underline-offset-2"
         >
-          Deploy your own instance →
+          Deploy your own instance
         </a>
       </p>
       <button

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Image from 'next/image'
-import { X } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, BookOpen, CalendarDays, CheckSquare, ChevronDown, NotebookPen, Plus, Split, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CategoryPicker } from '@/components/category-picker'
@@ -11,7 +11,7 @@ import { ProjectPicker } from '@/components/project-picker'
 import { addTag } from '@/lib/task-org'
 import { cn } from '@/lib/utils'
 import { currencySymbol } from '@/lib/currency'
-import { formatLocalDateTime } from '@/lib/format'
+import { formatDay, formatLocalDateTime } from '@/lib/format'
 import { parseAmountInput } from '@/lib/parse-amount'
 import { type Allocation, isSplitValid, splitRemaining } from '@/lib/split-transaction'
 import { pickDefaultAccountId, resolveDraftAccountId } from '@/lib/default-account'
@@ -26,6 +26,11 @@ import type { TaskPayload } from '@/lib/op-schemas/task'
 import type { LearningPayload } from '@/lib/op-schemas/learning'
 import type { NotePayload } from '@/lib/op-schemas/note'
 import type { CategoryRow } from '@/lib/dexie'
+
+// One vocabulary for every chip: editable values are pills, extra actions are cyan pills.
+const FIELD_PILL = 'inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 text-sm outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2'
+const ACTION_PILL = 'inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-accent-2/40 px-3 text-sm text-accent-2 outline-none transition-colors hover:bg-accent-2/10 focus-visible:ring-2 focus-visible:ring-accent-2'
+const CHIP_LINK = 'inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2'
 
 export type ChipDraft =
   | (MoneyPayload & { kind: 'money'; draftCategoryName?: string; receiptPreviewUrl?: string; draftId?: string; merchant?: string | null; tags?: string[]; account_id?: string | null; shared_with?: ShareDraftRow[] })
@@ -87,6 +92,7 @@ function ConfirmationChipMoney({
   const [period, setPeriod] = useState<Period>('monthly')
   const [intervalCount, setIntervalCount] = useState(1)
   const [busy, setBusy] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const [splitMode, setSplitMode] = useState(false)
   const [splitRows, setSplitRows] = useState<{ key: number; category_id: string | null; amountText: string }[]>([])
   const splitKey = useRef(0)
@@ -106,6 +112,15 @@ function ConfirmationChipMoney({
   const major = (d.amount / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
   const symbol = currencySymbol(d.currency)
   const cat = d.category_id ? categoryById.get(d.category_id) : undefined
+
+  // What "More details" holds, said in one line so nothing in it is a surprise.
+  const today = new Date().toISOString().slice(0, 10) === d.occurred_at.slice(0, 10)
+  const moreSummary = [
+    d.merchant,
+    today ? 'Today' : formatDay(d.occurred_at),
+    (d.tags?.length ?? 0) > 0 ? `${d.tags!.length} tag${d.tags!.length === 1 ? '' : 's'}` : null,
+    makeRecurring ? 'Repeats' : null,
+  ].filter(Boolean).join(' · ')
 
   const allocations: Allocation[] = splitRows.map(r => ({ category_id: r.category_id, amount: parseAmountInput(r.amountText) ?? 0 }))
   const remaining = splitRemaining(d.amount, allocations)
@@ -147,20 +162,18 @@ function ConfirmationChipMoney({
   }
 
   return (
-    <div className="glass rounded-2xl p-5">
-      <div className="mb-3 flex items-center justify-between text-xs">
-        <span className={cn(
-          'font-semibold uppercase tracking-wide',
-          d.direction === 'out' ? 'text-rose-500' : 'text-emerald-500',
-        )}>
-          {d.direction === 'out' ? '💸 Spend' : '💰 Income'}
+    <div className="glass rounded-2xl p-4 sm:p-5" role="group" aria-label={isEdit ? 'Edit entry' : 'New entry'}>
+      <div className="mb-2 flex items-center justify-between">
+        <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', d.direction === 'out' ? 'text-destructive' : 'text-income')}>
+          {d.direction === 'out' ? <ArrowUpRight className="size-4" aria-hidden /> : <ArrowDownLeft className="size-4" aria-hidden />}
+          {d.direction === 'out' ? 'Spend' : 'Income'}
         </span>
         <button
           type="button"
-          className="text-muted-foreground hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+          className={CHIP_LINK}
           onClick={() => setD(s => ({ ...s, direction: s.direction === 'out' ? 'in' : 'out' }))}
         >
-          flip
+          {d.direction === 'out' ? 'It’s income' : 'It’s a spend'}
         </button>
       </div>
 
@@ -190,7 +203,8 @@ function ConfirmationChipMoney({
         <button
           type="button"
           onClick={() => setEditingField('amount')}
-          className="mb-3 block font-mono text-3xl font-semibold tabular-nums focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+          aria-label={`Amount ${symbol}${major}, edit`}
+          className="mb-3 block rounded-lg font-mono text-3xl font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-accent-2"
         >
           {symbol}{major}
         </button>
@@ -201,27 +215,20 @@ function ConfirmationChipMoney({
           <>
             <button
               type="button"
-              onClick={() => setEditingField('category')}
-              className="rounded-md border bg-muted px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+              onClick={() => setEditingField(editingField === 'category' ? null : 'category')}
+              aria-expanded={editingField === 'category'}
+              className={cn(FIELD_PILL, !cat && 'text-muted-foreground')}
             >
-              {cat ? `${cat.icon ?? ''} ${cat.name}` : 'Pick category…'}
+              {cat ? <>{cat.icon && <span aria-hidden="true">{cat.icon}</span>}{cat.name}</> : 'Pick a category'}
             </button>
             {shareRows.length === 0 && (
-              <button
-                type="button"
-                onClick={enterSplit}
-                className="rounded-md border border-accent-2/40 text-accent-2 px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-              >
-                ⑂ Split
+              <button type="button" onClick={enterSplit} className={ACTION_PILL}>
+                <Split className="size-3.5" aria-hidden /> Split
               </button>
             )}
             {d.direction === 'out' && shareRows.length === 0 && (
-              <button
-                type="button"
-                onClick={addShareRow}
-                className="relative rounded-md border border-accent-2/40 text-accent-2 px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none before:absolute before:-inset-x-1 before:-inset-y-3"
-              >
-                <span aria-hidden="true">👥</span> Share with…
+              <button type="button" onClick={addShareRow} className={ACTION_PILL}>
+                <Users className="size-3.5" aria-hidden /> Share with…
               </button>
             )}
           </>
@@ -230,28 +237,54 @@ function ConfirmationChipMoney({
           <Input
             autoFocus
             defaultValue={d.description ?? ''}
+            aria-label="Description"
+            placeholder="What was it for?"
             onBlur={(e) => {
               const v = e.currentTarget.value
               setD(s => ({ ...s, description: v || null }))
               setEditingField(null)
             }}
-            className="h-7 max-w-[200px] text-xs"
+            className="h-9 max-w-60"
           />
         ) : (
           <button
             type="button"
             onClick={() => setEditingField('description')}
-            className="rounded-md border bg-muted px-2 py-0.5 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+            className={cn(FIELD_PILL, !d.description && 'text-muted-foreground')}
           >
-            {d.description || '+ description'}
+            {d.description || <><Plus className="size-3.5" aria-hidden />Description</>}
           </button>
         )}
+        <select
+          value={accountId ?? ''}
+          onChange={(e) => { const v = e.target.value; setAccountTouched(true); setD(s => ({ ...s, account_id: v || null })) }}
+          className={cn(FIELD_PILL, 'pr-1')}
+          aria-label="Account"
+        >
+          <option value="">No account</option>
+          {accounts.map(acc => (
+            <option key={acc.id} value={acc.id}>
+              {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
+            </option>
+          ))}
+        </select>
       </div>
 
+      {editingField === 'category' && (
+        <div className="glass-soft mb-3 rounded-2xl p-2">
+          <CategoryPicker
+            userId={userId}
+            kind={d.direction === 'out' ? 'spend' : 'income'}
+            selectedId={d.category_id ?? null}
+            onSelect={(id) => { setD(s => ({ ...s, category_id: id })); setEditingField(null) }}
+          />
+        </div>
+      )}
+
       {splitMode && (
-        <div className="mb-3 flex flex-col gap-2 rounded-md border bg-background p-2">
+        <div className="glass-soft mb-3 flex flex-col gap-2 rounded-2xl p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium">Split across categories</span>
+            <span className="text-sm font-medium">Split across categories</span>
             <button
               type="button"
               onClick={() => setSplitMode(false)}
@@ -288,7 +321,7 @@ function ConfirmationChipMoney({
                   aria-label={`Remove split part ${i + 1}`}
                   className="text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="size-3.5" aria-hidden />
                 </button>
               )}
             </div>
@@ -296,9 +329,9 @@ function ConfirmationChipMoney({
           <button
             type="button"
             onClick={() => setSplitRows(prev => [...prev, { key: splitKey.current++, category_id: null, amountText: '' }])}
-            className="self-start text-xs text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+            className={cn(CHIP_LINK, 'self-start text-accent-2')}
           >
-            ＋ Add category
+            <Plus className="size-3.5" aria-hidden /> Add category
           </button>
           <div className={cn('text-xs font-mono tabular-nums', remaining === 0 ? 'text-muted-foreground' : 'text-destructive')}>
             Remaining: {symbol}{(remaining / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -307,9 +340,9 @@ function ConfirmationChipMoney({
       )}
 
       {sharesActive && (
-        <div className="mb-3 flex flex-col gap-2 rounded-md border bg-background p-2" role="group" aria-label="Shared with">
+        <div className="glass-soft mb-3 flex flex-col gap-2 rounded-2xl p-3" role="group" aria-label="Shared with">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium">Shared with</span>
+            <span className="text-sm font-medium">Shared with</span>
             {!shareRows.some(r => r.settled) && (
               <button
                 type="button"
@@ -371,16 +404,16 @@ function ConfirmationChipMoney({
                 aria-label={`Remove person ${i + 1}`}
                 className="relative text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded before:absolute before:-inset-2"
               >
-                <X className="w-3 h-3" />
+                <X className="size-3.5" aria-hidden />
               </button>
             </div>
           ))}
           <button
             type="button"
             onClick={addShareRow}
-            className="relative self-start text-xs text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded before:absolute before:-inset-x-1 before:-inset-y-3"
+            className={cn(CHIP_LINK, 'self-start text-accent-2')}
           >
-            ＋ Add person
+            <Plus className="size-3.5" aria-hidden /> Add person
           </button>
           <div className={cn('text-xs font-mono tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
             {sharesTotalMinor <= d.amount
@@ -390,121 +423,92 @@ function ConfirmationChipMoney({
         </div>
       )}
 
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        {editingField === 'merchant' ? (
-          <Input
-            autoFocus
-            maxLength={120}
-            aria-label="Merchant or payee"
-            defaultValue={d.merchant ?? ''}
-            onBlur={(e) => {
-              const v = e.currentTarget.value
-              setD(s => ({ ...s, merchant: v || null }))
-              setEditingField(null)
-            }}
-            className="h-7 max-w-[200px] text-xs"
-            placeholder="Merchant / payee"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setEditingField('merchant')}
-            className="rounded-md border bg-muted px-2 py-0.5 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-          >
-            {d.merchant || '+ merchant'}
-          </button>
-        )}
-      </div>
+      <button
+        type="button"
+        aria-expanded={moreOpen}
+        aria-controls="chip-more"
+        onClick={() => setMoreOpen(o => !o)}
+        className="mb-3 flex min-h-11 w-full items-center gap-2 rounded-lg border-t border-white/10 pt-1 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-accent-2"
+      >
+        <span className="font-medium">More details</span>
+        <span className="min-w-0 flex-1 truncate text-muted-foreground">{moreSummary}</span>
+        <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none', moreOpen && 'rotate-180')} aria-hidden />
+      </button>
 
-      <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
-        {(d.tags ?? []).map(tag => (
-          <div key={tag} className="flex items-center gap-1 rounded-md border bg-muted px-2 py-0.5 text-xs">
-            <span>{tag}</span>
-            <button type="button" onClick={() => setD(s => ({ ...s, tags: (s.tags ?? []).filter(t => t !== tag) }))}
-              aria-label={`Remove tag "${tag}"`} className="ml-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">
-              <X className="w-3 h-3" />
-            </button>
+      {moreOpen && (
+        <div id="chip-more" className="mb-3 flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {editingField === 'merchant' ? (
+              <Input
+                autoFocus
+                maxLength={120}
+                aria-label="Merchant or payee"
+                defaultValue={d.merchant ?? ''}
+                onBlur={(e) => {
+                  const v = e.currentTarget.value
+                  setD(s => ({ ...s, merchant: v || null }))
+                  setEditingField(null)
+                }}
+                className="h-9 max-w-60"
+                placeholder="Merchant or payee"
+              />
+            ) : (
+              <button type="button" onClick={() => setEditingField('merchant')} className={cn(FIELD_PILL, !d.merchant && 'text-muted-foreground')}>
+                {d.merchant || <><Plus className="size-3.5" aria-hidden />Merchant</>}
+              </button>
+            )}
+            {editingField === 'date' ? (
+              <Input
+                autoFocus
+                type="date"
+                aria-label="Date"
+                defaultValue={d.occurred_at.slice(0, 10)}
+                onBlur={(e) => {
+                  const v = e.currentTarget.value
+                  if (v) setD(s => ({ ...s, occurred_at: new Date(v + 'T12:00:00').toISOString() }))
+                  setEditingField(null)
+                }}
+                className="h-9 w-auto"
+              />
+            ) : (
+              <button type="button" onClick={() => setEditingField('date')} className={FIELD_PILL} aria-label={`Date ${formatDay(d.occurred_at)}, edit`}>
+                <CalendarDays className="size-3.5" aria-hidden />{formatDay(d.occurred_at)}
+              </button>
+            )}
           </div>
-        ))}
-        <Input value={newTag} onChange={e => setNewTag(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const trimmed = newTag.trim(); if (trimmed && !(d.tags ?? []).includes(trimmed) && (d.tags ?? []).length < 20) { setD(s => ({ ...s, tags: [...(s.tags ?? []), trimmed] })); setNewTag('') } } }}
-          placeholder="add tag…" aria-label="Add money tag" className="h-7 text-xs max-w-[100px]" />
-      </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        <select
-          value={accountId ?? ''}
-          onChange={(e) => { const v = e.target.value; setAccountTouched(true); setD(s => ({ ...s, account_id: v || null })) }}
-          className="rounded-md border bg-muted px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-          aria-label="Account"
-        >
-          <option value="">No account</option>
-          {accounts.map(acc => (
-            <option key={acc.id} value={acc.id}>
-              {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Tags">
+            {(d.tags ?? []).map(tag => (
+              <span key={tag} className={cn(FIELD_PILL, 'pr-0')}>
+                {tag}
+                <button type="button" onClick={() => setD(s => ({ ...s, tags: (s.tags ?? []).filter(t => t !== tag) }))}
+                  aria-label={`Remove tag “${tag}”`} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2">
+                  <X className="size-3.5" aria-hidden />
+                </button>
+              </span>
+            ))}
+            <Input value={newTag} onChange={e => setNewTag(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const trimmed = newTag.trim(); if (trimmed && !(d.tags ?? []).includes(trimmed) && (d.tags ?? []).length < 20) { setD(s => ({ ...s, tags: [...(s.tags ?? []), trimmed] })); setNewTag('') } } }}
+              placeholder="Add a tag…" aria-label="Add a tag, then press Enter" className="h-9 w-32" />
+          </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        {editingField === 'date' ? (
-          <Input
-            autoFocus
-            type="date"
-            defaultValue={d.occurred_at.slice(0, 10)}
-            onBlur={(e) => {
-              const v = e.currentTarget.value
-              if (v) setD(s => ({ ...s, occurred_at: new Date(v + 'T12:00:00').toISOString() }))
-              setEditingField(null)
-            }}
-            className="h-7 text-xs"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setEditingField('date')}
-            className="rounded-md border bg-muted px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-          >
-            📅 {d.occurred_at.slice(0, 10)}
-          </button>
-        )}
-      </div>
-
-      {editingField === 'category' && (
-        <div className="mb-3 rounded-md border bg-background p-2">
-          <CategoryPicker
-            userId={userId}
-            kind={d.direction === 'out' ? 'spend' : 'income'}
-            selectedId={d.category_id ?? null}
-            onSelect={(id) => { setD(s => ({ ...s, category_id: id })); setEditingField(null) }}
-          />
-        </div>
-      )}
-
-      {!isEdit && !splitMode && !sharesActive && (
-        <div className="mb-3 flex flex-col gap-2">
-          <label className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-            <span>Make recurring</span>
-            <input
-              type="checkbox"
-              checked={makeRecurring}
-              onChange={e => setMakeRecurring(e.currentTarget.checked)}
-            />
-          </label>
-          {makeRecurring && (
-            <PeriodPicker
-              period={period}
-              intervalCount={intervalCount}
-              onChange={(p, n) => { setPeriod(p); setIntervalCount(n) }}
-            />
+          {!isEdit && !splitMode && !sharesActive && (
+            <div className="flex flex-col gap-2">
+              <label className="glass-soft flex min-h-11 items-center justify-between rounded-lg px-3 text-sm">
+                <span>Repeat this entry</span>
+                <input type="checkbox" className="size-4 accent-[var(--accent-2)]" checked={makeRecurring} onChange={e => setMakeRecurring(e.currentTarget.checked)} />
+              </label>
+              {makeRecurring && (
+                <PeriodPicker period={period} intervalCount={intervalCount} onChange={(p, n) => { setPeriod(p); setIntervalCount(n) }} />
+              )}
+            </div>
           )}
         </div>
       )}
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="flex-[2] bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] hover:opacity-90" onClick={handleConfirm} disabled={busy || d.amount === 0 || (splitMode && !splitReady) || (sharesActive && !sharesReady)}>
+        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy || d.amount === 0 || (splitMode && !splitReady) || (sharesActive && !sharesReady)}>
           {splitMode ? `${isEdit ? 'Save' : 'Confirm'} split (${splitRows.length})`
             : isEdit ? 'Save changes'
             : sharesActive ? `Confirm ${symbol}${major} · you ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
@@ -512,7 +516,6 @@ function ConfirmationChipMoney({
         </Button>
       </div>
 
-      <p className="mt-1 text-center text-[10px] text-muted-foreground">tap any field to edit</p>
     </div>
   )
 }
@@ -579,10 +582,9 @@ function ConfirmationChipTask({
   return (
     <div className="glass rounded-2xl p-5">
       <div className="mb-3 flex items-center justify-between text-xs">
-        <span className="font-semibold uppercase tracking-wide text-violet-500">
-          ✅ Task
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+          <CheckSquare className="size-4" aria-hidden /> Task
         </span>
-        <span className="text-muted-foreground">priority: {d.priority}</span>
       </div>
 
       {editingTitle ? (
@@ -623,36 +625,37 @@ function ConfirmationChipTask({
           <button
             type="button"
             onClick={() => setEditingDue(true)}
-            className="rounded-md border bg-muted px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+            className={FIELD_PILL}
           >
-            {d.due_at ? `📅 ${dueDisplay}` : '+ due date'}
+            {d.due_at ? <><CalendarDays className="size-3.5" aria-hidden />{dueDisplay}</> : <><Plus className="size-3.5" aria-hidden />Due date</>}
           </button>
         )}
 
         <select
           value={d.priority}
+          aria-label="Priority"
           onChange={e => { const v = e.target.value as 'low' | 'medium' | 'high'; setD(s => ({ ...s, priority: v })) }}
-          className="rounded-md border bg-muted px-2 py-0.5 text-xs"
+          className={cn(FIELD_PILL, 'pr-1')}
         >
-          <option value="low">low</option>
-          <option value="medium">medium</option>
-          <option value="high">high</option>
+          <option value="low">Low priority</option>
+          <option value="medium">Medium priority</option>
+          <option value="high">High priority</option>
         </select>
       </div>
 
       <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
         {(d.tags ?? []).map(tag => (
-          <div key={tag} className="flex items-center gap-1 rounded-md border bg-muted px-2 py-0.5 text-xs">
+          <div key={tag} className={cn(FIELD_PILL, 'pr-0')}>
             <span>{tag}</span>
             <button type="button" onClick={() => setD(s => ({ ...s, tags: (s.tags ?? []).filter(t => t !== tag) }))}
-              aria-label={`Remove tag "${tag}"`} className="ml-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded">
-              <X className="w-3 h-3" />
+              aria-label={`Remove tag "${tag}"`} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2">
+              <X className="size-3.5" aria-hidden />
             </button>
           </div>
         ))}
         <Input value={newTag} onChange={e => setNewTag(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setD(s => ({ ...s, tags: addTag(s.tags ?? [], newTag) })); setNewTag('') } }}
-          placeholder="add tag…" aria-label="Add task tag" className="h-7 text-xs max-w-[100px]" />
+          placeholder="Add a tag…" aria-label="Add task tag" className="h-9 w-32" />
       </div>
       <div className="mb-3">
         <ProjectPicker userId={userId} selectedId={d.project_id ?? null} onSelect={id => setD(s => ({ ...s, project_id: id }))} />
@@ -660,8 +663,8 @@ function ConfirmationChipTask({
 
       {!isEdit && (
         <div className="mb-3 flex flex-col gap-2">
-          <label className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-            <span>Repeat after completion</span>
+          <label className="glass-soft flex min-h-11 items-center justify-between rounded-lg px-3 text-sm">
+            <span>Repeat after it’s done</span>
             <input
               type="checkbox"
               checked={makeRecurring}
@@ -680,12 +683,11 @@ function ConfirmationChipTask({
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="flex-[2] bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] hover:opacity-90" onClick={handleConfirm} disabled={busy || !d.title.trim()}>
+        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy || !d.title.trim()}>
           {isEdit ? 'Save changes' : 'Confirm task'}
         </Button>
       </div>
 
-      <p className="mt-1 text-center text-[10px] text-muted-foreground">tap any field to edit</p>
     </div>
   )
 }
@@ -731,8 +733,8 @@ function ConfirmationChipLearning({
   return (
     <div className="glass rounded-2xl p-5">
       <div className="mb-3 flex items-center justify-between text-xs">
-        <span className="font-semibold uppercase tracking-wide text-cyan-500">
-          📚 Learn
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-2">
+          <BookOpen className="size-4" aria-hidden /> Learning
         </span>
       </div>
 
@@ -760,15 +762,15 @@ function ConfirmationChipLearning({
 
       <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
         {d.tags.map((tag) => (
-          <div key={tag} className="flex items-center gap-1 rounded-md border bg-muted px-2 py-0.5 text-xs">
+          <div key={tag} className={cn(FIELD_PILL, 'pr-0')}>
             <span>{tag}</span>
             <button
               type="button"
               onClick={() => removeTag(tag)}
               aria-label={`Remove tag "${tag}"`}
-              className="ml-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
             >
-              <X className="w-3 h-3" />
+              <X className="size-3.5" aria-hidden />
             </button>
           </div>
         ))}
@@ -783,17 +785,17 @@ function ConfirmationChipLearning({
                   addTag(newTag)
                 }
               }}
-              placeholder="add tag…"
+              placeholder="Add a tag…"
               aria-label="Add new tag"
-              className="h-7 text-xs max-w-[100px]"
+              className="h-9 w-32"
             />
             <button
               type="button"
               onClick={() => addTag(newTag)}
               aria-label="Add tag"
-              className="min-h-[44px] flex items-center justify-center px-2 rounded-md border bg-muted hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none text-xs"
+              className="flex size-9 items-center justify-center rounded-lg border border-white/15 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2"
             >
-              +
+              <Plus className="size-4" aria-hidden />
             </button>
           </div>
         )}
@@ -825,12 +827,11 @@ function ConfirmationChipLearning({
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="flex-[2] bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] hover:opacity-90" onClick={handleConfirm} disabled={busy || !d.text.trim()}>
+        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy || !d.text.trim()}>
           {isEdit ? 'Save changes' : 'Confirm learning'}
         </Button>
       </div>
 
-      <p className="mt-1 text-center text-[10px] text-muted-foreground">tap any field to edit</p>
     </div>
   )
 }
@@ -876,8 +877,8 @@ function ConfirmationChipNote({
   return (
     <div className="glass rounded-2xl p-5">
       <div className="mb-3 flex items-center justify-between text-xs">
-        <span className="font-semibold uppercase tracking-wide text-amber-500">
-          📝 Note
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-warning">
+          <NotebookPen className="size-4" aria-hidden /> Note
         </span>
       </div>
 
@@ -931,15 +932,15 @@ function ConfirmationChipNote({
 
       <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
         {d.tags.map((tag) => (
-          <div key={tag} className="flex items-center gap-1 rounded-md border bg-muted px-2 py-0.5 text-xs">
+          <div key={tag} className={cn(FIELD_PILL, 'pr-0')}>
             <span>{tag}</span>
             <button
               type="button"
               onClick={() => removeTag(tag)}
               aria-label={`Remove tag "${tag}"`}
-              className="ml-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2"
             >
-              <X className="w-3 h-3" />
+              <X className="size-3.5" aria-hidden />
             </button>
           </div>
         ))}
@@ -954,17 +955,17 @@ function ConfirmationChipNote({
                   addTag(newTag)
                 }
               }}
-              placeholder="add tag…"
+              placeholder="Add a tag…"
               aria-label="Add new tag"
-              className="h-7 text-xs max-w-[100px]"
+              className="h-9 w-32"
             />
             <button
               type="button"
               onClick={() => addTag(newTag)}
               aria-label="Add tag"
-              className="min-h-[44px] flex items-center justify-center px-2 rounded-md border bg-muted hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none text-xs"
+              className="flex size-9 items-center justify-center rounded-lg border border-white/15 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-accent-2"
             >
-              +
+              <Plus className="size-4" aria-hidden />
             </button>
           </div>
         )}
@@ -972,12 +973,11 @@ function ConfirmationChipNote({
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="flex-[2] bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] hover:opacity-90" onClick={handleConfirm} disabled={busy || !d.body.trim()}>
+        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy || !d.body.trim()}>
           {isEdit ? 'Save changes' : 'Confirm note'}
         </Button>
       </div>
 
-      <p className="mt-1 text-center text-[10px] text-muted-foreground">tap any field to edit</p>
     </div>
   )
 }
@@ -1004,7 +1004,7 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
 
   return (
     <div className="glass rounded-2xl p-4 flex flex-col gap-3">
-      <div className="text-xs font-semibold uppercase tracking-wide text-emerald-500"><span aria-hidden="true">👥</span> Paid back</div>
+      <div className="inline-flex items-center gap-1.5 text-sm font-medium text-income"><Users className="size-4" aria-hidden /> Paid back</div>
       <p className="text-sm">
         <span className="font-medium">{draft.person_name}</span> paid{' '}
         <span className="font-mono tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
@@ -1022,10 +1022,10 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
           {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon ? `${acc.icon} ${acc.name}` : acc.name}</option>)}
         </select>
       </label>
-      <p className="text-[11px] text-muted-foreground">This clears the debt and tops up the account. It is not recorded as income.</p>
+      <p className="text-xs text-muted-foreground">This clears the debt and tops up the account. It isn’t counted as income.</p>
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button className="flex-[2] bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] hover:opacity-90" onClick={handleConfirm} disabled={busy}>
+        <Button className="glow-cta flex-[2]" onClick={handleConfirm} disabled={busy}>
           Mark paid
         </Button>
       </div>

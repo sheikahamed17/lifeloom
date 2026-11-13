@@ -213,7 +213,7 @@ function WeeklyBars({ values, symbol, jpy }: { values: number[]; symbol: string;
   )
 }
 
-function currentPeriodRange(period: PeriodKind): { from: string; to: string } {
+export function currentPeriodRange(period: PeriodKind): { from: string; to: string } {
   const now = new Date()
   if (period === 'month') {
     const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()

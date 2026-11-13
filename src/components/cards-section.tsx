@@ -1,5 +1,6 @@
 'use client'
 
+import { formatDay } from '@/lib/format'
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { useAccounts } from '@/hooks/use-accounts'
@@ -52,18 +53,18 @@ export function CardsSection({ userId }: Props) {
     `${currencySymbol(cur)}${(amt / (cur === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
   return (
-    <section className="glass-soft rounded-2xl p-3 flex flex-col gap-3" aria-label="Cards and debts">
-      <h2 className="text-sm font-medium">Cards &amp; debts</h2>
+    <section className="glass rounded-2xl p-4 flex flex-col gap-3" aria-labelledby="cards-heading">
+      <h2 id="cards-heading" className="text-sm font-semibold">Cards &amp; debts</h2>
       <ul className="flex flex-col gap-2">
         {summaries.map(({ acct, s }) => (
           <li key={acct.id} className="flex flex-col gap-1 border-t border-white/10 pt-2 first:border-t-0 first:pt-0">
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-1 text-sm min-w-0">
-                {acct.icon && <span>{acct.icon}</span>}
+                {acct.icon && <span aria-hidden="true">{acct.icon}</span>}
                 <span className="truncate">{acct.name}</span>
               </span>
               <span className="flex flex-col items-end">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Owed</span>
+                <span className="text-xs text-muted-foreground">You owe</span>
                 <span className={`font-mono tabular-nums text-sm font-medium ${s.owed > 0 ? 'text-destructive' : 'text-income'}`}>
                   {fmtIn(s.owed, acct.currency)}
                 </span>
@@ -73,14 +74,14 @@ export function CardsSection({ userId }: Props) {
               <span>This month <span className="font-mono tabular-nums">{fmtIn(s.monthSpend, acct.currency)}</span></span>
               <Link
                 href="/settings/transfers"
-                className="min-h-[44px] flex items-center text-accent-2 hover:underline focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+                className="-mr-2 flex min-h-11 items-center gap-1 rounded-lg px-2 text-accent-2 outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
               >
-                Pay →
+                Pay it off
               </Link>
             </div>
             {s.recentPayments.length > 0 && (
-              <div className="text-[10px] text-muted-foreground">
-                Last payment {fmtIn(s.recentPayments[0].amount, acct.currency)} · {s.recentPayments[0].occurred_at.slice(0, 10)}
+              <div className="text-xs text-muted-foreground">
+                Last payment {fmtIn(s.recentPayments[0].amount, acct.currency)} on {formatDay(s.recentPayments[0].occurred_at)}
               </div>
             )}
           </li>

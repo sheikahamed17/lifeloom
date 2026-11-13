@@ -8,7 +8,7 @@ type Props = {
   userId: string
   kind: 'spend' | 'income'
   selectedId: string | null
-  onSelect: (id: string) => void
+  onSelect: (id: string, name: string) => void
 }
 
 export function CategoryPicker({ userId, kind, selectedId, onSelect }: Props) {
@@ -25,25 +25,25 @@ export function CategoryPicker({ userId, kind, selectedId, onSelect }: Props) {
         value={query}
         onChange={e => setQuery(e.target.value)}
         placeholder="Search categories…"
-        className="glass-soft rounded-md px-3 py-1 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+        aria-label="Search categories"
+        className="glass-soft min-h-10 rounded-lg px-3 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 md:text-sm"
       />
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={kind === 'spend' ? 'Spend categories' : 'Income categories'}>
         {filtered.map(c => (
           <button
             key={c.id}
             type="button"
-            onClick={() => onSelect(c.id)}
+            onClick={() => onSelect(c.id, c.name)}
+            aria-pressed={selectedId === c.id}
             className={cn(
-              'glass-soft rounded-md px-2.5 py-1 text-xs transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none',
-              selectedId === c.id
-                ? 'bg-[linear-gradient(150deg,rgb(111_123_255/.35),rgb(52_230_255/.22))] border border-[rgb(120_190_255/.4)] text-accent-2'
-                : 'hover:border-accent-2/50',
+              'glass-soft inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2',
+              selectedId === c.id ? 'border-accent-2/60 bg-accent-2/15 text-accent-2' : 'hover:bg-white/10',
             )}
           >
-            {c.icon && <span className="mr-1">{c.icon}</span>}{c.name}
+            {c.icon && <span aria-hidden="true">{c.icon}</span>}{c.name}
           </button>
         ))}
-        {filtered.length === 0 && <span className="text-xs text-muted-foreground">No matches.</span>}
+        {filtered.length === 0 && <span className="text-sm text-muted-foreground">No category matches “{query}”.</span>}
       </div>
     </div>
   )

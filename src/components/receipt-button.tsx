@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Camera } from 'lucide-react'
+import { Camera, Loader2 } from 'lucide-react'
 import type { ReceiptStreamEvent } from '@/lib/receipt-sse'
 import { callReceiptApiStreaming } from '@/lib/receipt-sse'
 import { enqueueReceipt } from '@/lib/receipt-queue'
@@ -43,8 +43,9 @@ export function ReceiptButton({ disabled, onParsed }: Props) {
     }
   }
 
+  const status = state === 'uploading' ? 'Uploading receipt…' : state === 'parsing' ? 'Reading receipt…' : state === 'error' ? `Receipt failed: ${errorMsg || 'try again'}` : null
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex min-w-0 items-center gap-1">
       <input
         ref={inputRef}
         type="file"
@@ -54,29 +55,22 @@ export function ReceiptButton({ disabled, onParsed }: Props) {
         onChange={(e) => {
           const file = e.currentTarget.files?.[0]
           if (file) handleFile(file)
+          e.currentTarget.value = ''
         }}
       />
       <button
         type="button"
-        disabled={disabled || state !== 'idle'}
+        disabled={disabled || state === 'uploading' || state === 'parsing'}
         onClick={() => inputRef.current?.click()}
-        className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-lg transition disabled:opacity-50 disabled:pointer-events-none focus-visible:ring-2 focus-visible:ring-accent-2 outline-none',
-          'glass',
-        )}
-        aria-label="Upload receipt"
+        className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-white/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 disabled:pointer-events-none disabled:opacity-50"
+        aria-label="Scan a receipt"
       >
-        <Camera className="h-4 w-4" />
+        {state === 'uploading' || state === 'parsing'
+          ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
+          : <Camera className="size-5" aria-hidden />}
       </button>
-      {state !== 'idle' && (
-        <p className="text-xs text-muted-foreground">
-          {state === 'uploading' && 'Uploading…'}
-          {state === 'parsing' && 'Parsing…'}
-          {state === 'error' && 'Failed'}
-        </p>
-      )}
-      {state === 'error' && (
-        <p className="text-xs text-destructive">{errorMsg}</p>
+      {status && (
+        <span role="status" className={cn('min-w-0 truncate text-xs', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>{status}</span>
       )}
     </div>
   )

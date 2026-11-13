@@ -13,9 +13,11 @@ import { useFxRates } from '@/hooks/use-fx-rates'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { convertViaRates } from '@/lib/fx'
 import { currencySymbol } from '@/lib/currency'
+import { FIELD_SELECT } from '@/components/sort-control'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { computeBudgetProgress, yearMonthInTz } from '@/lib/budget-exec'
 import type { MoneyEntryRow } from '@/lib/dexie'
+import { useUndo } from '@/components/undo-provider'
 
 type Props = { userId: string }
 
@@ -60,6 +62,7 @@ export function BudgetSection({ userId }: Props) {
   const entries = useMemo(() => withYourShare(entriesRaw, shares), [entriesRaw, shares])
   const { prefs } = useUserPrefs()
   const { rates } = useFxRates([...SUPPORTED_CURRENCIES])
+  const undo = useUndo()
   const [adding, setAdding] = useState(false)
   const [newCatId, setNewCatId] = useState('')
   const [newAmount, setNewAmount] = useState('')
@@ -89,23 +92,24 @@ export function BudgetSection({ userId }: Props) {
   }
 
   return (
-    <section className="glass-soft rounded-2xl p-3 flex flex-col gap-3" aria-label="Budgets">
+    <section className="glass rounded-2xl p-4 flex flex-col gap-3" aria-labelledby="budgets-heading">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium">Budgets</h2>
+        <h2 id="budgets-heading" className="text-sm font-semibold">Budgets</h2>
         {unbudgeted.length > 0 && (
           <button
             type="button"
             aria-label="Add budget"
-            className="flex items-center gap-1 min-h-[44px] px-2 text-xs text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
+            aria-expanded={adding}
+            className="-mr-2 flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm text-accent-2 outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-accent-2"
             onClick={() => setAdding(a => !a)}
           >
-            <Plus className="w-4 h-4" /> Add
+            <Plus className="size-4" aria-hidden /> Add
           </button>
         )}
       </div>
 
       {progress.length === 0 && !adding && (
-        <p className="text-xs text-muted-foreground">No budgets yet — add one or say &quot;set a budget for food 8000&quot;.</p>
+        <p className="text-sm text-muted-foreground">No budgets yet. Add one, or type “set a budget for food 8000” above.</p>
       )}
 
       <ul className="flex flex-col gap-2">
@@ -113,22 +117,26 @@ export function BudgetSection({ userId }: Props) {
           const cat = catById.get(p.categoryId)
           return (
             <li key={p.categoryId} className="flex flex-col gap-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1">
-                  <span>{cat?.icon ?? ''}</span>
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1.5">
+                  {cat?.icon && <span aria-hidden="true">{cat.icon}</span>}
                   <span>{cat?.name ?? 'Category'}</span>
                 </span>
                 <span className="flex items-center gap-2">
-                  <span className="font-mono tabular-nums text-muted-foreground">
-                    {fmt(p.spent, primary)} / {fmt(p.limit, primary)}
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {fmt(p.spent, primary)} of {fmt(p.limit, primary)}
                   </span>
                   <button
                     type="button"
                     aria-label={`Remove budget for ${cat?.name ?? 'category'}`}
-                    className="min-h-[44px] px-1 text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
-                    onClick={() => removeBudget(userId, p.categoryId)}
+                    className="-mr-3 flex size-11 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-accent-2"
+                    onClick={async () => {
+                      const limit = p.limit
+                      await removeBudget(userId, p.categoryId)
+                      undo.push(`Removed the ${cat?.name ?? 'category'} budget`, () => writeBudget(userId, p.categoryId, limit, primary))
+                    }}
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="size-4" aria-hidden />
                   </button>
                 </span>
               </div>
@@ -151,7 +159,7 @@ export function BudgetSection({ userId }: Props) {
         <div className="flex flex-col gap-2 border-t border-white/10 pt-2">
           <select
             aria-label="Category"
-            className="glass-soft rounded-lg px-2 py-2 min-h-[44px] text-xs bg-transparent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+            className={FIELD_SELECT}
             value={newCatId}
             onChange={e => setNewCatId(e.target.value)}
           >
@@ -163,14 +171,14 @@ export function BudgetSection({ userId }: Props) {
               aria-label="Monthly amount"
               inputMode="decimal"
               placeholder={`Monthly limit (${currencySymbol(primary)})`}
-              className="glass-soft flex-1 rounded-lg px-2 py-2 min-h-[44px] text-xs bg-transparent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
+              className="glass-soft min-h-11 flex-1 rounded-lg border border-input px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-accent-2 md:text-sm"
               value={newAmount}
               onChange={e => setNewAmount(e.target.value)}
             />
             <button
               type="button"
               aria-label="Save budget"
-              className="min-h-[44px] px-3 text-xs rounded-lg bg-accent-2/20 text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none disabled:opacity-40"
+              className="min-h-11 rounded-lg bg-accent-2/20 px-4 text-sm text-accent-2 outline-none focus-visible:ring-2 focus-visible:ring-accent-2 disabled:opacity-40"
               disabled={!newCatId || !newAmount}
               onClick={submitNew}
             >

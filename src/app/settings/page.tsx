@@ -1,129 +1,114 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { AuroraBackground } from '@/components/aurora-background'
+import { useRouter } from 'next/navigation'
+import {
+  ArrowLeftRight, ChevronRight, DatabaseBackup, FolderKanban, Landmark, LogOut, MailPlus, RefreshCw,
+  Repeat, Settings2, ShieldCheck, Tags, Target, Users,
+} from 'lucide-react'
+import { PageShell } from '@/components/page-shell'
+import { Button } from '@/components/ui/button'
+import { authClient } from '@/lib/auth-client'
 import { useDemo } from '@/hooks/use-demo'
+
+type Item = { href: string; title: string; description: string; icon: React.ComponentType<{ className?: string }>; hideInDemo?: boolean }
+
+const GROUPS: { title: string; items: Item[] }[] = [
+  {
+    title: 'Money',
+    items: [
+      { href: '/settings/categories', title: 'Categories', description: 'Add, rename and archive spend and income categories.', icon: Tags },
+      { href: '/settings/accounts', title: 'Accounts', description: 'Bank accounts and credit cards, and which card is which.', icon: Landmark },
+      { href: '/settings/people', title: 'People', description: 'Who owes you for shared expenses; mark repayments paid.', icon: Users },
+      { href: '/settings/goals', title: 'Goals', description: 'Savings targets and your progress towards them.', icon: Target },
+      { href: '/settings/transfers', title: 'Transfers', description: 'Move money between your accounts.', icon: ArrowLeftRight },
+      { href: '/settings/recurring', title: 'Recurring rules', description: 'Rent, salary, subscriptions and other scheduled entries.', icon: Repeat },
+      { href: '/settings/sms-import', title: 'Auto-import transactions', description: 'Turn bank emails and SMS into entries automatically.', icon: MailPlus, hideInDemo: true },
+    ],
+  },
+  {
+    title: 'Tasks',
+    items: [
+      { href: '/settings/projects', title: 'Projects', description: 'Group tasks; rename, colour and archive projects.', icon: FolderKanban },
+    ],
+  },
+  {
+    title: 'App',
+    items: [
+      { href: '/settings/preferences', title: 'Preferences', description: 'Primary currency, time zone and notifications.', icon: Settings2 },
+      { href: '/settings/security', title: 'Security', description: 'Passkeys and the app PIN lock.', icon: ShieldCheck, hideInDemo: true },
+      { href: '/settings/data', title: 'Data & backup', description: 'Export or import everything as JSON or CSV.', icon: DatabaseBackup, hideInDemo: true },
+    ],
+  },
+]
+
+const ROW = 'flex min-h-14 items-center gap-3 px-4 py-3 outline-none transition-colors hover:bg-white/5 focus-visible:bg-white/5 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-2'
+
+function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section aria-labelledby={`settings-${title}`} className="flex flex-col gap-2">
+      <h2 id={`settings-${title}`} className="px-1 text-sm font-semibold text-muted-foreground">{title}</h2>
+      <div className="glass overflow-hidden rounded-2xl">{children}</div>
+    </section>
+  )
+}
 
 export default function SettingsPage() {
   const { demoMode } = useDemo()
+  const router = useRouter()
+  const [email, setEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    authClient.getSession().then(res => setEmail(res.data?.user?.email ?? null)).catch(() => setEmail(null))
+  }, [])
+
   return (
-    <>
-      <AuroraBackground />
-      <main className="mx-auto flex w-full max-w-md md:max-w-3xl flex-col gap-4 p-6">
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <Link href="/settings/categories">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>Categories</CardTitle>
-              <CardDescription>Add, rename, archive your spend + income categories.</CardDescription>
-            </CardHeader>
-          </Card>
+    <PageShell title="Settings">
+      {GROUPS.map(group => (
+        <SettingsGroup key={group.title} title={group.title}>
+          <ul className="divide-y divide-white/10">
+            {group.items.filter(i => !(demoMode && i.hideInDemo)).map(item => (
+              <li key={item.href}>
+                <Link href={item.href} className={ROW}>
+                  <item.icon className="size-5 shrink-0 text-accent-2" aria-hidden />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-sm font-medium">{item.title}</span>
+                    <span className="text-xs text-muted-foreground">{item.description}</span>
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </SettingsGroup>
+      ))}
+
+      {!demoMode && (
+        <SettingsGroup title="Account">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <p className="min-w-0 text-sm">
+              <span className="block text-xs text-muted-foreground">Signed in as</span>
+              <span className="break-all">{email ?? '…'}</span>
+            </p>
+            <Button variant="outline" onClick={() => authClient.signOut().then(() => router.replace('/login'))}>
+              <LogOut className="size-4" aria-hidden />
+              Sign out
+            </Button>
+          </div>
+        </SettingsGroup>
+      )}
+
+      <SettingsGroup title="Maintenance">
+        <Link href="/settings/rebuild" className={ROW}>
+          <RefreshCw className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-sm font-medium">Rebuild server data</span>
+            <span className="text-xs text-muted-foreground">Re-sync your history into the server tables if budgets or insights look stale. Safe to run any time.</span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
-        <Link href="/settings/accounts">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>Accounts</CardTitle>
-              <CardDescription>Add, rename, archive bank accounts and credit cards.</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-        <Link href="/settings/people">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>People</CardTitle>
-              <CardDescription>Who owes you for shared expenses; mark repayments paid.</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-        <Link href="/settings/goals">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>Goals</CardTitle>
-              <CardDescription>Set savings targets and track progress toward your goals.</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-        <Link href="/settings/transfers">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>Transfers</CardTitle>
-              <CardDescription>Move money between your accounts.</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-        <Link href="/settings/projects">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>Projects</CardTitle>
-              <CardDescription>Group your tasks; rename, color, and archive projects.</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-        <Link href="/settings/recurring">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>Recurring rules</CardTitle>
-              <CardDescription>Manage scheduled spend + income (rent, salary, subscriptions).</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-        {!demoMode && (
-          <Link href="/settings/security">
-            <Card className="hover:bg-white/10 transition">
-              <CardHeader>
-                <CardTitle>Security</CardTitle>
-                <CardDescription>Passkeys (Face ID sign-in) and app PIN lock.</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-        )}
-        <Link href="/settings/preferences">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>Preferences</CardTitle>
-              <CardDescription>Primary currency, time zone, and other settings.</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-        {!demoMode && (
-          <Link href="/settings/sms-import">
-            <Card className="hover:bg-white/10 transition">
-              <CardHeader>
-                <CardTitle>Auto-import transactions</CardTitle>
-                <CardDescription>Turn bank transaction emails + SMS into money entries automatically.</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-        )}
-        {!demoMode && (
-          <Link href="/settings/data">
-            <Card className="hover:bg-white/10 transition">
-              <CardHeader>
-                <CardTitle>Data & backup</CardTitle>
-                <CardDescription>Export and import your complete data as JSON or CSV.</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-        )}
-        <Link href="/insights">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>Insights</CardTitle>
-              <CardDescription>Browse your weekly digests + generate this week on demand.</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-        <Link href="/settings/rebuild">
-          <Card className="hover:bg-white/10 transition">
-            <CardHeader>
-              <CardTitle>Rebuild server data</CardTitle>
-              <CardDescription>Re-sync your history into the server tables (fixes stale budgets/insights). Safe to run anytime.</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-        <Link href="/app" className="text-sm text-muted-foreground hover:underline">← Back to Lifeloom</Link>
-      </main>
-    </>
+      </SettingsGroup>
+    </PageShell>
   )
 }

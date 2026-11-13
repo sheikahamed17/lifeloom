@@ -6,6 +6,11 @@ import { useMoneyEntries } from '@/hooks/use-money-entries'
 import type { MoneyEntryRow } from '@/lib/dexie'
 import type { MoneyFilter, MoneySort } from '@/lib/money-filter-sort'
 import { monthBounds } from '@/lib/money-filter-sort'
+import { FIELD_SELECT } from '@/components/sort-control'
+
+const SOURCE_LABEL: Record<MoneyEntryRow['source'], string> = {
+  manual: 'Typed by hand', voice: 'Voice', receipt: 'Receipt photo', sms: 'SMS', email: 'Email', recurring: 'Recurring rule',
+}
 
 type Props = {
   userId: string
@@ -56,100 +61,90 @@ export function MoneyControls({ userId, filter, sort, onFilter, onSort }: Props)
         ? 'last-month'
         : 'all'
 
+  const field = (label: string, control: React.ReactNode) => (
+    <label className="flex flex-col gap-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {control}
+    </label>
+  )
+
   return (
-    <div className="flex flex-col gap-2 flex-wrap md:flex-row md:items-end">
-      <select
-        value={filter.categoryName ?? ''}
-        onChange={e => onFilter({ ...filter, categoryName: e.target.value === '' ? null : e.target.value === '__UNCATEGORIZED__' ? 'Uncategorized' : e.target.value })}
-        className="min-h-[44px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-      >
-        <option value="">All categories</option>
-        <option value="__UNCATEGORIZED__">Uncategorized</option>
-        {spendCats.length > 0 && (
-          <optgroup label="Spend">
-            {spendCats.map(c => (
-              <option key={c.id} value={c.name}>
-                {c.icon ? `${c.icon} ` : ''}{c.name}
-              </option>
-            ))}
-          </optgroup>
-        )}
-        {incomeCats.length > 0 && (
-          <optgroup label="Income">
-            {incomeCats.map(c => (
-              <option key={c.id} value={c.name}>
-                {c.icon ? `${c.icon} ` : ''}{c.name}
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
+    <div className="grid gap-3 sm:grid-cols-2">
+      {field('Category', (
+        <select
+          value={filter.categoryName ?? ''}
+          onChange={e => onFilter({ ...filter, categoryName: e.target.value === '' ? null : e.target.value === '__UNCATEGORIZED__' ? 'Uncategorized' : e.target.value })}
+          className={FIELD_SELECT}
+        >
+          <option value="">All categories</option>
+          <option value="__UNCATEGORIZED__">Uncategorized</option>
+          {spendCats.length > 0 && (
+            <optgroup label="Spend">
+              {spendCats.map(c => <option key={c.id} value={c.name}>{c.icon ? `${c.icon} ` : ''}{c.name}</option>)}
+            </optgroup>
+          )}
+          {incomeCats.length > 0 && (
+            <optgroup label="Income">
+              {incomeCats.map(c => <option key={c.id} value={c.name}>{c.icon ? `${c.icon} ` : ''}{c.name}</option>)}
+            </optgroup>
+          )}
+        </select>
+      ))}
 
-      <select
-        value={filter.source ?? ''}
-        onChange={e => onFilter({ ...filter, source: e.target.value === '' ? null : (e.target.value as MoneyEntryRow['source']) })}
-        className="min-h-[44px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-      >
-        <option value="">All sources</option>
-        {sources.map(s => {
-          if (s === 'all') return null
-          return (
-            <option key={s} value={s}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </option>
-          )
-        })}
-      </select>
+      {field('When', (
+        <select value={currentDateRange} onChange={e => handleDateRangeChange(e.target.value as 'this-month' | 'last-month' | 'all')} className={FIELD_SELECT}>
+          <option value="all">All time</option>
+          <option value="this-month">This month</option>
+          <option value="last-month">Last month</option>
+        </select>
+      ))}
 
-      <select
-        value={filter.tag ?? ''}
-        onChange={e => onFilter({ ...filter, tag: e.target.value === '' ? null : e.target.value })}
-        className="min-h-[44px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-      >
-        <option value="">All tags</option>
-        {distinctTags.map(tag => (
-          <option key={tag} value={tag}>
-            {tag}
-          </option>
-        ))}
-      </select>
+      {field('Came from', (
+        <select
+          value={filter.source ?? ''}
+          onChange={e => onFilter({ ...filter, source: e.target.value === '' ? null : (e.target.value as MoneyEntryRow['source']) })}
+          className={FIELD_SELECT}
+        >
+          <option value="">Anywhere</option>
+          {sources.filter(s => s !== 'all').map(s => <option key={s} value={s}>{SOURCE_LABEL[s as MoneyEntryRow['source']]}</option>)}
+        </select>
+      ))}
 
-      <div className="flex gap-1">
-        {(['all', 'out', 'in'] as const).map(d => (
-          <button
-            key={d}
-            onClick={() => onFilter({ ...filter, direction: d === 'all' ? null : d })}
-            className={`min-h-[44px] px-3 py-2 rounded-lg text-sm transition-colors ${
-              (d === 'all' && filter.direction === null) || (d !== 'all' && filter.direction === d)
-                ? 'bg-accent-2 text-background'
-                : 'bg-white/5 border border-white/10 text-foreground hover:bg-white/10'
-            }`}
-          >
-            {d === 'all' ? 'All' : d === 'out' ? 'Spent' : 'Earned'}
-          </button>
-        ))}
-      </div>
+      {field('Tag', (
+        <select value={filter.tag ?? ''} onChange={e => onFilter({ ...filter, tag: e.target.value === '' ? null : e.target.value })} className={FIELD_SELECT}>
+          <option value="">Any tag</option>
+          {distinctTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+        </select>
+      ))}
 
-      <select
-        value={sort}
-        onChange={e => onSort(e.target.value as MoneySort)}
-        className="min-h-[44px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-      >
-        <option value="date-desc">Newest</option>
-        <option value="date-asc">Oldest</option>
-        <option value="amount-desc">Amount ↓</option>
-        <option value="amount-asc">Amount ↑</option>
-      </select>
+      <fieldset className="flex flex-col gap-1">
+        <legend className="mb-1 text-xs text-muted-foreground">Type</legend>
+        <div className="glass-soft flex gap-1 rounded-lg p-1">
+          {(['all', 'out', 'in'] as const).map(d => {
+            const pressed = (d === 'all' && filter.direction === null) || (d !== 'all' && filter.direction === d)
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={pressed}
+                onClick={() => onFilter({ ...filter, direction: d === 'all' ? null : d })}
+                className={`min-h-9 flex-1 rounded-md text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 ${pressed ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {d === 'all' ? 'All' : d === 'out' ? 'Spent' : 'Earned'}
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
 
-      <select
-        value={currentDateRange}
-        onChange={e => handleDateRangeChange(e.target.value as 'this-month' | 'last-month' | 'all')}
-        className="min-h-[44px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-      >
-        <option value="all">All time</option>
-        <option value="this-month">This month</option>
-        <option value="last-month">Last month</option>
-      </select>
+      {field('Sort', (
+        <select value={sort} onChange={e => onSort(e.target.value as MoneySort)} className={FIELD_SELECT}>
+          <option value="date-desc">Newest first</option>
+          <option value="date-asc">Oldest first</option>
+          <option value="amount-desc">Largest first</option>
+          <option value="amount-asc">Smallest first</option>
+        </select>
+      ))}
     </div>
   )
 }

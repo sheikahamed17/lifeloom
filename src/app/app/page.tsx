@@ -1,12 +1,16 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Settings, Search, LayoutDashboard, CheckCircle2, Sparkles, BookOpen, X } from 'lucide-react'
+import { CircleHelp, PenLine, X } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { LockGate } from '@/components/lock-gate'
-import { PulseLogo } from '@/components/pulse-logo'
+import { AppHeader } from '@/components/app-header'
+import { ReviewQueue } from '@/components/review-queue'
+import { MonthSummary, MoneyOverview } from '@/components/money-overview'
+import { ListSection } from '@/components/list-section'
+import { GettingStarted } from '@/components/dashboard/getting-started'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AuroraBackground } from '@/components/aurora-background'
@@ -18,18 +22,14 @@ import { isQueryPlan } from '@/lib/query-plans'
 import { speak, cancelSpeech } from '@/lib/speak'
 import { speakableAnswer, type SpokenAnswerInput } from '@/lib/speak-answer'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
-import { MoneyCard } from '@/components/money-card'
 import { MoneyList } from '@/components/money-list'
 import { MoneyControls } from '@/components/money-controls'
-import { DigestCard } from '@/components/digest-card'
 import { EMPTY_MONEY_FILTER, type MoneyFilter, type MoneySort } from '@/lib/money-filter-sort'
 import { SortControl } from '@/components/sort-control'
 import { type DateSort, type TaskSort } from '@/lib/list-sort'
-import { BudgetSection } from '@/components/budget-section'
-import { CardsSection } from '@/components/cards-section'
 import { VoiceRecorder } from '@/components/voice-recorder'
 import { ReceiptButton } from '@/components/receipt-button'
-import { TabBar } from '@/components/tab-bar'
+import { TabBar, DOCK_CLEARANCE } from '@/components/tab-bar'
 import { TaskList } from '@/components/task-list'
 import { TaskFilter } from '@/components/task-filter'
 import { TaskTagFilter } from '@/components/task-tag-filter'
@@ -91,6 +91,8 @@ function nextDueFromAnchor(anchorIso: string, period: 'daily'|'weekly'|'monthly'
   })
 }
 
+const CAPTURE_ICON = 'flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-white/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 disabled:pointer-events-none disabled:opacity-50'
+
 function AppPageInner() {
   const router = useRouter()
   const [user, setUser] = useState<{ id: string; email: string } | null>(null)
@@ -108,6 +110,29 @@ function AppPageInner() {
   // Unplaced input is never wiped silently (critique P0): the text stays and this explains.
   const [captureNotice, setCaptureNotice] = useState<null | 'unplaced' | 'unreachable'>(null)
   const undo = useUndo()
+  const captureInputRef = useRef<HTMLInputElement>(null)
+  const captureResultRef = useRef<HTMLDivElement>(null)
+
+  // "/" jumps to the capture field from anywhere on the page (frequent-user shortcut).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return
+      if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
+      e.preventDefault()
+      captureInputRef.current?.focus()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  // The capture bar is sticky, so a capture can start deep in the list: bring
+  // whatever it opens (editor, answer, help, the "couldn't tell" message) into view.
+  const captureResult = draft ? 'chip' : queryPlan ? 'answer' : showHelp ? 'help' : captureNotice
+  useEffect(() => {
+    if (!captureResult) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    captureResultRef.current?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+  }, [captureResult])
   const [activeTab, setTab] = useTabState()
   const { prefs } = useUserPrefs()
   const searchParams = useSearchParams()
@@ -705,55 +730,45 @@ function AppPageInner() {
     pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
   }
 
-  if (!user) return <p className="p-8">Loading…</p>
+  if (!user) return <p className="p-8 text-sm text-muted-foreground">Loading…</p>
+
+  const captureBusy = draft !== null || parsing || queryPlan !== null
+  const filterByCategory = (name: string) => setMoneyFilter(f => ({ ...f, categoryName: name }))
+  const moneyFilterCount = [moneyFilter.categoryName, moneyFilter.source, moneyFilter.tag, moneyFilter.direction, moneyFilter.from].filter(Boolean).length
+  const taskFilterCount = (taskFilter !== 'open' ? 1 : 0) + (taskProjectId ? 1 : 0) + (taskTag ? 1 : 0)
 
   return (
     <>
       <AuroraBackground />
-      <main className="mx-auto grid w-full max-w-6xl gap-6 p-6 pb-[calc(6rem_+_env(safe-area-inset-bottom))] md:gap-8 md:p-8 lg:pb-8 lg:grid-cols-[1fr_360px]">
-        <div className="flex min-w-0 flex-col gap-6 md:gap-7">
-          <header className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <PulseLogo className="size-6" />
-              <h1 className="text-2xl font-semibold">Lifeloom</h1>
-            </div>
-            <div className="flex flex-wrap items-center gap-1 md:gap-3">
-              <button
-                type="button"
-                aria-label="Search"
-                onClick={() => setSearchOpen(true)}
-                className="rounded-xl p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-              >
-                <Search className="h-5 w-5" />
-              </button>
-              <Link href="/dashboard" className="rounded-xl p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 outline-none" aria-label="Dashboard">
-                <LayoutDashboard className="h-5 w-5" />
-              </Link>
-              <Link href="/habits" className="rounded-xl p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 outline-none" aria-label="Habits">
-                <CheckCircle2 className="h-5 w-5" />
-              </Link>
-              <Link href="/journal" className="rounded-xl p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 outline-none" aria-label="Journal">
-                <BookOpen className="h-5 w-5" />
-              </Link>
-              <Link href="/assistant" className="rounded-xl p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 outline-none" aria-label="Assistant">
-                <Sparkles className="h-5 w-5" />
-              </Link>
-              <Link href="/settings" className="rounded-xl p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 outline-none" aria-label="Settings">
-                <Settings className="h-5 w-5" />
-              </Link>
-              <Button size="sm" variant="outline"
-                onClick={() => authClient.signOut().then(() => router.replace('/login'))}>
-                Sign out
-              </Button>
-            </div>
-          </header>
-          <p className="text-xs text-muted-foreground">Signed in as {user.email}</p>
+      <main className={`mx-auto grid w-full max-w-6xl content-start gap-4 p-4 sm:p-6 md:gap-x-8 md:gap-y-5 md:p-8 lg:grid-cols-[1fr_380px] lg:pb-8 ${DOCK_CLEARANCE}`}>
+        {/* Full width on desktop so every destination fits beside the name. */}
+        <div className="lg:col-span-2">
+          <AppHeader onSearch={() => setSearchOpen(true)} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-4 md:gap-5">
 
-          {/* Shared input header — voice + text — dispatches to either tab */}
-          <div className="glass rounded-2xl flex flex-wrap items-center justify-between gap-2 p-3">
-            <div className="flex items-center gap-2">
+          {/* The capture bar: the text field leads, voice / receipt / manual are secondary.
+              Sticky, so capture is one tap away from anywhere in the list. */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); parseText() }}
+            className="glass sticky top-[calc(0.5rem_+_env(safe-area-inset-top))] z-30 flex flex-col gap-1 rounded-2xl p-2"
+          >
+            <label htmlFor="capture-input" className="sr-only">Capture a note, task or spend</label>
+            <Input
+              id="capture-input"
+              ref={captureInputRef}
+              value={text}
+              onChange={e => { setText(e.target.value); if (captureNotice) setCaptureNotice(null) }}
+              placeholder="Add a note, task or spend…"
+              autoComplete="off"
+              enterKeyHint="send"
+              disabled={captureBusy}
+              className="h-11 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+            />
+            <div className="flex items-center gap-0.5">
               <VoiceRecorder
-                disabled={draft !== null || parsing || queryPlan !== null}
+                compact
+                disabled={captureBusy}
                 onParsed={(payload, transcript, intent) => {
                   if (intent === 'chat') {
                     setShowHelp(true)
@@ -769,54 +784,41 @@ function AppPageInner() {
                 }}
               />
               <ReceiptButton
-                disabled={draft !== null || parsing || queryPlan !== null}
+                disabled={captureBusy}
                 onParsed={(payload, previewUrl) => {
                   setDraft({ ...(payload as unknown as ChipDraft), receiptPreviewUrl: previewUrl } as ChipDraft)
                 }}
               />
-              <Button
+              <button
                 type="button"
-                size="sm"
-                variant="outline"
-                aria-label="Add an entry manually"
-                disabled={draft !== null || parsing || queryPlan !== null}
-                onClick={() => {
-                  const tabKind = activeTab === 'tasks' ? 'task' : activeTab === 'notes' ? 'note' : activeTab === 'learning' ? 'learning' : 'money'
-                  setDraft(blankDraftForKind(tabKind, prefs.primary_currency ?? 'INR', new Date().toISOString()))
-                }}
+                aria-label="Add an entry by hand"
+                disabled={captureBusy}
+                onClick={() => setDraft(blankDraftForKind(tabKind(), prefs.primary_currency ?? 'INR', new Date().toISOString()))}
+                className={CAPTURE_ICON}
               >
-                + Add
-              </Button>
-              <Button
+                <PenLine className="size-5" aria-hidden />
+              </button>
+              <button
                 type="button"
-                size="sm"
-                variant="outline"
-                aria-label="What can I do?"
-                disabled={draft !== null || parsing || queryPlan !== null}
-                onClick={() => setShowHelp(true)}
+                aria-label="What can I capture?"
+                aria-expanded={showHelp}
+                disabled={captureBusy}
+                onClick={() => setShowHelp(s => !s)}
+                className={CAPTURE_ICON}
               >
-                ?
+                <CircleHelp className="size-5" aria-hidden />
+              </button>
+              <span className="flex-1" />
+              {!online && (
+                <span role="status" className="mr-2 text-xs text-warning">Offline: saved on this device</span>
+              )}
+              <Button type="submit" className={cn('h-10 px-5', text.trim() && !captureBusy && 'glow-cta')} disabled={captureBusy || !text.trim()}>
+                {parsing ? 'Adding…' : 'Add'}
               </Button>
             </div>
-            {!online && (
-              <div role="status" className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded whitespace-nowrap">
-                ● Offline — captures log manually / queue
-              </div>
-            )}
-            <form onSubmit={(e) => { e.preventDefault(); parseText() }} className="flex flex-1 gap-2 ml-2">
-              <Input
-                value={text}
-                onChange={e => { setText(e.target.value); if (captureNotice) setCaptureNotice(null) }}
-                placeholder='spent 80 on chai — or — remind me to call mom'
-                disabled={parsing || draft !== null || queryPlan !== null}
-                className="bg-transparent placeholder:text-muted-foreground border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-              />
-              <Button type="submit" disabled={parsing || draft !== null || queryPlan !== null || !text.trim()}>
-                {parsing ? 'Parsing…' : online ? 'Parse' : 'Add'}
-              </Button>
-            </form>
-          </div>
+          </form>
 
+          <div ref={captureResultRef} className="flex scroll-mt-36 flex-col gap-4 empty:hidden md:gap-5">
           {captureNotice && !draft && (
             <div role="alert" className="glass-soft flex flex-col gap-2 rounded-2xl p-3 text-sm sm:flex-row sm:items-center">
               <p className="flex-1">
@@ -825,15 +827,15 @@ function AppPageInner() {
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={addManually}>Add it manually</Button>
-                <Button variant="ghost" aria-label="Dismiss" onClick={() => setCaptureNotice(null)}><X className="size-4" aria-hidden /></Button>
+                <Button variant="ghost" size="icon" aria-label="Dismiss" onClick={() => setCaptureNotice(null)}><X className="size-4" aria-hidden /></Button>
               </div>
             </div>
           )}
 
           {queuedCount > 0 && (
-            <div aria-live="polite" className="text-xs text-muted-foreground px-3 py-2">
-              {queuedCount} capture{queuedCount === 1 ? '' : 's'} pending
-            </div>
+            <p aria-live="polite" className="px-1 text-xs text-muted-foreground">
+              {queuedCount} capture{queuedCount === 1 ? '' : 's'} waiting to send
+            </p>
           )}
 
           {draft && (
@@ -852,39 +854,16 @@ function AppPageInner() {
           )}
 
           {queryPlan && queryPlan.kind === 'query_money' && (
-            <QueryAnswerCard
-              userId={user.id}
-              plan={queryPlan}
-              onResult={handleAnswerResult}
-              onDismiss={dismissQuery}
-            />
+            <QueryAnswerCard userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
           )}
-
           {queryPlan && queryPlan.kind === 'query_task' && (
-            <QueryTaskListAnswer
-              userId={user.id}
-              plan={queryPlan}
-              onResult={handleAnswerResult}
-              onDismiss={dismissQuery}
-            />
+            <QueryTaskListAnswer userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
           )}
-
           {queryPlan && queryPlan.kind === 'query_learning' && (
-            <QueryLearningListAnswer
-              userId={user.id}
-              plan={queryPlan}
-              onResult={handleAnswerResult}
-              onDismiss={dismissQuery}
-            />
+            <QueryLearningListAnswer userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
           )}
-
           {queryPlan && queryPlan.kind === 'query_notes' && (
-            <QueryNotesListAnswer
-              userId={user.id}
-              plan={queryPlan}
-              onResult={handleAnswerResult}
-              onDismiss={dismissQuery}
-            />
+            <QueryNotesListAnswer userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
           )}
 
           {showHelp && !draft && !queryPlan && (
@@ -892,143 +871,150 @@ function AppPageInner() {
               onPick={(p) => {
                 setShowHelp(false)
                 setText(p)
+                captureInputRef.current?.focus()
               }}
               onDismiss={() => setShowHelp(false)}
             />
           )}
-
-          <TodayNudge userId={user.id} onGoToTasks={() => setTab('tasks')} />
-
-          {/* Desktop tab bar — appears in document flow above the tab content */}
-          <div className="hidden lg:block">
-            <TabBar variant="inline" active={activeTab} onChange={setTab} taskBadgeCount={taskBadgeCount} />
           </div>
 
           {showPushNudge && (
-            <div className="flex items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
-              <span className="text-blue-900">Get notified when tasks are due</span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
+            <div className="glass-soft flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-2 text-sm">
+              <span>Get a notification when a task is due?</span>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
                   onClick={async () => {
                     setShowPushNudge(false)
                     await db.sync_meta.put({ key: 'push-nudge-shown', value: '1' })
                     await pushSubscribe().catch((err) => console.error('subscribe', err))
                   }}
-                  className="font-semibold text-blue-600 hover:underline"
                 >
-                  Enable
-                </button>
-                <button
-                  type="button"
+                  Turn on
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={async () => {
                     setShowPushNudge(false)
                     await db.sync_meta.put({ key: 'push-nudge-shown', value: '1' })
                   }}
-                  className="text-blue-600 hover:underline"
                 >
-                  Dismiss
-                </button>
+                  Not now
+                </Button>
               </div>
             </div>
           )}
 
-          {/* Conditional tab content */}
+          <TodayNudge userId={user.id} onGoToTasks={() => setTab('tasks')} />
+
+          {/* Desktop section switcher, in the page flow (the phone uses the dock). */}
+          <div className="hidden lg:block">
+            <TabBar variant="inline" active={activeTab} onChange={setTab} taskBadgeCount={taskBadgeCount} />
+          </div>
+
           {activeTab === 'money' && (
-            <div className="flex flex-col gap-3">
-              <DigestCard userId={user.id} />
-              <BudgetSection userId={user.id} />
-              <CardsSection userId={user.id} />
-              <Link href="/analytics" className="inline-flex items-center justify-center min-h-[44px] px-3 py-2 text-xs font-medium uppercase tracking-wide rounded bg-white/5 hover:bg-white/10 transition-colors">📈 Trends</Link>
-              <div className="md:hidden">
-                <MoneyCard userId={user.id} onSelectCategory={(name) => setMoneyFilter(f => ({ ...f, categoryName: name }))} />
+            <div className="flex flex-col gap-4">
+              <GettingStarted userId={user.id} />
+              <ReviewQueue userId={user.id} focusId={categorizeId} />
+              <div className="lg:hidden">
+                <MonthSummary userId={user.id} onSelectCategory={filterByCategory} />
               </div>
-              <MoneyControls userId={user.id} filter={moneyFilter} sort={moneySort} onFilter={setMoneyFilter} onSort={setMoneySort} />
-              <MoneyList userId={user.id} onEdit={editMoney} categorizeId={categorizeId} filter={moneyFilter} sort={moneySort} />
+              <ListSection
+                id="entries"
+                title="Entries"
+                activeFilters={moneyFilterCount}
+                onClearFilters={() => { setMoneyFilter(EMPTY_MONEY_FILTER); setMoneySort('date-desc') }}
+                filters={<MoneyControls userId={user.id} filter={moneyFilter} sort={moneySort} onFilter={setMoneyFilter} onSort={setMoneySort} />}
+              >
+                <MoneyList userId={user.id} onEdit={editMoney} filter={moneyFilter} sort={moneySort} />
+              </ListSection>
             </div>
           )}
           {activeTab === 'tasks' && (
-            <div className="flex flex-col gap-3">
-              <TaskFilter active={taskFilter} onChange={setTaskFilter} />
-              <ProjectPicker userId={user.id} selectedId={taskProjectId} onSelect={setTaskProjectId} noneLabel="All projects" />
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <TaskTagFilter userId={user.id} selectedTag={taskTag} onChange={setTaskTag} />
-                <SortControl
-                  options={[
-                    { value: 'due', label: 'Due date' },
-                    { value: 'created-desc', label: 'Created (newest)' },
-                    { value: 'created-asc', label: 'Created (oldest)' },
-                    { value: 'priority', label: 'Priority' },
-                  ]}
-                  value={taskSort}
-                  onChange={setTaskSort}
-                  label="Sort:"
-                />
-              </div>
+            <ListSection
+              id="tasks"
+              title="Tasks"
+              activeFilters={taskFilterCount}
+              onClearFilters={() => { setTaskFilter('open'); setTaskProjectId(null); setTaskTag(null); setTaskSort('due') }}
+              filters={
+                <>
+                  <TaskFilter active={taskFilter} onChange={setTaskFilter} />
+                  <ProjectPicker userId={user.id} selectedId={taskProjectId} onSelect={setTaskProjectId} noneLabel="All projects" />
+                  <TaskTagFilter userId={user.id} selectedTag={taskTag} onChange={setTaskTag} />
+                  <SortControl
+                    options={[
+                      { value: 'due', label: 'Due date' },
+                      { value: 'created-desc', label: 'Newest first' },
+                      { value: 'created-asc', label: 'Oldest first' },
+                      { value: 'priority', label: 'Priority' },
+                    ]}
+                    value={taskSort}
+                    onChange={setTaskSort}
+                    label="Sort"
+                  />
+                </>
+              }
+            >
               <TaskList userId={user.id} filter={taskFilter} projectId={taskProjectId} tag={taskTag} sort={taskSort} onEdit={editTask} />
-            </div>
+            </ListSection>
           )}
           {activeTab === 'learning' && (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <LearningTagFilter userId={user.id} selectedTag={selectedLearningTag} onChange={setSelectedLearningTag} />
-                <SortControl
-                  options={[
-                    { value: 'newest', label: 'Newest' },
-                    { value: 'oldest', label: 'Oldest' },
-                  ]}
-                  value={learningSort}
-                  onChange={setLearningSort}
-                  label="Sort:"
-                />
-              </div>
+            <ListSection
+              id="learnings"
+              title="Learnings"
+              activeFilters={selectedLearningTag ? 1 : 0}
+              onClearFilters={() => { setSelectedLearningTag(null); setLearningSort('newest') }}
+              filters={
+                <>
+                  <LearningTagFilter userId={user.id} selectedTag={selectedLearningTag} onChange={setSelectedLearningTag} />
+                  <SortControl options={[{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }]} value={learningSort} onChange={setLearningSort} label="Sort" />
+                </>
+              }
+            >
               <LearningList userId={user.id} selectedTag={selectedLearningTag} sort={learningSort} onEdit={editLearning} />
-            </div>
+            </ListSection>
           )}
           {activeTab === 'notes' && (
-            <div className="flex flex-col gap-3">
+            <ListSection
+              id="notes"
+              title="Notes"
+              activeFilters={selectedNotesTag ? 1 : 0}
+              onClearFilters={() => { setSelectedNotesTag(null); setNotesSort('newest') }}
+              filters={
+                <>
+                  <NotesTagFilter userId={user.id} selectedTag={selectedNotesTag} onChange={setSelectedNotesTag} />
+                  <SortControl options={[{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }]} value={notesSort} onChange={setNotesSort} label="Sort" />
+                </>
+              }
+            >
               <Input
+                type="search"
                 aria-label="Search notes"
                 value={notesSearchInputValue}
                 onChange={e => setNotesSearchInputValue(e.target.value)}
                 placeholder="Search notes…"
-                className="min-h-[44px] bg-white/5 border border-white/10 placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent-2 focus-visible:ring-offset-0"
+                className="h-11"
               />
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <NotesTagFilter userId={user.id} selectedTag={selectedNotesTag} onChange={setSelectedNotesTag} />
-                <SortControl
-                  options={[
-                    { value: 'newest', label: 'Newest' },
-                    { value: 'oldest', label: 'Oldest' },
-                  ]}
-                  value={notesSort}
-                  onChange={setNotesSort}
-                  label="Sort:"
-                />
-              </div>
-              <NotesList
-                userId={user.id}
-                selectedTag={selectedNotesTag}
-                searchQuery={notesSearchQuery}
-                sort={notesSort}
-                onEdit={editNote}
-              />
-            </div>
+              <NotesList userId={user.id} selectedTag={selectedNotesTag} searchQuery={notesSearchQuery} sort={notesSort} onEdit={editNote} />
+            </ListSection>
           )}
         </div>
 
-        {/* Desktop-only sticky sidebar (right column) */}
-        <aside className="hidden min-w-0 lg:block">
-          <div className="sticky top-6 flex flex-col gap-4">
-            {activeTab === 'money' && <MoneyCard userId={user.id} onSelectCategory={(name) => setMoneyFilter(f => ({ ...f, categoryName: name }))} />}
-            {activeTab === 'tasks' && <TaskSummary userId={user.id} />}
-            {activeTab === 'learning' && <LearningSummary userId={user.id} />}
-            {activeTab === 'notes' && <NotesSummary userId={user.id} />}
-          </div>
+        {/* Desktop right column: the money Overview (scrolls with the page), or the tab's summary. */}
+        <aside className="hidden min-w-0 lg:block" aria-label={activeTab === 'money' ? 'Money overview' : 'Summary'}>
+          {activeTab === 'money' ? (
+            <MoneyOverview userId={user.id} onSelectCategory={filterByCategory} withDigest />
+          ) : (
+            <div className="sticky top-6 flex flex-col gap-4">
+              {activeTab === 'tasks' && <TaskSummary userId={user.id} />}
+              {activeTab === 'learning' && <LearningSummary userId={user.id} />}
+              {activeTab === 'notes' && <NotesSummary userId={user.id} />}
+            </div>
+          )}
         </aside>
       </main>
 
-      {/* Mobile + tablet fixed bottom tab bar (desktop uses the in-flow bar) */}
+      {/* Phone + tablet dock (desktop uses the in-flow switcher above). */}
       <div className="lg:hidden">
         <TabBar variant="dock" active={activeTab} onChange={setTab} taskBadgeCount={taskBadgeCount} />
       </div>

@@ -1,23 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Trash2, Pencil, Repeat } from 'lucide-react'
+import { ChevronDown, Mail, MessageSquare, Paperclip, Pencil, Repeat, Split, Trash2, Users } from 'lucide-react'
 import { SwipeRow } from '@/components/swipe-row'
 import { RowMenu } from '@/components/row-menu'
-import { CategoryPicker } from '@/components/category-picker'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
-import { useCategories } from '@/hooks/use-categories'
 import { useAllCategories } from '@/hooks/use-all-categories'
 import { useAllAccounts } from '@/hooks/use-all-accounts'
-import { useAccounts } from '@/hooks/use-accounts'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
 import { useAllPeople } from '@/hooks/use-all-people'
 import { sharesByEntry, yourShare } from '@/lib/shares'
-import { accountTokens, addHintDigits, extractAlertIdentifiers, planAccountBackfill } from '@/lib/account-match'
-import { tagEntries, untagEntries } from '@/lib/account-autotag'
 import { useUndo } from '@/components/undo-provider'
 import { resurrectPayload } from '@/lib/undo-delete'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
@@ -29,44 +24,41 @@ import { EntryTimestamp } from '@/components/entry-timestamp'
 import { filterSortMoney } from '@/lib/money-filter-sort'
 import { makeCategoryResolver } from '@/lib/category-resolve'
 import { groupBySplit } from '@/lib/split-group'
-import { cn } from '@/lib/utils'
 import { signedAmount } from '@/lib/capture-feedback'
-import { db, type AccountRow, type MoneyEntryRow } from '@/lib/dexie'
+import { formatDay } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import type { MoneyEntryRow } from '@/lib/dexie'
 import type { MoneyFilter, MoneySort } from '@/lib/money-filter-sort'
 
-type Props = { userId: string; onEdit?: (row: MoneyEntryRow) => void; categorizeId?: string | null; filter?: MoneyFilter; sort?: MoneySort }
+type Props = { userId: string; onEdit?: (row: MoneyEntryRow) => void; filter?: MoneyFilter; sort?: MoneySort }
 
-export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props) {
+// Small metadata chips under an entry: one shape, one size (12 px), Lucide icons only.
+const META = 'inline-flex min-h-6 items-center gap-1 rounded-full border border-white/15 px-2 text-xs text-muted-foreground'
+
+/** "−₹120" / "+₹85,000" (JPY whole), the same signed form the save toast uses. */
+function formatAmount(e: MoneyEntryRow): string {
+  return signedAmount(e.amount, e.currency, e.direction)
+}
+
+export function MoneyList({ userId, onEdit, filter, sort }: Props) {
   const entries = useMoneyEntries(userId)
-  const categories = useCategories(userId)
   const allCats = useAllCategories(userId)
   const allAccounts = useAllAccounts(userId)
-  const activeAccounts = useAccounts(userId)
   const shares = useExpenseShares(userId)
   const allPeople = useAllPeople(userId)
   const sharesFor = useMemo(() => sharesByEntry(shares), [shares])
   const personName = useMemo(() => new Map(allPeople.map(p => [p.id, p.name])), [allPeople])
-  const [linkingId, setLinkingId] = useState<string | null>(null)
   const undo = useUndo()
   const router = useRouter()
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [pickingId, setPickingId] = useState<string | null>(null)
-  const handledCategorizeRef = useRef<string | null>(null)
   const { prefs } = useUserPrefs()
   const { rates } = useFxRates([...SUPPORTED_CURRENCIES])
   const [expandedFx, setExpandedFx] = useState<string | null>(null)
 
-  const categoryById = useMemo(
-    () => new Map(categories.map(c => [c.id, c])),
-    [categories],
-  )
+  const accountById = useMemo(() => new Map(allAccounts.map(a => [a.id, a])), [allAccounts])
 
-  const accountById = useMemo(
-    () => new Map(allAccounts.map(a => [a.id, a])),
-    [allAccounts],
-  )
-
+  // Display names span ALL categories (archived/tombstoned too), never "Uncategorized" for a live id.
   const resolve = useMemo(
     () => makeCategoryResolver(allCats.map(c => ({ id: c.id, name: c.name, icon: c.icon, kind: c.kind }))),
     [allCats],
@@ -76,18 +68,6 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
     if (!filter || !sort) return entries
     return filterSortMoney(entries, filter, sort, resolve)
   }, [entries, filter, sort, resolve])
-
-  // Untagged SMS/email rows whose alert names a card/account number → the last-4
-  // for the "•5872 — which account?" pill.
-  const unknownCardById = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const e of shown) {
-      if (e.account_id || !e.raw_input || (e.source !== 'sms' && e.source !== 'email')) continue
-      const last4 = extractAlertIdentifiers(e.raw_input)[0]
-      if (last4) m.set(e.id, last4)
-    }
-    return m
-  }, [shown])
 
   // Collapse split parts (shared split_group_id) into one expandable row.
   const groups = useMemo(() => groupBySplit(shown), [shown])
@@ -100,148 +80,68 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
     })
   }
 
-  // Push deep-link: open a specific row's inline category picker once + scroll to it.
-  useEffect(() => {
-    if (categorizeId && handledCategorizeRef.current !== categorizeId) {
-      handledCategorizeRef.current = categorizeId
-      setPickingId(categorizeId)
-      requestAnimationFrame(() => {
-        document.getElementById(`pulse-row-${categorizeId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      })
-    }
-  }, [categorizeId])
-
   async function deleteEntry(e: MoneyEntryRow) {
-    const op = await generateOp({
-      entity_kind: 'money', entity_id: e.id,
-      op_type: 'delete', payload: {},
-      user_id: userId,
-    })
-    await applyLocalOp(op)
+    await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: e.id, op_type: 'delete', payload: {}, user_id: userId }))
     pushPullOnce({ userId }).catch(err => console.error('sync', err))
-
-    undo.push(
-      `Deleted ${formatAmount(e)}`,
-      async () => {
-        const undoOp = await generateOp({
-          entity_kind: 'money', entity_id: e.id,
-          op_type: 'update', payload: resurrectPayload('money', e),
-          user_id: userId,
-        })
-        await applyLocalOp(undoOp)
-        pushPullOnce({ userId }).catch(err => console.error('sync', err))
-      },
-    )
-  }
-
-  async function setCategory(e: MoneyEntryRow, categoryId: string) {
-    const op = await generateOp({
-      entity_kind: 'money', entity_id: e.id,
-      op_type: 'update', payload: { category_id: categoryId },
-      user_id: userId,
+    undo.push(`Deleted ${formatAmount(e)}`, async () => {
+      await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: e.id, op_type: 'update', payload: resurrectPayload('money', e), user_id: userId }))
+      pushPullOnce({ userId }).catch(err => console.error('sync', err))
     })
-    await applyLocalOp(op)
-    pushPullOnce({ userId }).catch(err => console.error('sync', err))
-    setPickingId(null)
-  }
-
-  // Tag this entry to `acc`, remember `last4` as one of acc's hints (unless its
-  // name/hints already carry it), then retag every other untagged alert that the
-  // learned hint now matches — so the next email from this card is automatic.
-  // The toast says what actually happened and undoes all of it.
-  async function linkCard(e: MoneyEntryRow, last4: string, acc: AccountRow) {
-    setLinkingId(null)
-    try {
-      const alreadyKnown = accountTokens(acc).digits.includes(last4)
-      const nextHints = alreadyKnown ? null : addHintDigits(acc.match_hints, last4)
-      let learned = acc
-      if (nextHints) {
-        await applyLocalOp(await generateOp({
-          entity_kind: 'account', entity_id: acc.id,
-          op_type: 'update', payload: { match_hints: nextHints },
-          user_id: userId,
-        }))
-        learned = { ...acc, match_hints: nextHints }
-      }
-      const others = planAccountBackfill(entries, activeAccounts.map(a => (a.id === acc.id ? learned : a)))
-        .filter(t => t.id !== e.id && t.account_id === acc.id)
-      const tags = [{ id: e.id, account_id: acc.id }, ...others]
-      const more = Math.max(0, (await tagEntries(userId, tags)) - 1)
-
-      // Future alerts auto-tag only if the digits were saved AND no other account claims them (a tie → untagged).
-      const claimedElsewhere = activeAccounts.some(a => a.id !== acc.id && accountTokens(a).digits.includes(last4))
-      const auto = (alreadyKnown || nextHints !== null) && !claimedElsewhere
-      undo.push(
-        auto
-          ? `•${last4} → ${acc.name}${more ? ` (+${more} more)` : ''}`
-          : `Tagged to ${acc.name} — future •${last4} alerts won't auto-tag`,
-        async () => {
-          // Restore the hints only if nothing else has changed them since.
-          if (nextHints && (await db.accounts.get(acc.id))?.match_hints === nextHints) {
-            await applyLocalOp(await generateOp({
-              entity_kind: 'account', entity_id: acc.id,
-              op_type: 'update', payload: { match_hints: acc.match_hints },
-              user_id: userId,
-            }))
-          }
-          await untagEntries(userId, tags)
-        },
-      )
-    } catch (err) {
-      console.error('link card', err)
-    }
   }
 
   async function deleteGroup(parts: MoneyEntryRow[]) {
     for (const p of parts) {
-      const op = await generateOp({ entity_kind: 'money', entity_id: p.id, op_type: 'delete', payload: {}, user_id: userId })
-      await applyLocalOp(op)
+      await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: p.id, op_type: 'delete', payload: {}, user_id: userId }))
     }
     pushPullOnce({ userId }).catch(err => console.error('sync', err))
-    undo.push(
-      `Deleted split (${parts.length} parts)`,
-      async () => {
-        for (const p of parts) {
-          const undoOp = await generateOp({ entity_kind: 'money', entity_id: p.id, op_type: 'update', payload: resurrectPayload('money', p), user_id: userId })
-          await applyLocalOp(undoOp)
-        }
-        pushPullOnce({ userId }).catch(err => console.error('sync', err))
-      },
+    undo.push(`Deleted split (${parts.length} parts)`, async () => {
+      for (const p of parts) {
+        await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: p.id, op_type: 'update', payload: resurrectPayload('money', p), user_id: userId }))
+      }
+      pushPullOnce({ userId }).catch(err => console.error('sync', err))
+    })
+  }
+
+  const filtered = !!filter && !!(filter.categoryName || filter.source || filter.direction || filter.from || filter.to || filter.tag)
+
+  if (groups.length === 0) {
+    return (
+      <p className="glass-soft rounded-2xl p-4 text-sm text-muted-foreground">
+        {filtered
+          ? 'No entries match these filters.'
+          : 'No money entries yet. Type “spent 80 on chai” above, or connect bank emails in Settings → Auto-import.'}
+      </p>
     )
   }
 
   return (
-    <ul className="flex flex-col gap-2">
-        {groups.length === 0 && (
-          <li className="p-4 text-sm text-muted-foreground">
-            {filter && (filter.categoryName || filter.source || filter.direction || filter.from || filter.to)
-              ? 'No entries match this filter.'
-              : 'No entries yet. Tap the mic above (Phase 1.3) or type below.'}
-          </li>
-        )}
-        {groups.map(g => {
-          if (g.kind === 'split') {
-            const open = expandedGroups.has(g.groupId)
-            const first = g.parts[0]
-            return (
-              <li key={g.groupId} id={`pulse-row-${g.groupId}`} className="glass-soft rounded-2xl p-3 text-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(g.groupId)}
-                    aria-expanded={open}
-                    className="flex flex-1 flex-col items-start min-w-0 text-left focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
-                  >
-                    <span className="mb-1 inline-flex items-center gap-1 rounded-xl bg-white/8 px-2 py-1 text-xs text-muted-foreground">
-                      🧩 {g.parts.length}-way split{first.merchant ? ` · ${first.merchant}` : ''}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{open ? '▾ hide categories' : '▸ show categories'}</span>
-                    <div className="mt-1"><EntryTimestamp occurredAt={first.occurred_at} /></div>
-                  </button>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`font-mono tabular-nums text-sm font-medium whitespace-nowrap ${first.direction === 'out' ? 'text-destructive' : 'text-income'}`}>
-                      {signedAmount(g.total, first.currency, first.direction)}
-                    </span>
+    <ul className="flex flex-col gap-2" aria-labelledby="entries-heading">
+      {groups.map(g => {
+        if (g.kind === 'split') {
+          const open = expandedGroups.has(g.groupId)
+          const first = g.parts[0]
+          return (
+            <li key={g.groupId} id={`pulse-row-${g.groupId}`} className="glass-soft rounded-2xl p-3 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(g.groupId)}
+                  aria-expanded={open}
+                  className="flex min-w-0 flex-1 flex-col items-start gap-1 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-accent-2"
+                >
+                  <span className="text-sm font-medium md:text-base">{first.description || first.merchant || 'Split payment'}</span>
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Split className="size-3.5" aria-hidden />
+                    Split {g.parts.length} ways
+                    <ChevronDown className={cn('size-3.5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
+                  </span>
+                  <EntryTimestamp occurredAt={first.occurred_at} />
+                </button>
+                <div className="flex flex-col items-end">
+                  <span className={cn('whitespace-nowrap font-mono text-sm font-medium tabular-nums', first.direction === 'out' ? 'text-destructive' : 'text-income')}>
+                    {signedAmount(g.total, first.currency, first.direction)}
+                  </span>
+                  <div className="-mb-2 -mr-2">
                     <RowMenu
                       label={`Actions for ${g.parts.length}-way split`}
                       open={menuFor === g.groupId}
@@ -250,254 +150,154 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                     />
                   </div>
                 </div>
-                {open && (
-                  <ul className="mt-2 flex flex-col gap-1 border-t border-white/10 pt-2">
-                    {g.parts.map(p => {
-                      const pc = p.category_id ? categoryById.get(p.category_id) : undefined
-                      return (
-                        <li key={p.id} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="flex items-center gap-1 min-w-0">
-                            <span>{pc?.icon ?? ''}</span>
-                            <span className="truncate text-muted-foreground">{pc?.name ?? 'Uncategorized'}</span>
-                          </span>
-                          <span className="flex items-center gap-2">
-                            <span className="font-mono tabular-nums">{formatMinor(p.amount, p.currency)}</span>
-                            {onEdit && (
-                              <button
-                                type="button"
-                                aria-label={`Edit ${pc?.name ?? 'split part'}`}
-                                onClick={() => onEdit(p)}
-                                className="min-h-[44px] flex items-center text-muted-foreground hover:text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </button>
-                            )}
-                          </span>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </li>
-            )
-          }
-          const e = g.entry
-          const cat = e.category_id ? categoryById.get(e.category_id) : undefined
-          const acc = e.account_id ? accountById.get(e.account_id) : undefined
-          const accName = acc ? (acc.icon ? `${acc.icon} ${acc.name}` : acc.name) : (e.account_id ? 'Unknown account' : null)
-          const cardLast4 = unknownCardById.get(e.id)
-          const mine = sharesFor.get(e.id)
-          const shared = !!mine && mine.length > 0 && e.direction === 'out'
-          return (
-            <li key={e.id} id={`pulse-row-${e.id}`} className="relative">
-              <SwipeRow
-                isOpen={openId === e.id}
-                onOpenChange={o => setOpenId(o ? e.id : null)}
-                onTap={onEdit ? () => onEdit(e) : undefined}
-                onLongPress={() => { setPickingId(null); setLinkingId(null); setMenuFor(e.id) }}
-                onDelete={() => deleteEntry(e)}
-                deleteLabel={`Delete entry: ${e.description || formatAmount(e)}`}
-                className="glass-soft flex items-start justify-between gap-3 rounded-2xl p-3 text-sm transition-colors hover:bg-white/8"
-              >
-                <div className="flex flex-col flex-1 min-w-0">
-                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5 w-fit">
-                    {cat && (
-                      <div className="inline-flex items-center gap-1 rounded-xl bg-white/8 px-2 py-1 text-xs">
-                        <span>{cat.icon ?? ''}</span>
-                        <span className="text-muted-foreground">{cat.name}</span>
-                      </div>
-                    )}
-                    {accName && (
-                      <div className="inline-flex items-center gap-1 rounded-xl bg-white/8 px-2 py-1 text-xs">
-                        <span className="text-muted-foreground">{accName}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-sm md:text-base font-medium text-foreground">
-                    {e.description || e.merchant || (cat ? cat.name : 'Uncategorized')}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {e.description && cat && (
-                      <span className="text-xs text-muted-foreground">{cat.name}</span>
-                    )}
-                    {e.merchant && e.merchant !== (e.description || cat?.name) && (
-                      <span className="text-xs text-muted-foreground">· {e.merchant}</span>
-                    )}
-                  </div>
-                  {(e.tags?.length ?? 0) > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {(e.tags ?? []).map(tag => (
-                        <span
-                          key={tag}
-                          className={cn(
-                            'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
-                            'bg-white/10 text-muted-foreground border border-white/20',
-                          )}
-                        >
-                          {tag}
+              </div>
+              {open && (
+                <ul className="mt-2 flex flex-col border-t border-white/10 pt-1" aria-label="Split parts">
+                  {g.parts.map(p => {
+                    const pc = resolve(p.category_id)
+                    return (
+                      <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          {pc?.icon && <span aria-hidden="true">{pc.icon}</span>}
+                          <span className="truncate text-muted-foreground">{pc?.name ?? 'Uncategorized'}</span>
                         </span>
-                      ))}
-                    </div>
+                        <span className="flex items-center">
+                          <span className="font-mono tabular-nums">{formatMinor(p.amount, p.currency)}</span>
+                          {onEdit && (
+                            <button
+                              type="button"
+                              aria-label={`Edit ${pc?.name ?? 'split part'}`}
+                              onClick={() => onEdit(p)}
+                              className="flex size-11 items-center justify-center rounded-lg text-muted-foreground outline-none hover:text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2"
+                            >
+                              <Pencil className="size-4" aria-hidden />
+                            </button>
+                          )}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </li>
+          )
+        }
+        const e = g.entry
+        const cat = resolve(e.category_id)
+        const acc = e.account_id ? accountById.get(e.account_id) : undefined
+        const mine = sharesFor.get(e.id)
+        const shared = !!mine && mine.length > 0 && e.direction === 'out'
+        const title = e.description || e.merchant || cat?.name || 'Uncategorized'
+        return (
+          <li key={e.id} id={`pulse-row-${e.id}`}>
+            <SwipeRow
+              isOpen={openId === e.id}
+              onOpenChange={o => setOpenId(o ? e.id : null)}
+              onTap={onEdit ? () => onEdit(e) : undefined}
+              onLongPress={() => setMenuFor(e.id)}
+              onDelete={() => deleteEntry(e)}
+              deleteLabel={`Delete ${title} ${formatAmount(e)}`}
+              className="glass-soft flex items-start justify-between gap-3 rounded-2xl p-3 text-sm transition-colors hover:bg-white/8"
+            >
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <p className="text-sm font-medium text-foreground md:text-base">{title}</p>
+                <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                  {cat && (
+                    <span className="inline-flex items-center gap-1">
+                      {cat.icon && <span aria-hidden="true">{cat.icon}</span>}
+                      {cat.name}
+                    </span>
                   )}
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <EntryTimestamp occurredAt={e.occurred_at} />
-                    {e.currency !== prefs.primary_currency && (
-                      <button
-                        type="button"
-                        className="text-[10px] text-muted-foreground hover:text-accent-2 transition text-left focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
-                        onClick={(ev) => { ev.stopPropagation(); setExpandedFx(expandedFx === e.id ? null : e.id) }}
-                      >
-                        {expandedFx === e.id ? (() => {
-                          const conv = convertViaRates(e.amount, e.currency, prefs.primary_currency, e.occurred_at, rates, prefs.fx_overrides ?? {})
-                          return conv
-                            ? `≈ ${currencySymbol(prefs.primary_currency)}${(conv.amount / (prefs.primary_currency === 'JPY' ? 1 : 100)).toFixed(2)} at ${conv.rateDate}`
-                            : 'No FX rate yet for this date'
-                        })() : '≈ convert'}
-                      </button>
-                    )}
-                    {shared && mine!.map(s => (
-                      <Link
-                        key={s.id}
-                        href={`/settings/people#${s.person_id}`}
-                        onClick={ev => ev.stopPropagation()}
-                        aria-label={`${personName.get(s.person_id) ?? 'Someone'} ${s.settled_at ? 'paid' : 'owes'} ${formatMinor(s.amount, e.currency)}`}
-                        className={cn(
-                          'relative text-[10px] rounded-full px-1.5 py-0.5 border transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none before:absolute before:-inset-x-1 before:-inset-y-3',
-                          s.settled_at ? 'border-white/20 text-muted-foreground' : 'border-accent-2/40 text-accent-2 hover:bg-accent-2/10',
-                        )}
-                      >
-                        <span aria-hidden="true">👥 </span>{personName.get(s.person_id) ?? 'Someone'} {s.settled_at ? 'paid' : `owes ${formatMinor(s.amount, e.currency)}`}
-                      </Link>
-                    ))}
-                    {e.receipt_key && (
-                      <button
-                        type="button"
-                        className="text-[10px] border border-white/20 rounded-full px-1.5 py-0.5 text-muted-foreground hover:text-accent-2 hover:border-accent-2 transition focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                        onClick={(ev) => {
-                          ev.stopPropagation()
-                          window.open(`/api/receipt/${e.receipt_key}`, '_blank', 'noopener')
-                        }}
-                      >
-                        📎 receipt
-                      </button>
-                    )}
-                    {e.source === 'sms' && (
-                      <span className="text-[10px] border border-white/20 rounded-full px-1.5 py-0.5 text-muted-foreground">
-                        💳 SMS
-                      </span>
-                    )}
-                    {e.source === 'email' && (
-                      <span className="text-[10px] border border-white/20 rounded-full px-1.5 py-0.5 text-muted-foreground">
-                        📧 Email
-                      </span>
-                    )}
-                    {!e.category_id && (e.source === 'email' || e.source === 'sms') && (
-                      <button
-                        type="button"
-                        onClick={(ev) => { ev.stopPropagation(); setMenuFor(null); setLinkingId(null); setPickingId(pickingId === e.id ? null : e.id) }}
-                        aria-label={`Set category for ${e.description || formatAmount(e)}`}
-                        className="relative text-[10px] border border-amber-400/40 text-amber-400 rounded-full px-1.5 py-0.5 hover:bg-amber-400/10 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none before:absolute before:-inset-x-1 before:-inset-y-3"
-                      >
-                        ⚠ Set category
-                      </button>
-                    )}
-                    {cardLast4 && activeAccounts.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={(ev) => { ev.stopPropagation(); setMenuFor(null); setPickingId(null); setLinkingId(linkingId === e.id ? null : e.id) }}
-                        aria-expanded={linkingId === e.id}
-                        aria-label={`Card •${cardLast4}: which account?`}
-                        className="relative text-[10px] border border-accent-2/40 text-accent-2 rounded-full px-1.5 py-0.5 hover:bg-accent-2/10 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none before:absolute before:-inset-x-1 before:-inset-y-3"
-                      >
-                        💳 •{cardLast4} — which account?
-                      </button>
-                    )}
+                  {e.merchant && e.merchant !== title && <span>· {e.merchant}</span>}
+                  {acc && (
+                    <span className="inline-flex items-center gap-1">
+                      · {acc.icon && <span aria-hidden="true">{acc.icon}</span>}{acc.name}
+                    </span>
+                  )}
+                  {!acc && e.account_id && <span>· Unknown account</span>}
+                </p>
+                {(e.tags?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {(e.tags ?? []).map(tag => <span key={tag} className={META}>{tag}</span>)}
                   </div>
-                </div>
-
-                <div className="flex flex-col items-end">
-                  {shared ? (
-                    <span className="flex flex-col items-end" title={`Full payment ${formatAmount(e)}; the rest is owed to you`}>
-                      <span className="font-mono tabular-nums text-sm font-medium whitespace-nowrap text-destructive">
-                        you {signedAmount(yourShare(e, mine), e.currency, 'out')}
-                      </span>
-                      <span className="font-mono tabular-nums text-xs text-muted-foreground whitespace-nowrap">of {formatAmount(e)}</span>
-                    </span>
-                  ) : (
-                    <span className={`font-mono tabular-nums text-sm font-medium whitespace-nowrap ${
-                      e.direction === 'out' ? 'text-destructive' : 'text-income'
-                    }`}>
-                      {formatAmount(e)}
-                    </span>
+                )}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <EntryTimestamp occurredAt={e.occurred_at} />
+                  {e.source === 'email' && <span className={META}><Mail className="size-3" aria-hidden />Email</span>}
+                  {e.source === 'sms' && <span className={META}><MessageSquare className="size-3" aria-hidden />SMS</span>}
+                  {e.recurring_rule_id && <span className={META}><Repeat className="size-3" aria-hidden />Recurring</span>}
+                  {e.currency !== prefs.primary_currency && (
+                    <button
+                      type="button"
+                      className={cn(META, 'outline-none hover:text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2')}
+                      aria-expanded={expandedFx === e.id}
+                      onClick={() => setExpandedFx(expandedFx === e.id ? null : e.id)}
+                    >
+                      {expandedFx === e.id ? (() => {
+                        const conv = convertViaRates(e.amount, e.currency, prefs.primary_currency, e.occurred_at, rates, prefs.fx_overrides ?? {})
+                        return conv
+                          ? `≈ ${formatMinor(conv.amount, prefs.primary_currency)} at the ${formatDay(conv.rateDate)} rate`
+                          : 'No exchange rate for this date yet'
+                      })() : `In ${currencySymbol(prefs.primary_currency)}`}
+                    </button>
                   )}
-                  <div className="-mb-2 -mr-2">
+                  {shared && mine!.map(s => (
+                    <Link
+                      key={s.id}
+                      href={`/settings/people#${s.person_id}`}
+                      className={cn(
+                        META,
+                        'relative outline-none transition-colors before:absolute before:-inset-y-2.5 before:inset-x-0 focus-visible:ring-2 focus-visible:ring-accent-2',
+                        !s.settled_at && 'border-accent-2/40 text-accent-2 hover:bg-accent-2/10',
+                      )}
+                    >
+                      <Users className="size-3" aria-hidden />
+                      {personName.get(s.person_id) ?? 'Someone'} {s.settled_at ? 'paid' : `owes ${formatMinor(s.amount, e.currency)}`}
+                    </Link>
+                  ))}
+                  {e.receipt_key && (
+                    <a
+                      href={`/api/receipt/${e.receipt_key}`}
+                      target="_blank"
+                      rel="noopener"
+                      className={cn(META, 'relative outline-none before:absolute before:-inset-y-2.5 before:inset-x-0 hover:text-accent-2 focus-visible:ring-2 focus-visible:ring-accent-2')}
+                    >
+                      <Paperclip className="size-3" aria-hidden />Receipt
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col items-end">
+                {shared ? (
+                  <span className="flex flex-col items-end" title={`Full payment ${formatAmount(e)}; the rest is owed to you`}>
+                    <span className="whitespace-nowrap font-mono text-sm font-medium tabular-nums text-destructive">
+                      you {signedAmount(yourShare(e, mine), e.currency, 'out')}
+                    </span>
+                    <span className="whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground">of {formatAmount(e)}</span>
+                  </span>
+                ) : (
+                  <span className={cn('whitespace-nowrap font-mono text-sm font-medium tabular-nums', e.direction === 'out' ? 'text-destructive' : 'text-income')}>
+                    {formatAmount(e)}
+                  </span>
+                )}
+                <div className="-mb-2 -mr-2">
                   <RowMenu
-                    label={`Actions for ${e.description || formatAmount(e)}`}
+                    label={`Actions for ${title} ${formatAmount(e)}`}
                     open={menuFor === e.id}
-                    onOpenChange={o => { if (o) { setPickingId(null); setLinkingId(null) } setMenuFor(o ? e.id : null) }}
+                    onOpenChange={o => setMenuFor(o ? e.id : null)}
                     items={[
                       ...(onEdit ? [{ label: 'Edit', icon: Pencil, onSelect: () => onEdit(e) }] : []),
                       ...(e.recurring_rule_id ? [{ label: 'Edit recurring rule', icon: Repeat, onSelect: () => router.push('/settings/recurring') }] : []),
                       { label: 'Delete', icon: Trash2, destructive: true, onSelect: () => deleteEntry(e) },
                     ]}
                   />
-                  </div>
                 </div>
-              </SwipeRow>
-
-              {pickingId === e.id && (
-                <div className="glass-soft mt-1 rounded-2xl p-2">
-                  <CategoryPicker
-                    userId={userId}
-                    kind={e.direction === 'out' ? 'spend' : 'income'}
-                    selectedId={e.category_id ?? null}
-                    onSelect={(id) => setCategory(e, id)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPickingId(null)}
-                    className="mt-1 px-2 py-1 min-h-[44px] text-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-
-              {linkingId === e.id && cardLast4 && (
-                <div className="glass-soft mt-1 rounded-2xl p-2" role="group" aria-label={`Account for card ending ${cardLast4}`}>
-                  <p className="px-2 pb-1 text-xs text-muted-foreground">
-                    Which account is •{cardLast4}? Lifeloom will remember it for this card’s future alerts.
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {activeAccounts.map(acc => (
-                      <button
-                        key={acc.id}
-                        type="button"
-                        onClick={() => linkCard(e, cardLast4, acc)}
-                        className="min-h-[44px] rounded-xl bg-white/8 px-3 text-xs hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                      >
-                        {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLinkingId(null)}
-                    className="mt-1 px-2 py-1 min-h-[44px] text-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-
-            </li>
-          )
-        })}
-      </ul>
+              </div>
+            </SwipeRow>
+          </li>
+        )
+      })}
+    </ul>
   )
-}
-
-/** "−₹120" / "+₹85,000" (JPY whole), the same signed form the save toast uses. */
-function formatAmount(e: MoneyEntryRow): string {
-  return signedAmount(e.amount, e.currency, e.direction)
 }

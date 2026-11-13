@@ -1,14 +1,14 @@
 // Shared brand mark: the Lifeloom weave (3×3 interlace, see public/logo.svg for
 // the annotated SVG). Rendered at most once per page (header on /app, logo on
-// /login), so the fixed gradient/mask ids do not collide.
+// /login), so the fixed gradient/mask ids do not collide. No halo: glow is
+// reserved for the one primary action on a screen (UX pass, 13 Nov 2026).
+// Pass title="" when a visible name sits beside the mark: it is then decorative.
 export function PulseLogo({ className, title = 'Lifeloom' }: { className?: string; title?: string }) {
   return (
     <svg
       viewBox="0 0 100 100"
       className={className}
-      role="img"
-      aria-label={title}
-      style={{ filter: 'drop-shadow(0 0 6px rgba(52,230,255,0.5))' }}
+      {...(title ? { role: 'img', 'aria-label': title } : { 'aria-hidden': true })}
     >
       <defs>
         <linearGradient id="llLogoGrad" gradientUnits="userSpaceOnUse" x1="14" y1="14" x2="86" y2="86">

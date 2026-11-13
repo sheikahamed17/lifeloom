@@ -94,6 +94,13 @@
   border: 1px solid rgb(120 160 255 / .28);
   backdrop-filter: blur(18px) saturate(140%);
 }
+/* Glow has one job: the primary action on a screen (UX pass rule). Opt in per
+   element; nothing glows by default. Disabled actions don't glow. */
+@utility glow-cta {
+  box-shadow: 0 0 24px rgb(52 230 255 / .35);
+  &:hover { box-shadow: 0 0 32px rgb(52 230 255 / .5); }
+  &:disabled, &[aria-disabled="true"], &[data-disabled] { box-shadow: none; }
+}
 @keyframes aurora-drift { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(3vw,3vw) scale(1.1)} }
 @keyframes pulse-flash { 0% { box-shadow: 0 0 0 2px var(--accent-2) } 100% { box-shadow: 0 0 0 2px transparent } }
 .pulse-flash { animation: pulse-flash 1.2s ease-out; border-radius: 1rem; }

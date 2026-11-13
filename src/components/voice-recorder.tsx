@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Mic } from 'lucide-react'
+import { Loader2, Mic, Square } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { callVoiceApiStreaming, type VoiceStreamEvent } from '@/lib/voice-sse'
 import { enqueueVoice } from '@/lib/voice-queue'
 import { pickAudioMime } from '@/lib/audio-format'
@@ -11,11 +12,13 @@ type Props = {
   onTranscript?: (text: string) => void
   transcribeOnly?: boolean
   disabled?: boolean
+  /** A secondary 44 px icon beside the capture field (Money home), not the big round hero button. */
+  compact?: boolean
 }
 
 type RecState = 'idle' | 'recording' | 'transcribing' | 'transcript' | 'parsing' | 'error'
 
-export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled }: Props) {
+export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled, compact }: Props) {
   const [state, setState] = useState<RecState>('idle')
   const [transcript, setTranscript] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -122,34 +125,62 @@ export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled
     setState('idle')
   }
 
+  const busy = state === 'transcribing' || state === 'transcript' || state === 'parsing'
+  // Status only when something is happening: no "tap to record" helper at rest.
+  const status =
+    state === 'recording' ? 'Listening… tap to stop'
+    : state === 'transcribing' ? 'Transcribing…'
+    : state === 'transcript' && transcript ? `I heard “${transcript}”`
+    : state === 'parsing' ? 'Understanding…'
+    : state === 'error' ? (error ?? 'Something went wrong')
+    : error
+
+  if (compact) {
+    return (
+      <div className="flex min-w-0 items-center gap-1">
+        <button
+          type="button"
+          disabled={disabled || busy}
+          onClick={state === 'recording' ? stop : start}
+          aria-label={state === 'recording' ? 'Stop recording' : 'Record a voice capture'}
+          className={cn(
+            'flex size-11 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent-2 disabled:pointer-events-none disabled:opacity-50',
+            state === 'recording' ? 'bg-destructive/15 text-destructive' : 'text-muted-foreground hover:bg-white/10 hover:text-foreground',
+          )}
+        >
+          {busy ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
+            : state === 'recording' ? <Square className="size-4 fill-current" aria-hidden />
+            : <Mic className="size-5" aria-hidden />}
+        </button>
+        {status && (
+          <span role="status" className={cn('min-w-0 truncate text-xs', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>
+            {status}
+          </span>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative">
         <button
           type="button"
-          disabled={disabled || state !== 'idle' && state !== 'recording'}
+          disabled={disabled || busy}
           onClick={state === 'recording' ? stop : start}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] text-[#06111f] shadow-[0_0_24px_rgb(52_230_255/.35)] transition disabled:opacity-50 disabled:pointer-events-none"
+          className="flex size-16 items-center justify-center rounded-full bg-[linear-gradient(150deg,var(--primary),var(--accent-2))] text-primary-foreground glow-cta transition disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-accent-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label={state === 'recording' ? 'Stop recording' : 'Start recording'}
         >
-          {state !== 'idle' && state !== 'recording' ? '…' : <Mic className="h-6 w-6" />}
+          {busy ? <Loader2 className="size-6 animate-spin motion-reduce:animate-none" aria-hidden /> : <Mic className="size-6" aria-hidden />}
         </button>
         {state === 'recording' && (
           // pointer-events-none: this decorative ring overlays the button; without
           // it, the ring swallows the tap and "tap again to stop" never fires stop().
-          <div className="pointer-events-none absolute inset-0 rounded-full border-2 border-[var(--accent-2)]/50 motion-safe:animate-pulse" />
+          <div className="pointer-events-none absolute inset-0 rounded-full border-2 border-accent-2/50 motion-safe:animate-pulse" />
         )}
       </div>
-      <p className={`text-xs ${state === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
-        {state === 'idle'         && 'tap to record'}
-        {state === 'recording'    && 'tap again to stop'}
-        {state === 'transcribing' && 'Transcribing…'}
-        {state === 'transcript'   && transcript && `I heard: "${transcript}"`}
-        {state === 'parsing'      && 'Understanding…'}
-        {state === 'error'        && (error ?? 'error')}
-      </p>
-      {error && state === 'idle' && (
-        <p className="text-[10px] text-muted-foreground">{error}</p>
+      {status && (
+        <p role="status" className={cn('text-xs', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>{status}</p>
       )}
     </div>
   )

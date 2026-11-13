@@ -59,3 +59,17 @@ describe('demo seed — account auto-pick showcase', () => {
     expect(pickDefaultAccountId(rows)).toBe('demo-acct-bank')
   })
 })
+
+describe('demo seed — insights', () => {
+  it('writes digest metrics the Insights card can read (no "₹NaN")', async () => {
+    const { InsightPayloadSchema } = await import('@/lib/op-schemas/insight')
+    const insights = buildSeeds().filter(s => s.kind === 'insight')
+    expect(insights.length).toBeGreaterThan(0)
+    for (const s of insights) {
+      expect(InsightPayloadSchema.safeParse(s.payload).success).toBe(true)
+      const m = JSON.parse(s.payload.metrics as string)
+      expect(typeof m.spend_total).toBe('number')
+      expect(typeof m.income_total).toBe('number')
+    }
+  })
+})

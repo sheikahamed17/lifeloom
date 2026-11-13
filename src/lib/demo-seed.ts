@@ -221,7 +221,17 @@ export function buildSeeds(): Seed[] {
     const ends = daysAgo(endAgo)
     add('insight', `demo-insight-${i}`, ends, {
       period: 'weekly', starts_at: starts, ends_at: ends, summary,
-      metrics: JSON.stringify({ spend: 132500 + i * 20000, income: i === 1 ? 0 : 8500000, net: -132500, top_category: 'Groceries' }),
+      // The real DigestMetrics shape the Insights card reads (spend_total, not spend):
+      // the old spend/income keys rendered "Spend ₹NaN" on the demo.
+      metrics: JSON.stringify({
+        currency: 'INR',
+        spend_total: 132500 + i * 20000,
+        income_total: i === 1 ? 0 : 8500000,
+        top_categories: [{ name: 'Groceries', amount: 52000 }, { name: 'Shopping', amount: 38000 }, { name: 'Dining', amount: 21500 }],
+        tasks_completed: 6 - i, tasks_created: 7, tasks_overdue: i === 0 ? 2 : 0,
+        skipped_currencies: [], entry_count: 18 + i * 3,
+        learnings_added: 2, notes_added: 3, top_learning_tags: ['typescript', 'design'],
+      }),
     })
   })
 

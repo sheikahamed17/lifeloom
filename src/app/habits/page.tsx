@@ -196,9 +196,9 @@ export default function HabitsPage() {
               <Input
                 value={newIcon}
                 onChange={e => setNewIcon(e.target.value)}
-                placeholder="Icon"
+                placeholder="Emoji"
                 maxLength={8}
-                className="w-14"
+                className="w-20 text-center"
                 aria-label="Habit icon"
               />
             </div>
@@ -238,9 +238,9 @@ export default function HabitsPage() {
                           <Input
                             value={editIcon}
                             onChange={e => setEditIcon(e.target.value)}
-                            placeholder="Icon"
+                            placeholder="Emoji"
                             maxLength={8}
-                            className="w-14"
+                            className="w-20 text-center"
                             aria-label="Habit icon edit"
                           />
                         </div>

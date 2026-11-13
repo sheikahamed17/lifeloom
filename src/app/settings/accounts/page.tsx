@@ -140,9 +140,9 @@ export default function AccountsPage() {
               <Input
                 value={newIcon}
                 onChange={e => setNewIcon(e.target.value)}
-                placeholder="Icon"
+                placeholder="Emoji"
                 maxLength={8}
-                className="w-14"
+                className="w-20 text-center"
                 aria-label="Account icon"
               />
             </div>
@@ -297,9 +297,9 @@ function AccountRow({
           <Input
             value={editIcon}
             onChange={e => setEditIcon(e.target.value)}
-            placeholder="Icon"
+            placeholder="Emoji"
             maxLength={8}
-            className="w-14"
+            className="w-20 text-center"
             aria-label="Edit account icon"
           />
         </div>

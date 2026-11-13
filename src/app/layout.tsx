@@ -3,11 +3,12 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { ServiceWorkerRegistrar } from '@/components/service-worker-registrar'
 import { DemoBanner } from '@/components/demo-banner'
+import { BackgroundSync } from '@/components/background-sync'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Lifeloom',
-  description: 'Personal AI life-OS — voice-first PWA',
+  description: 'Your money, tasks, notes and learning in one private, local-first app',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Lifeloom', statusBarStyle: 'black-translucent' },
 }
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <body className="min-h-screen overflow-x-clip bg-background text-foreground antialiased">
         <ServiceWorkerRegistrar />
+        <BackgroundSync />
         <DemoBanner />
         {children}
       </body>

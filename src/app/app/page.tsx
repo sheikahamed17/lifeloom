@@ -193,13 +193,7 @@ function AppPageInner() {
     router.replace('/app?tab=money')
   }, [user, searchParams, router, setTab])
 
-  useEffect(() => {
-    if (!user) return
-    const interval = setInterval(() => {
-      pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
-    }, 10_000)
-    return () => clearInterval(interval)
-  }, [user])
+  // Periodic sync lives in <BackgroundSync /> (root layout) so every page fills in.
 
   useEffect(() => {
     if (!user) return
@@ -838,7 +832,7 @@ function AppPageInner() {
 
           {/* Desktop tab bar — appears in document flow above the tab content */}
           <div className="hidden lg:block">
-            <TabBar active={activeTab} onChange={setTab} taskBadgeCount={taskBadgeCount} />
+            <TabBar variant="inline" active={activeTab} onChange={setTab} taskBadgeCount={taskBadgeCount} />
           </div>
 
           {showPushNudge && (
@@ -967,7 +961,7 @@ function AppPageInner() {
 
       {/* Mobile + tablet fixed bottom tab bar (desktop uses the in-flow bar) */}
       <div className="lg:hidden">
-        <TabBar active={activeTab} onChange={setTab} taskBadgeCount={taskBadgeCount} />
+        <TabBar variant="dock" active={activeTab} onChange={setTab} taskBadgeCount={taskBadgeCount} />
       </div>
 
       {searchOpen && (

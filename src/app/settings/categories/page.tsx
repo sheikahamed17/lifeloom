@@ -120,7 +120,7 @@ export default function CategoriesPage() {
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name…" maxLength={40} />
-              <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} placeholder="Icon" maxLength={8} className="w-14" />
+              <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} placeholder="Emoji" maxLength={8} className="w-20 text-center" aria-label="Category emoji" />
             </div>
             <div className="flex gap-2">
               <select
@@ -255,9 +255,9 @@ function CategorySection({
                     <Input
                       value={editIcon}
                       onChange={e => setEditIcon(e.target.value)}
-                      placeholder="Icon"
+                      placeholder="Emoji"
                       maxLength={8}
-                      className="w-14"
+                      className="w-20 text-center"
                     />
                   </div>
                   <div className="flex w-full gap-2">

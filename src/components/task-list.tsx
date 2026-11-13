@@ -6,6 +6,7 @@ import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { taskCompletionOps, formatRecurrence } from '@/lib/recurring-task'
 import { groupTasks, subtaskProgress, rollupOps, visibleNodes, type TaskNode } from '@/lib/subtasks'
 import { SwipeRow } from '@/components/swipe-row'
+import { RowMenu } from '@/components/row-menu'
 import { useUndo } from '@/components/undo-provider'
 import { resurrectPayload } from '@/lib/undo-delete'
 import { useTasks, type TaskFilter } from '@/hooks/use-tasks'
@@ -129,24 +130,27 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
         <SwipeRow
           isOpen={openId === t.id}
           onOpenChange={o => setOpenId(o ? t.id : null)}
+          onTap={onEdit ? () => onEdit(t) : undefined}
           onLongPress={() => setMenuFor(t.id)}
           onDelete={() => deleteTask(t)}
           deleteLabel={`Delete task: ${t.title.slice(0, 30)}${t.title.length > 30 ? '…' : ''}`}
           className="glass-soft flex items-start justify-between gap-3 rounded-2xl p-3"
         >
+          {/* The circle completes the task; a tap anywhere else on the row opens the editor. */}
           <button
             type="button"
             onClick={() => { if (!hasChildren) toggleComplete(t) }}
-            className="flex flex-1 items-start gap-2 text-left focus-visible:ring-2 focus-visible:ring-accent-2 outline-none rounded"
-            aria-label={hasChildren ? `${t.title} (${progress!.done} of ${progress!.total} done)` : (isCompleted ? `Mark "${t.title}" open` : `Complete "${t.title}"`)}
+            className="-my-2 -ml-2 flex size-11 shrink-0 items-center justify-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-2 aria-disabled:cursor-default"
+            aria-label={hasChildren ? `${t.title}: ${progress!.done} of ${progress!.total} sub-tasks done` : (isCompleted ? `Mark "${t.title}" open` : `Complete "${t.title}"`)}
             aria-disabled={hasChildren}
           >
             {isCompleted ? (
-              <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent-2" />
+              <CheckCircle2 className="size-5 text-accent-2" aria-hidden />
             ) : (
-              <Circle className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              <Circle className="size-5 text-muted-foreground" aria-hidden />
             )}
-            <div className="flex flex-col">
+          </button>
+            <div className="flex min-w-0 flex-1 flex-col">
               <span className={`md:text-base ${isCompleted ? 'text-muted-foreground line-through' : ''}`}>
                 {t.title}
                 {progress && <span className="ml-2 font-mono tabular-nums text-xs text-muted-foreground">{progress.done}/{progress.total}</span>}
@@ -187,51 +191,20 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
                 )}
               </span>
             </div>
-          </button>
+          <div className="-my-2 -mr-2">
+            <RowMenu
+              label={`Actions for task: ${t.title.slice(0, 30)}${t.title.length > 30 ? '…' : ''}`}
+              open={menuFor === t.id}
+              onOpenChange={o => setMenuFor(o ? t.id : null)}
+              items={[
+                ...(onEdit ? [{ label: 'Edit', icon: Pencil, onSelect: () => onEdit(t) }] : []),
+                ...(isOverdue ? [{ label: t.nudge_muted_at ? 'Resume reminding' : 'Stop reminding', icon: t.nudge_muted_at ? Bell : BellOff, onSelect: () => toggleMute(t) }] : []),
+                { label: 'Delete', icon: Trash2, destructive: true, onSelect: () => deleteTask(t) },
+              ]}
+            />
+          </div>
         </SwipeRow>
 
-        {menuFor === t.id && (
-          <div className="absolute right-2 top-full z-20 mt-1 flex flex-col rounded-md border bg-background shadow">
-            {onEdit && (
-              <button
-                type="button"
-                aria-label={`Edit task: ${t.title.slice(0, 30)}${t.title.length > 30 ? '…' : ''}`}
-                className="flex items-center gap-2 px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                onClick={() => { onEdit(t); setMenuFor(null) }}
-              >
-                <Pencil className="w-3 h-3" />
-                Edit
-              </button>
-            )}
-            {isOverdue && (
-              <button
-                type="button"
-                aria-label={t.nudge_muted_at ? `Resume reminders for: ${t.title.slice(0, 30)}` : `Stop reminders for: ${t.title.slice(0, 30)}`}
-                className="flex items-center gap-2 px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                onClick={() => { toggleMute(t); setMenuFor(null) }}
-              >
-                {t.nudge_muted_at ? <Bell className="w-3 h-3" /> : <BellOff className="w-3 h-3" />}
-                {t.nudge_muted_at ? 'Resume reminding' : 'Stop reminding'}
-              </button>
-            )}
-            <button
-              type="button"
-              aria-label={`Delete task: ${t.title.slice(0, 30)}${t.title.length > 30 ? '…' : ''}`}
-              className="flex items-center gap-2 px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-              onClick={() => deleteTask(t)}
-            >
-              <Trash2 className="w-3 h-3" />
-              Delete
-            </button>
-            <button
-              type="button"
-              className="px-3 py-2 min-h-[44px] text-xs text-muted-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-              onClick={() => setMenuFor(null)}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
       </div>
     )
   }

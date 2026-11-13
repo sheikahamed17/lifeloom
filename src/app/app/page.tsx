@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Settings, Search, LayoutDashboard, CheckCircle2, Sparkles, BookOpen } from 'lucide-react'
+import { Settings, Search, LayoutDashboard, CheckCircle2, Sparkles, BookOpen, X } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { LockGate } from '@/components/lock-gate'
 import { PulseLogo } from '@/components/pulse-logo'
@@ -54,7 +54,8 @@ import { blankDraftForKind } from '@/lib/blank-draft'
 import { manualDraftFromText } from '@/lib/manual-draft'
 import { useOnline } from '@/hooks/use-online'
 import { useQueuedCount } from '@/hooks/use-queued-count'
-import { UndoProvider } from '@/components/undo-provider'
+import { UndoProvider, useUndo } from '@/components/undo-provider'
+import { savedLabel } from '@/lib/capture-feedback'
 import { GlobalSearch } from '@/components/global-search'
 import { TodayNudge } from '@/components/today-nudge'
 import { HelpCard } from '@/components/help-card'
@@ -104,6 +105,9 @@ function AppPageInner() {
   const [querySource, setQuerySource] = useState<'voice' | 'text' | null>(null)
   const [parsing, setParsing] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  // Unplaced input is never wiped silently (critique P0): the text stays and this explains.
+  const [captureNotice, setCaptureNotice] = useState<null | 'unplaced' | 'unreachable'>(null)
+  const undo = useUndo()
   const [activeTab, setTab] = useTabState()
   const { prefs } = useUserPrefs()
   const searchParams = useSearchParams()
@@ -279,11 +283,35 @@ function AppPageInner() {
     setQuerySource(null)
   }
 
+  function tabKind(): 'money' | 'task' | 'learning' | 'note' {
+    return activeTab === 'tasks' ? 'task' : activeTab === 'learning' ? 'learning' : activeTab === 'notes' ? 'note' : 'money'
+  }
+
+  function addManually() {
+    setDraft(manualDraftFromText(tabKind(), text, prefs.primary_currency ?? 'INR', new Date().toISOString()))
+    setText('')
+    setCaptureNotice(null)
+  }
+
+  /** Close the capture loop: say what was saved, offer Undo, and scroll to + flash the new row. */
+  function announceSaved(label: string, rowId: string | null, revert?: () => Promise<void>) {
+    undo.push(label, revert && (async () => {
+      await revert()
+      if (user) pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
+    }))
+    if (rowId) setFocusId(rowId)
+  }
+
+  async function deleteCreated(kind: 'money' | 'task' | 'learning' | 'note' | 'recurring' | 'budget', ids: string[]) {
+    if (!user) return
+    for (const id of ids) await applyLocalOp(await generateOp({ entity_kind: kind, entity_id: id, op_type: 'delete', payload: {}, user_id: user.id }))
+  }
+
   async function parseText() {
     if (!text.trim() || !user) return
+    setCaptureNotice(null)
     if (!online) {
-      const kind = activeTab === 'tasks' ? 'task' : activeTab === 'learning' ? 'learning' : activeTab === 'notes' ? 'note' : 'money'
-      setDraft(manualDraftFromText(kind, text.trim(), prefs.primary_currency ?? 'INR', new Date().toISOString()))
+      setDraft(manualDraftFromText(tabKind(), text.trim(), prefs.primary_currency ?? 'INR', new Date().toISOString()))
       setText('')
       return
     }
@@ -308,7 +336,7 @@ function AppPageInner() {
       }
 
       if (!data.payload) {
-        setText('')
+        setCaptureNotice('unplaced')
         return
       }
       if (isSettleSharePayload(data.payload)) {
@@ -326,15 +354,7 @@ function AppPageInner() {
       }
     } catch (err) {
       console.error(err)
-      // Fallback to a blank money draft (Phase 1 behavior preserved)
-      setDraft({
-        kind: 'money',
-        amount: 0, currency: 'INR', direction: 'out',
-        occurred_at: new Date().toISOString(),
-        source: 'manual',
-        raw_input: text.trim(),
-      })
-      setText('')
+      setCaptureNotice('unreachable')
     } finally {
       setParsing(false)
     }
@@ -385,6 +405,7 @@ function AppPageInner() {
     await applyLocalOp(op)
     if (final.kind === 'money') await applyShareChanges(id, final.direction === 'out' ? (final.shared_with ?? []) : [])
     setDraft(null); setEditId(null)
+    announceSaved(savedLabel({ kind: 'edit' }), id)
     pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
   }
 
@@ -399,6 +420,7 @@ function AppPageInner() {
       await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: part.entity_id, op_type: 'create', payload: part.payload, user_id: user.id }))
     }
     setDraft(null); setEditId(null)
+    announceSaved(savedLabel({ kind: 'money', amount: final.amount, currency: final.currency, direction: final.direction, parts: allocations.length }), null)
     pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
   }
 
@@ -450,6 +472,11 @@ function AppPageInner() {
         await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: id, op_type: 'update', payload: { settled_at, settled_account_id: final.account_id ?? null }, user_id: user.id }))
       }
       setDraft(null); setEditId(null)
+      announceSaved(savedLabel({ kind: 'settle', personName: final.person_name, amount: final.amount, currency: final.currency }), null, async () => {
+        for (const id of final.share_ids) {
+          await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: id, op_type: 'update', payload: { settled_at: null, settled_account_id: null }, user_id: user.id }))
+        }
+      })
       pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
       return
     }
@@ -463,9 +490,10 @@ function AppPageInner() {
     }
 
     if (final.kind === 'task') {
+      const taskId = crypto.randomUUID()
       const op = await generateOp({
         entity_kind: 'task',
-        entity_id: crypto.randomUUID(),
+        entity_id: taskId,
         op_type: 'create',
         payload: {
           title: final.title,
@@ -485,6 +513,7 @@ function AppPageInner() {
       if (activeTab !== 'tasks') setTab('tasks')
       setDraft(null)
       setEditId(null)
+      announceSaved(savedLabel({ kind: 'task', title: final.title }), taskId, () => deleteCreated('task', [taskId]))
       if (final.due_at && pushStatus === 'unsubscribed') {
         try {
           const shown = await db.sync_meta.get('push-nudge-shown')
@@ -498,9 +527,10 @@ function AppPageInner() {
     }
 
     if (final.kind === 'learning') {
+      const learningId = crypto.randomUUID()
       const op = await generateOp({
         entity_kind: 'learning',
-        entity_id: crypto.randomUUID(),
+        entity_id: learningId,
         op_type: 'create',
         payload: {
           text: final.text,
@@ -512,16 +542,19 @@ function AppPageInner() {
         user_id: user.id,
       })
       await applyLocalOp(op)
+      if (activeTab !== 'learning') setTab('learning')
       setDraft(null)
       setEditId(null)
+      announceSaved(savedLabel({ kind: 'learning' }), learningId, () => deleteCreated('learning', [learningId]))
       pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
       return
     }
 
     if (final.kind === 'note') {
+      const noteId = crypto.randomUUID()
       const op = await generateOp({
         entity_kind: 'note',
-        entity_id: crypto.randomUUID(),
+        entity_id: noteId,
         op_type: 'create',
         payload: {
           body: final.body,
@@ -533,8 +566,10 @@ function AppPageInner() {
         user_id: user.id,
       })
       await applyLocalOp(op)
+      if (activeTab !== 'notes') setTab('notes')
       setDraft(null)
       setEditId(null)
+      announceSaved(savedLabel({ kind: 'note', title: final.title ?? null, body: final.body }), noteId, () => deleteCreated('note', [noteId]))
       pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
       return
     }
@@ -551,6 +586,9 @@ function AppPageInner() {
       await applyLocalOp(op)
       setDraft(null)
       setEditId(null)
+      announceSaved(savedLabel({ kind: 'budget', categoryName: final.category_name, amount: final.amount, currency: final.currency }), null, existing
+        ? async () => { await applyLocalOp(await generateOp({ entity_kind: 'budget', entity_id: final.category_id, op_type: 'update', payload: { category_id: existing.category_id, amount: existing.amount, currency: existing.currency }, user_id: user.id })) }
+        : () => deleteCreated('budget', [final.category_id]))
       pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
       return
     }
@@ -561,10 +599,13 @@ function AppPageInner() {
     // special-casing anywhere. Recurring is not combined with split (v1).
     if (splitAllocations && splitAllocations.length > 0) {
       const groupId = crypto.randomUUID()
+      const partIds: string[] = []
       for (const alloc of splitAllocations) {
+        const partId = crypto.randomUUID()
+        partIds.push(partId)
         const partOp = await generateOp({
           entity_kind: 'money',
-          entity_id: crypto.randomUUID(),
+          entity_id: partId,
           op_type: 'create',
           payload: {
             amount: alloc.amount, currency: final.currency, direction: final.direction,
@@ -588,6 +629,11 @@ function AppPageInner() {
       if (activeTab !== 'money') setTab('money')
       setDraft(null)
       setEditId(null)
+      announceSaved(
+        savedLabel({ kind: 'money', amount: final.amount, currency: final.currency, direction: final.direction, parts: splitAllocations.length }),
+        groupId,
+        () => deleteCreated('money', partIds),
+      )
       pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
       return
     }
@@ -637,18 +683,32 @@ function AppPageInner() {
       user_id: user.id,
     })
     await applyLocalOp(entryOp)
-    if (final.direction === 'out' && final.shared_with?.length) await applyShareChanges(entryId, final.shared_with)
+    const shared = final.direction === 'out' ? (final.shared_with ?? []) : []
+    if (shared.length) await applyShareChanges(entryId, shared)
     if (final.draftId) await deleteReceiptDraft(final.draftId)
     if (activeTab !== 'money') setTab('money')
     setDraft(null)
     setEditId(null)
+    // Undo deletes the entry (its shares stop counting once the entry is gone) and any rule it started.
+    announceSaved(
+      savedLabel({
+        kind: 'money', amount: final.amount, currency: final.currency, direction: final.direction,
+        categoryName: final.category_id ? categoryById.get(final.category_id)?.name ?? null : null,
+        yourShare: shared.length ? Math.max(0, final.amount - shared.reduce((n, r) => n + (r.amount ?? 0), 0)) : null,
+      }),
+      entryId,
+      async () => {
+        await deleteCreated('money', [entryId])
+        if (ruleId) await deleteCreated('recurring', [ruleId])
+      },
+    )
     pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
   }
 
   if (!user) return <p className="p-8">Loading…</p>
 
   return (
-    <UndoProvider>
+    <>
       <AuroraBackground />
       <main className="mx-auto grid w-full max-w-6xl gap-6 p-6 pb-[calc(6rem_+_env(safe-area-inset-bottom))] md:gap-8 md:p-8 lg:pb-8 lg:grid-cols-[1fr_360px]">
         <div className="flex min-w-0 flex-col gap-6 md:gap-7">
@@ -698,12 +758,8 @@ function AppPageInner() {
                   if (intent === 'chat') {
                     setShowHelp(true)
                   } else if (!payload) {
-                    setDraft({
-                      kind: 'money',
-                      amount: 0, currency: 'INR', direction: 'out',
-                      occurred_at: new Date().toISOString(),
-                      source: 'voice', raw_input: transcript,
-                    })
+                    setText(transcript)
+                    setCaptureNotice('unplaced')
                   } else if (isQueryPlan(payload)) {
                     setQueryPlan(payload)
                     setQuerySource('voice')
@@ -750,7 +806,7 @@ function AppPageInner() {
             <form onSubmit={(e) => { e.preventDefault(); parseText() }} className="flex flex-1 gap-2 ml-2">
               <Input
                 value={text}
-                onChange={e => setText(e.target.value)}
+                onChange={e => { setText(e.target.value); if (captureNotice) setCaptureNotice(null) }}
                 placeholder='spent 80 on chai — or — remind me to call mom'
                 disabled={parsing || draft !== null || queryPlan !== null}
                 className="bg-transparent placeholder:text-muted-foreground border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -760,6 +816,19 @@ function AppPageInner() {
               </Button>
             </form>
           </div>
+
+          {captureNotice && !draft && (
+            <div role="alert" className="glass-soft flex flex-col gap-2 rounded-2xl p-3 text-sm sm:flex-row sm:items-center">
+              <p className="flex-1">
+                {captureNotice === 'unplaced' ? 'I couldn’t tell what that is.' : 'Couldn’t reach the AI just now.'}{' '}
+                <span className="text-muted-foreground">Try “spent 80 on chai”, “remind me to call mom at 6” or “note: the wifi password is on the router”.</span>
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={addManually}>Add it manually</Button>
+                <Button variant="ghost" aria-label="Dismiss" onClick={() => setCaptureNotice(null)}><X className="size-4" aria-hidden /></Button>
+              </div>
+            </div>
+          )}
 
           {queuedCount > 0 && (
             <div aria-live="polite" className="text-xs text-muted-foreground px-3 py-2">
@@ -971,7 +1040,7 @@ function AppPageInner() {
           onSelect={(kind, id) => { setSearchOpen(false); setTab(kind); setFocusId(id) }}
         />
       )}
-    </UndoProvider>
+    </>
   )
 }
 
@@ -989,7 +1058,9 @@ export default function AppPage() {
   return (
     <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading…</div>}>
       <LockGate>
-        <AppPageInner />
+        <UndoProvider>
+          <AppPageInner />
+        </UndoProvider>
       </LockGate>
     </Suspense>
   )

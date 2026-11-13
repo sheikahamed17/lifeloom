@@ -5,6 +5,7 @@ import { Trash2, Pencil } from 'lucide-react'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { useNotes } from '@/hooks/use-notes'
 import { SwipeRow } from '@/components/swipe-row'
+import { RowMenu } from '@/components/row-menu'
 import { useUndo } from '@/components/undo-provider'
 import { resurrectPayload } from '@/lib/undo-delete'
 import { searchNotes } from '@/lib/search-notes'
@@ -69,12 +70,26 @@ export function NotesList({ userId, selectedTag, searchQuery = '', sort = 'newes
           <SwipeRow
             isOpen={openId === e.id}
             onOpenChange={o => setOpenId(o ? e.id : null)}
+            onTap={onEdit ? () => onEdit(e) : undefined}
             onLongPress={() => setMenuFor(e.id)}
             onDelete={() => deleteNote(e)}
             deleteLabel={`Delete note: ${(e.title || e.body).slice(0, 30)}${(e.title || e.body).length > 30 ? '…' : ''}`}
             className="glass-soft rounded-2xl flex flex-col gap-2 p-3"
           >
-            <p className="text-sm md:text-base font-medium">{e.title || truncatePreview(e.body)}</p>
+            <div className="flex items-start gap-2">
+              <p className="flex-1 text-sm md:text-base font-medium">{e.title || truncatePreview(e.body)}</p>
+              <div className="-mr-2 -mt-2">
+                <RowMenu
+                  label={`Actions for note: ${(e.title || e.body).slice(0, 30)}${(e.title || e.body).length > 30 ? '…' : ''}`}
+                  open={menuFor === e.id}
+                  onOpenChange={o => setMenuFor(o ? e.id : null)}
+                  items={[
+                    ...(onEdit ? [{ label: 'Edit', icon: Pencil, onSelect: () => onEdit(e) }] : []),
+                    { label: 'Delete', icon: Trash2, destructive: true, onSelect: () => deleteNote(e) },
+                  ]}
+                />
+              </div>
+            </div>
             {e.title && (
               <p className="text-xs text-muted-foreground line-clamp-2">{truncatePreview(e.body, 150)}</p>
             )}
@@ -99,38 +114,6 @@ export function NotesList({ userId, selectedTag, searchQuery = '', sort = 'newes
               <EntryTimestamp occurredAt={e.occurred_at} />
             </div>
           </SwipeRow>
-
-          {menuFor === e.id && (
-            <div className="absolute right-2 top-full z-20 mt-1 flex flex-col rounded-md border bg-background shadow">
-              {onEdit && (
-                <button
-                  type="button"
-                  aria-label={`Edit note: ${(e.title || e.body).slice(0, 30)}${(e.title || e.body).length > 30 ? '…' : ''}`}
-                  className="flex items-center gap-2 px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                  onClick={() => { onEdit(e); setMenuFor(null) }}
-                >
-                  <Pencil className="w-3 h-3" />
-                  Edit
-                </button>
-              )}
-              <button
-                type="button"
-                aria-label={`Delete note: ${(e.title || e.body).slice(0, 30)}${(e.title || e.body).length > 30 ? '…' : ''}`}
-                className="flex items-center gap-2 px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                onClick={() => deleteNote(e)}
-              >
-                <Trash2 className="w-3 h-3" />
-                Delete
-              </button>
-              <button
-                type="button"
-                className="px-3 py-2 min-h-[44px] text-xs text-muted-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                onClick={() => setMenuFor(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
         </li>
       ))}
     </ul>

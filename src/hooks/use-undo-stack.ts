@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 type UndoEntry = {
   id: string
   label: string
-  undo: () => Promise<void>
+  /** Absent for a plain notice ("Changes saved"): the toast shows no Undo button. */
+  undo?: () => Promise<void>
   expiresAt: number
 }
 
@@ -21,7 +22,7 @@ export function useUndoStack(ttlMs = 5000) {
     }
   }, [])
 
-  const push = useCallback((label: string, undo: () => Promise<void>) => {
+  const push = useCallback((label: string, undo?: () => Promise<void>) => {
     const id = crypto.randomUUID()
     const entry: UndoEntry = { id, label, undo, expiresAt: Date.now() + ttlMs }
     setEntries(prev => [...prev, entry])
@@ -38,7 +39,7 @@ export function useUndoStack(ttlMs = 5000) {
     const timer = timersRef.current.get(id)
     if (timer) { clearTimeout(timer); timersRef.current.delete(id) }
     setEntries(prev => prev.filter(e => e.id !== id))
-    await entry.undo()
+    await entry.undo?.()
   }, [entries])
 
   const dismiss = useCallback((id: string) => {

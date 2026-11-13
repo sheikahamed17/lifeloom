@@ -5,6 +5,7 @@ import { Trash2, Pencil } from 'lucide-react'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { useLearnings } from '@/hooks/use-learnings'
 import { SwipeRow } from '@/components/swipe-row'
+import { RowMenu } from '@/components/row-menu'
 import { useUndo } from '@/components/undo-provider'
 import { resurrectPayload } from '@/lib/undo-delete'
 import { EntryTimestamp } from '@/components/entry-timestamp'
@@ -62,12 +63,26 @@ export function LearningList({ userId, selectedTag, sort = 'newest', onEdit }: P
           <SwipeRow
             isOpen={openId === e.id}
             onOpenChange={o => setOpenId(o ? e.id : null)}
+            onTap={onEdit ? () => onEdit(e) : undefined}
             onLongPress={() => setMenuFor(e.id)}
             onDelete={() => deleteLearning(e)}
             deleteLabel={`Delete learning: ${e.text.slice(0, 30)}${e.text.length > 30 ? '…' : ''}`}
             className="glass-soft rounded-2xl flex flex-col gap-2 p-3"
           >
-            <p className="text-sm md:text-base">{e.text}</p>
+            <div className="flex items-start gap-2">
+              <p className="flex-1 text-sm md:text-base">{e.text}</p>
+              <div className="-mr-2 -mt-2">
+                <RowMenu
+                  label={`Actions for learning: ${e.text.slice(0, 30)}${e.text.length > 30 ? '…' : ''}`}
+                  open={menuFor === e.id}
+                  onOpenChange={o => setMenuFor(o ? e.id : null)}
+                  items={[
+                    ...(onEdit ? [{ label: 'Edit', icon: Pencil, onSelect: () => onEdit(e) }] : []),
+                    { label: 'Delete', icon: Trash2, destructive: true, onSelect: () => deleteLearning(e) },
+                  ]}
+                />
+              </div>
+            </div>
             {(e.tags ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {(e.tags ?? []).map(tag => (
@@ -94,38 +109,6 @@ export function LearningList({ userId, selectedTag, sort = 'newest', onEdit }: P
               <EntryTimestamp occurredAt={e.occurred_at} />
             </div>
           </SwipeRow>
-
-          {menuFor === e.id && (
-            <div className="absolute right-2 top-full z-20 mt-1 flex flex-col rounded-md border bg-background shadow">
-              {onEdit && (
-                <button
-                  type="button"
-                  aria-label={`Edit learning: ${e.text.slice(0, 30)}${e.text.length > 30 ? '…' : ''}`}
-                  className="flex items-center gap-2 px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                  onClick={() => { onEdit(e); setMenuFor(null) }}
-                >
-                  <Pencil className="w-3 h-3" />
-                  Edit
-                </button>
-              )}
-              <button
-                type="button"
-                aria-label={`Delete learning: ${e.text.slice(0, 30)}${e.text.length > 30 ? '…' : ''}`}
-                className="flex items-center gap-2 px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                onClick={() => deleteLearning(e)}
-              >
-                <Trash2 className="w-3 h-3" />
-                Delete
-              </button>
-              <button
-                type="button"
-                className="px-3 py-2 min-h-[44px] text-xs text-muted-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                onClick={() => setMenuFor(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
         </li>
       ))}
     </ul>

@@ -9,6 +9,9 @@ const LONG_PRESS_MS = 500
 
 type SwipeRowProps = {
   onDelete: () => void
+  /** A plain tap on the row (not on a control inside it): opens the editor. */
+  onTap?: () => void
+  /** Touch shortcut to the row menu. The visible menu button is the keyboard path. */
   onLongPress?: () => void
   deleteLabel: string
   isOpen: boolean
@@ -17,7 +20,7 @@ type SwipeRowProps = {
   children: React.ReactNode
 }
 
-export function SwipeRow({ onDelete, onLongPress, deleteLabel, isOpen, onOpenChange, className, children }: SwipeRowProps) {
+export function SwipeRow({ onDelete, onTap, onLongPress, deleteLabel, isOpen, onOpenChange, className, children }: SwipeRowProps) {
   const [state, dispatch] = useReducer(
     (s: SwipeState, a: SwipeAction) => swipeReducer(s, a),
     initialSwipeState,
@@ -25,6 +28,7 @@ export function SwipeRow({ onDelete, onLongPress, deleteLabel, isOpen, onOpenCha
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const downRef = useRef(false)
   const consumedRef = useRef(false)
+  const longPressedRef = useRef(false)
 
   function clearTimer() {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
@@ -41,6 +45,7 @@ export function SwipeRow({ onDelete, onLongPress, deleteLabel, isOpen, onOpenCha
   function handleDown(e: React.PointerEvent) {
     downRef.current = true
     consumedRef.current = false
+    longPressedRef.current = false
     // Do NOT capture the pointer here. Chrome retargets the `click` that
     // follows a capture to the capturing element, so capturing on every press
     // made every button inside the row (Set category, Delete, receipt…) dead
@@ -49,7 +54,7 @@ export function SwipeRow({ onDelete, onLongPress, deleteLabel, isOpen, onOpenCha
     dispatch({ type: 'down', x: e.clientX, y: e.clientY })
     if (onLongPress) {
       clearTimer()
-      timerRef.current = setTimeout(() => { clearTimer(); onLongPress() }, LONG_PRESS_MS)
+      timerRef.current = setTimeout(() => { clearTimer(); longPressedRef.current = true; onLongPress() }, LONG_PRESS_MS)
     }
   }
 
@@ -70,17 +75,19 @@ export function SwipeRow({ onDelete, onLongPress, deleteLabel, isOpen, onOpenCha
     const next = swipeReducer(state, { type: 'up' })
     // Suppress the trailing click when the gesture swiped or closed-on-tap,
     // so a settle/close never also fires an inner button (complete, receipt…).
-    consumedRef.current = state.axis === 'x' || (state.open && !next.open)
+    // A long-press already opened the menu: its trailing click must not also edit.
+    consumedRef.current = state.axis === 'x' || (state.open && !next.open) || longPressedRef.current
     dispatch({ type: 'up' })
     if (next.open !== state.open) onOpenChange(next.open)
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.target !== e.currentTarget) return       // ignore keys bubbling from inner controls
-    if (e.key === 'Enter' || e.key === ' ') {
-      if (e.key === ' ') e.preventDefault()
-      onLongPress?.()
-    }
+  // Taps on a control inside the row (category pill, receipt, share link, menu)
+  // belong to that control; only a tap on the row's own surface edits.
+  function handleClick(e: React.MouseEvent) {
+    if (!onTap) return
+    const control = (e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="menuitem"]')
+    if (control && e.currentTarget.contains(control)) return
+    onTap()
   }
 
   return (
@@ -98,8 +105,7 @@ export function SwipeRow({ onDelete, onLongPress, deleteLabel, isOpen, onOpenCha
         </button>
       )}
       <div
-        tabIndex={onLongPress ? 0 : undefined}
-        onKeyDown={onLongPress ? handleKeyDown : undefined}
+        onClick={handleClick}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
@@ -111,6 +117,7 @@ export function SwipeRow({ onDelete, onLongPress, deleteLabel, isOpen, onOpenCha
           // The focus ring lives on the container (focus-within) so overflow-hidden
           // does not clip this layer's box-shadow ring.
           'relative touch-pan-y outline-none',
+          onTap && 'cursor-pointer',
           state.axis === 'x' ? '' : 'transition-transform duration-200 motion-reduce:transition-none',
         )}
       >

@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Trash2, Pencil } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Trash2, Pencil, Repeat } from 'lucide-react'
 import { SwipeRow } from '@/components/swipe-row'
+import { RowMenu } from '@/components/row-menu'
 import { CategoryPicker } from '@/components/category-picker'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
@@ -30,6 +30,7 @@ import { filterSortMoney } from '@/lib/money-filter-sort'
 import { makeCategoryResolver } from '@/lib/category-resolve'
 import { groupBySplit } from '@/lib/split-group'
 import { cn } from '@/lib/utils'
+import { signedAmount } from '@/lib/capture-feedback'
 import { db, type AccountRow, type MoneyEntryRow } from '@/lib/dexie'
 import type { MoneyFilter, MoneySort } from '@/lib/money-filter-sort'
 
@@ -239,17 +240,14 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                   </button>
                   <div className="flex flex-col items-end gap-2">
                     <span className={`font-mono tabular-nums text-sm font-medium whitespace-nowrap ${first.direction === 'out' ? 'text-destructive' : 'text-income'}`}>
-                      {first.direction === 'out' ? '-' : '+'}{currencySymbol(first.currency)}{(g.total / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {signedAmount(g.total, first.currency, first.direction)}
                     </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="min-h-[44px] px-2 text-xs"
-                      aria-label={`Delete split (${g.parts.length} parts)`}
-                      onClick={() => deleteGroup(g.parts)}
-                    >
-                      Delete
-                    </Button>
+                    <RowMenu
+                      label={`Actions for ${g.parts.length}-way split`}
+                      open={menuFor === g.groupId}
+                      onOpenChange={o => setMenuFor(o ? g.groupId : null)}
+                      items={[{ label: `Delete split (${g.parts.length} parts)`, icon: Trash2, destructive: true, onSelect: () => deleteGroup(g.parts) }]}
+                    />
                   </div>
                 </div>
                 {open && (
@@ -263,7 +261,7 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                             <span className="truncate text-muted-foreground">{pc?.name ?? 'Uncategorized'}</span>
                           </span>
                           <span className="flex items-center gap-2">
-                            <span className="font-mono tabular-nums">{currencySymbol(p.currency)}{(p.amount / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                            <span className="font-mono tabular-nums">{formatMinor(p.amount, p.currency)}</span>
                             {onEdit && (
                               <button
                                 type="button"
@@ -295,6 +293,7 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
               <SwipeRow
                 isOpen={openId === e.id}
                 onOpenChange={o => setOpenId(o ? e.id : null)}
+                onTap={onEdit ? () => onEdit(e) : undefined}
                 onLongPress={() => { setPickingId(null); setLinkingId(null); setMenuFor(e.id) }}
                 onDelete={() => deleteEntry(e)}
                 deleteLabel={`Delete entry: ${e.description || formatAmount(e)}`}
@@ -416,13 +415,13 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-col items-end">
                   {shared ? (
                     <span className="flex flex-col items-end" title={`Full payment ${formatAmount(e)}; the rest is owed to you`}>
                       <span className="font-mono tabular-nums text-sm font-medium whitespace-nowrap text-destructive">
-                        you -{formatMinor(yourShare(e, mine), e.currency)}
+                        you {signedAmount(yourShare(e, mine), e.currency, 'out')}
                       </span>
-                      <span className="font-mono tabular-nums text-[10px] text-muted-foreground whitespace-nowrap">of {formatAmount(e)}</span>
+                      <span className="font-mono tabular-nums text-xs text-muted-foreground whitespace-nowrap">of {formatAmount(e)}</span>
                     </span>
                   ) : (
                     <span className={`font-mono tabular-nums text-sm font-medium whitespace-nowrap ${
@@ -431,15 +430,18 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                       {formatAmount(e)}
                     </span>
                   )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="min-h-[44px] px-2 text-xs"
-                    aria-label={`Delete entry: ${e.description || formatAmount(e)}`}
-                    onClick={() => deleteEntry(e)}
-                  >
-                    Delete
-                  </Button>
+                  <div className="-mb-2 -mr-2">
+                  <RowMenu
+                    label={`Actions for ${e.description || formatAmount(e)}`}
+                    open={menuFor === e.id}
+                    onOpenChange={o => { if (o) { setPickingId(null); setLinkingId(null) } setMenuFor(o ? e.id : null) }}
+                    items={[
+                      ...(onEdit ? [{ label: 'Edit', icon: Pencil, onSelect: () => onEdit(e) }] : []),
+                      ...(e.recurring_rule_id ? [{ label: 'Edit recurring rule', icon: Repeat, onSelect: () => router.push('/settings/recurring') }] : []),
+                      { label: 'Delete', icon: Trash2, destructive: true, onSelect: () => deleteEntry(e) },
+                    ]}
+                  />
+                  </div>
                 </div>
               </SwipeRow>
 
@@ -488,46 +490,6 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
                 </div>
               )}
 
-              {menuFor === e.id && (
-                <div className="absolute right-2 top-full z-20 mt-1 flex flex-col rounded-md border bg-background shadow">
-                  {onEdit && (
-                    <button
-                      type="button"
-                      aria-label={`Edit entry: ${e.description || formatAmount(e)}`}
-                      className="flex items-center gap-2 px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                      onClick={() => { onEdit(e); setMenuFor(null) }}
-                    >
-                      <Pencil className="w-3 h-3" />
-                      Edit
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    aria-label={`Delete entry: ${e.description || formatAmount(e)}`}
-                    className="flex items-center gap-2 px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                    onClick={() => { deleteEntry(e); setMenuFor(null) }}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Delete
-                  </button>
-                  {e.recurring_rule_id && (
-                    <button
-                      type="button"
-                      className="px-3 py-2 min-h-[44px] text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                      onClick={() => { router.push('/settings/recurring'); setMenuFor(null) }}
-                    >
-                      Edit recurring rule
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="px-3 py-2 min-h-[44px] text-xs text-muted-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent-2 outline-none"
-                    onClick={() => setMenuFor(null)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
             </li>
           )
         })}
@@ -535,7 +497,7 @@ export function MoneyList({ userId, onEdit, categorizeId, filter, sort }: Props)
   )
 }
 
+/** "−₹120" / "+₹85,000" (JPY whole), the same signed form the save toast uses. */
 function formatAmount(e: MoneyEntryRow): string {
-  const major = (e.amount / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
-  return `${e.direction === 'out' ? '-' : '+'}${currencySymbol(e.currency)}${major}`
+  return signedAmount(e.amount, e.currency, e.direction)
 }

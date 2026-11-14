@@ -7,18 +7,18 @@ a file in place to refresh that tile, no README edit needed:
 
 | File | Screen |
 |---|---|
-| `capture.jpg` | Home / **Money** — the capture bar (mic · +Add · Parse) over budgets & cards |
-| `money.jpg` | **Money** tab — spend total, 8-week trend, category breakdown, filters |
+| `capture.jpg` | Home / **Money** — the month panel, "Needs you", and the capture field above the tab dock |
+| `money.jpg` | **Money** tab — where it went, coming up, accounts |
 | `tasks.jpg` | **Tasks** — projects, due dates, and nested sub-tasks |
-| `learn.jpg` | **Learn** — tagged learnings with filter chips |
-| `notes.jpg` | **Notes** — search, tag filters, and note cards |
-| `habits.jpg` | **Habits** — active habits with 🔥 streaks and schedules |
+| `learn.jpg` | **Learn** — tagged learnings grouped by week |
+| `notes.jpg` | **Notes** — search and tagged notes |
+| `habits.jpg` | **Habits** — active habits with streaks and schedules |
 | `analytics.jpg` | `/analytics` — net-worth line + unusual-spending anomalies |
 | `assistant.jpg` | `/assistant` — the "ask your data" prompt and example questions |
 
 ## How these were made
 
-The current set (November 2026, after the Lifeloom rename) was captured headlessly from the live demo with Playwright: Chromium mobile emulation, 390×844 viewport at 2× (780×1688 px), dark colour scheme, JPEG quality 85, each tab scrolled to its content. Phone screenshots as described below work just as well; keep the filenames.
+The current set (15 November 2026, the "quiet ledger" look) was captured headlessly from the live demo with Playwright: Chromium mobile emulation, 390×844 viewport at 2× (780×1688 px), JPEG quality 85. Phone screenshots as described below work just as well; keep the filenames.
 
 ## How to refresh (iOS PWA)
 

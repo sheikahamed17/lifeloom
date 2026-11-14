@@ -1,9 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
   <defs>
-    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="14" y1="14" x2="86" y2="86">
-      <stop offset="0" stop-color="#6f7bff"/>
-      <stop offset="1" stop-color="#34e6ff"/>
-    </linearGradient>
+    <!-- warp is UNDER where weft is over: (50,29) (29,50) (71,50) (50,71) -->
     <mask id="wm" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
       <rect width="100" height="100" fill="#fff"/>
       <rect x="43.5" y="22" width="13" height="14" fill="#000"/>
@@ -11,6 +8,7 @@
       <rect x="64.5" y="43" width="13" height="14" fill="#000"/>
       <rect x="43.5" y="64" width="13" height="14" fill="#000"/>
     </mask>
+    <!-- weft is UNDER where warp is over: (29,29) (71,29) (50,50) (29,71) (71,71) -->
     <mask id="fm" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
       <rect width="100" height="100" fill="#fff"/>
       <rect x="22" y="22.5" width="14" height="13" fill="#000"/>
@@ -20,9 +18,9 @@
       <rect x="64" y="64.5" width="14" height="13" fill="#000"/>
     </mask>
   </defs>
-  <rect width="32" height="32" rx="8" fill="#0a0b16"/>
+  <rect width="32" height="32" rx="8" fill="#10261F"/>
   <!-- 100-unit mark scaled to 26px and centred -->
-  <g transform="translate(3 3) scale(0.26)" fill="none" stroke="url(#g)" stroke-width="9" stroke-linecap="round">
+  <g transform="translate(3 3) scale(0.26)" fill="none" stroke="#F2F3EE" stroke-width="9" stroke-linecap="round">
     <g mask="url(#wm)" opacity="0.9">
       <line x1="29" y1="18" x2="29" y2="82"/>
       <line x1="50" y1="18" x2="50" y2="82"/>

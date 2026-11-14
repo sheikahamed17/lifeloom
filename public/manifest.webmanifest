@@ -1,11 +1,11 @@
 {
   "name": "Lifeloom",
   "short_name": "Lifeloom",
-  "description": "Personal AI life-OS — voice-first PWA",
+  "description": "Personal life-OS for money, tasks, learning and notes",
   "start_url": "/app",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#F2F3EE",
+  "theme_color": "#F2F3EE",
   "orientation": "portrait",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },

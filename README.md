@@ -83,9 +83,9 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 ### Money, in depth
 - **Accounts & net worth.** Track balances across accounts (assets and liabilities); Lifeloom derives your **net worth** and reconstructs how it's moved over time.
 - **Default account.** Star one account in Settings → Accounts and every entry you add by hand, voice, or receipt starts on it — change it in the chip when it's a different card.
-- **Cash-flow forecast.** Upcoming recurring income and bills projected forward, with a month-end net estimate on your dashboard.
+- **Cash-flow forecast.** Upcoming recurring income and bills projected forward, with a month-end net estimate on Money home.
 - **Bill reminders.** A push notification before a recurring bill falls due.
-- **Savings goals.** Target amounts — linked to an account or tracked manually — with progress bars on your dashboard.
+- **Savings goals.** Target amounts — linked to an account or tracked manually — with progress bars on Money home.
 - **Transfers.** Move money between your own accounts (Bank → Savings, or paying down a card) without it distorting your spend/income totals.
 - **Recurring transfers.** Schedule those moves — a monthly card payment or savings sweep that posts itself.
 - **Split transactions.** Allocate one payment across several categories; each part flows into budgets and analytics as a normal entry.
@@ -116,7 +116,7 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 - **Analytics** (`/analytics`). Spend trend, income vs spend + net, top movers, per-category small multiples, **net worth over time**, and **unusual-spending** detection — inline SVG on a colorblind-validated palette.
 - **Global search.** One 🔍 searches all four domains at once and jumps to — and flashes — the matching row.
 - **Backup & restore.** Export your full history (plus money as CSV) and re-import it into any instance — a non-destructive, on-device merge.
-- **Dashboard.** A `/dashboard` of widgets (accounts, upcoming, goals, habits, …) plus a Getting Started checklist that guides a fresh instance through setup and hides itself once you're rolling.
+- **Money home.** One screen for the month: what you've spent, what needs you, where it went, what's coming up, accounts and goals, plus a Getting Started checklist that guides a fresh instance through setup and hides itself once you're rolling.
 
 ## How it works
 
@@ -145,7 +145,7 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 | Runtime | **OpenNext** on **Cloudflare Workers** · **Serwist** service worker |
 | Auth | **Better Auth** — magic link + passkeys (WebAuthn) |
 | AI | **Groq** (`gpt-oss`) for the router, domain agents, and Whisper transcription |
-| UI | Geist font · lucide icons · dark glassmorphism |
+| UI | **shadcn/ui** on Base UI · Schibsted Grotesk · lucide icons · light "quiet ledger" look (ruled lists, one green summary panel per screen) |
 | Tests | **Vitest** · `fake-indexeddb` · `fast-check` |
 
 ## Getting started

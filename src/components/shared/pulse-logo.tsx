@@ -1,5 +1,5 @@
 // Shared brand mark: the Lifeloom weave (3×3 interlace, see public/logo.svg for
-// the annotated SVG). Rendered at most once per page (header on /app, logo on
+// the annotated SVG, which adds the ink tile used outside the app). Rendered at most once per page (header on /app, logo on
 // /login), so the fixed mask ids do not collide. Drawn in the current ink colour:
 // no gradient, no halo.
 // Pass title="" when a visible name sits beside the mark: it is then decorative.

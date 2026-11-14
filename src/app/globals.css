@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/schibsted-grotesk";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -11,7 +11,13 @@
   --color-accent-2: var(--accent-2);
   --color-income: var(--income);
   --color-warning: var(--warning);
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-income-tint: var(--income-tint);
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-panel-muted: var(--panel-muted);
+  --color-panel-border: var(--panel-border);
+  --color-panel-highlight: var(--panel-highlight);
+  --font-sans: 'Schibsted Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -52,49 +58,56 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Light, minimal, shadcn "neutral" tokens (14 Nov 2026; replaces the dark aurora theme). */
+/* "Quiet ledger" tokens (15 Nov 2026): cool off-white ground, green-black ink, one orange
+   attention colour, blue for money coming in. Sections are ruled lists, not cards. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --accent-2: oklch(0.5 0.2 262);          /* blue: links, selected state, focus accents */
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.51 0.22 27); /* spend / delete */
-  --income: oklch(0.5 0.14 150);
-  --warning: oklch(0.55 0.14 65);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+  --background: #F2F3EE;
+  --foreground: #10261F;
+  --card: #FFFFFF;                 /* white surface: fields, and rows that need the user */
+  --card-foreground: #10261F;
+  --popover: #F8F9F5;              /* menus, dialogs, sheets (white fields stay visible on it) */
+  --popover-foreground: #10261F;
+  --primary: #10261F;
+  --primary-foreground: #F2F3EE;
+  --accent-2: #1D5E8C;             /* focus flash, informational accents */
+  --secondary: #E1E4DB;
+  --secondary-foreground: #10261F;
+  --muted: #E1E4DB;                /* tracks, monogram squares */
+  --muted-foreground: #54605A;
+  --accent: #E6E9E1;               /* hover */
+  --accent-foreground: #10261F;
+  --destructive: #9B2C1F;          /* delete only; spend amounts are plain ink */
+  --income: #1D5E8C;               /* money coming in */
+  --income-tint: #DCE8F0;
+  --warning: #B93C0A;              /* attention: overdue, due soon, open counts. Never decorative */
+  --border: #E1E4DB;               /* hairline between rows */
+  --input: #7F8C84;                /* checkbox/radio outline (3:1 on the ground) */
+  --ring: #10261F;
+  --panel: #10261F;                /* the one green summary panel per screen, and the phone dock */
+  --panel-foreground: #F2F3EE;
+  --panel-muted: #A7BAB0;
+  --panel-border: #34493F;
+  --panel-highlight: #F4A261;      /* attention colour on the panel/dock */
+  --radius: 0.75rem;
 }
 
-/* Surfaces. Plain shadcn look: white card, hairline border, barely-there shadow.
-   (The old frosted-glass utilities keep their names so call sites didn't change.) */
+/* Surfaces. `glass` is the floating surface (menus, popovers); in-page content is NOT boxed.
+   (Names kept from the old frosted-glass utilities so call sites did not change.) */
 @utility glass {
-  background: var(--card);
+  background: var(--popover);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgb(0 0 0 / .05);
+  box-shadow: 0 1px 2px rgb(16 38 31 / .06);
 }
 @utility glass-soft {
-  background: var(--muted);
+  background: var(--card);
   border: 1px solid transparent;
 }
 @utility glass-accent {
-  background: var(--muted);
-  border: 1px solid var(--border);
+  background: var(--card);
+  border: 1px solid transparent;
 }
 @keyframes pulse-flash { 0% { box-shadow: 0 0 0 2px var(--accent-2) } 100% { box-shadow: 0 0 0 2px transparent } }
-.pulse-flash { animation: pulse-flash 1.2s ease-out; border-radius: var(--radius-xl); }
+.pulse-flash { animation: pulse-flash 1.2s ease-out; border-radius: 6px; }
 @media (prefers-reduced-motion: reduce) { .pulse-flash { animation: none; box-shadow: 0 0 0 2px var(--accent-2) } }
 
 body {
@@ -112,11 +125,13 @@ body {
   }
   html {
     @apply font-sans;
-    font-feature-settings: 'cv11' 1, 'ss03' 1;   /* Inter: single-storey a, rounder forms; reads calmer at small sizes */
   }
-  h1, h2, h3 { letter-spacing: -0.015em; }
-  /* Money and any column of figures: fixed-width digits so amounts align and don't jitter. */
-  .tabular-nums { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1, 'cv11' 1, 'ss03' 1; }
-  /* One icon weight everywhere (Lucide default 2 is heavy next to Inter at 14-16px). */
+  h1, h2, h3 { letter-spacing: -0.02em; }
+  /* One icon weight everywhere (Lucide default 2 is heavy at 14-16px). */
   svg.lucide { stroke-width: 1.75; }
 }
+
+/* Schibsted Grotesk's tabular figures also widen "," and "." to a full digit, so "23,438"
+   reads as "23 , 438". Amounts therefore use the font's default figures everywhere; this
+   unlayered rule turns the `tabular-nums` utility at existing call sites into a no-op. */
+.tabular-nums { font-variant-numeric: normal; }

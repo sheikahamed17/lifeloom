@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import './globals.css'
 
 /**
@@ -26,26 +25,26 @@ export default function GlobalError({
   return (
     <html lang="en">
       <body
-        className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground antialiased"
-        style={{ background: '#ffffff', color: '#0a0a0a', fontFamily: 'system-ui, -apple-system, sans-serif' }}
+        className="flex min-h-screen items-center justify-center bg-background p-5 text-foreground antialiased"
+        style={{ background: '#F2F3EE', color: '#10261F', fontFamily: 'system-ui, -apple-system, sans-serif' }}
       >
-        <Card className="w-full max-w-sm p-2">
-          <CardHeader className="text-center">
-            <CardTitle><h1 className="text-lg font-semibold">Something went wrong</h1></CardTitle>
-            <CardDescription>
-              Lifeloom hit an unexpected error. Your data is safe on this device — reloading usually fixes it.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4">
-            <div className="flex justify-center gap-2">
+        <div className="flex w-full max-w-sm flex-col gap-6 text-left">
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-[28px] font-bold leading-tight tracking-[-0.03em]">Something went wrong</h1>
+            <p className="text-sm text-muted-foreground">
+              Lifeloom hit an unexpected error. Your data is safe on this device. Reloading usually fixes it.
+            </p>
+          </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2">
               <Button onClick={() => window.location.reload()}>Reload</Button>
               <Button variant="outline" onClick={() => reset()}>Try again</Button>
             </div>
             {error?.digest && (
               <p className="tabular-nums text-xs text-muted-foreground">ref: {error.digest}</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </body>
     </html>
   )

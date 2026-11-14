@@ -1,12 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Users } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
-import { Empty, EmptyDescription } from '@/components/ui/empty'
-import { Item, ItemContent, ItemTitle } from '@/components/ui/item'
-import { cn } from '@/lib/utils'
+import { IconTile } from '@/components/shared/icon-tile'
+import { EMPTY_NOTE, FOOT_LINK, SectionHeading } from '@/components/money/section-heading'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
 import { useAllPeople } from '@/hooks/use-all-people'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
@@ -23,6 +20,7 @@ const fmt = (minor: number, currency: string) => formatMinor(minor, currency, 0)
 
 /** "Owed to you": outstanding shares, headline + top three people. */
 export function OwedWidget({ userId }: Props) {
+  const headingId = useId()
   const shares = useExpenseShares(userId)
   const people = useAllPeople(userId)
   const entries = useMoneyEntries(userId)
@@ -48,44 +46,41 @@ export function OwedWidget({ userId }: Props) {
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-semibold">Owed to you</h2>
-        <Empty className="p-2">
-          <EmptyDescription>Nobody owes you anything. Use “Share with…” when you add a spend to track who owes what.</EmptyDescription>
-        </Empty>
-      </div>
+      <section aria-labelledby={headingId} className="flex flex-col">
+        <SectionHeading id={headingId}>Owed to you</SectionHeading>
+        <p className={EMPTY_NOTE}>Nobody owes you anything. Use “Share with…” when you add a spend to track who owes what.</p>
+      </section>
     )
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">Owed to you</h2>
-        <span className="tabular-nums text-2xl font-semibold tabular-nums">{fmt(headline.total, prefs.primary_currency)}</span>
-      </div>
-      {headline.skipped.length > 0 && (
-        <p className="text-xs text-muted-foreground">Not converted (no FX rate yet): {headline.skipped.join(', ')}</p>
-      )}
-      <ul className="flex flex-col gap-1.5">
+    <section aria-labelledby={headingId} className="flex flex-col">
+      <SectionHeading
+        id={headingId}
+        aside={<p className="shrink-0 text-base font-semibold tabular-nums">{fmt(headline.total, prefs.primary_currency)}</p>}
+      >
+        Owed to you
+      </SectionHeading>
+      <ul className="flex flex-col">
         {top.map(r => (
-          <li key={r.personId}>
-            <Item
-              size="xs"
-              render={<Link href={`/settings/people#${r.personId}`} />}
-              className="-mx-2 min-h-11 w-[calc(100%+1rem)] flex-nowrap justify-between"
+          <li key={r.personId} className="border-b border-border">
+            <Link
+              href={`/settings/people#${r.personId}`}
+              className="-mx-2 flex min-h-14 items-center gap-3 rounded-lg px-2 py-2 text-[15px] outline-none transition-colors hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
             >
-              <ItemContent className="min-w-0 flex-row items-center gap-2">
-                <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                <ItemTitle className="min-w-0 font-normal"><span className="truncate">{r.name}</span></ItemTitle>
-              </ItemContent>
-              <span className="tabular-nums text-sm tabular-nums">{Object.entries(r.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
-            </Item>
+              <IconTile name={r.name} size="sm" />
+              <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
+              <span className="shrink-0 font-semibold tabular-nums">{Object.entries(r.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
+            </Link>
           </li>
         ))}
       </ul>
-      <Link href="/settings/people" className={cn(buttonVariants({ variant: 'link' }), 'h-11 self-start px-0')}>
-        {rows.length > 3 ? `All ${rows.length} people` : 'Mark repayments paid'}<ChevronRight className="size-4" aria-hidden />
+      {headline.skipped.length > 0 && (
+        <p className="pt-3 text-xs text-muted-foreground">Not converted (no FX rate yet): {headline.skipped.join(', ')}</p>
+      )}
+      <Link href="/settings/people" className={FOOT_LINK}>
+        {rows.length > 3 ? `All ${rows.length} people` : 'Mark repayments paid'}
       </Link>
-    </div>
+    </section>
   )
 }

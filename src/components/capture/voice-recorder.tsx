@@ -95,7 +95,7 @@ export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled
       if (capturedTranscript) {
         onTranscript?.(capturedTranscript)
       } else {
-        setError("Couldn't transcribe that — please try again")
+        setError("Couldn't transcribe that. Please try again")
       }
       setState('idle')
       setTranscript(null)
@@ -118,10 +118,10 @@ export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled
     const offline = typeof navigator !== 'undefined' && navigator.onLine === false
     if (offline) {
       await enqueueVoice(blob)
-      setError('Queued — will retry when online')
+      setError('Queued. Will retry when online')
     } else {
       console.warn('voice-sse: no payload while online:', serverError)
-      setError(serverError ?? "Couldn't process that — please try again")
+      setError(serverError ?? "Couldn't process that. Please try again")
     }
     setState('idle')
   }
@@ -152,7 +152,7 @@ export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled
             : <Mic className="size-5" aria-hidden />}
         </Button>
         {status && (
-          <span role="status" className={cn('min-w-0 truncate text-xs', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>
+          <span role="status" className={cn('min-w-0 truncate text-[13px]', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>
             {status}
           </span>
         )}
@@ -174,11 +174,11 @@ export function VoiceRecorder({ onParsed, onTranscript, transcribeOnly, disabled
         {state === 'recording' && (
           // pointer-events-none: this decorative ring overlays the button; without
           // it, the ring swallows the tap and "tap again to stop" never fires stop().
-          <div className="pointer-events-none absolute inset-0 rounded-full border-2 border-accent-2/50 motion-safe:animate-pulse" />
+          <div className="pointer-events-none absolute inset-0 rounded-full border-2 border-foreground/40 motion-safe:animate-pulse" />
         )}
       </div>
       {status && (
-        <p role="status" className={cn('text-xs', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>{status}</p>
+        <p role="status" className={cn('text-[13px]', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>{status}</p>
       )}
     </div>
   )

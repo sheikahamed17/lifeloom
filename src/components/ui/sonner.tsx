@@ -4,9 +4,9 @@ import { useSyncExternalStore } from "react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
-// The phone/tablet dock (below `lg`) sits at the bottom edge; toasts clear it there.
+// Below `lg` the dock and the capture field are fixed to the bottom edge; toasts clear both.
 const DESKTOP = "(min-width: 1024px)"
-const DOCK_OFFSET = "calc(5.5rem + env(safe-area-inset-bottom))"
+const DOCK_OFFSET = "calc(9.75rem + env(safe-area-inset-bottom))"
 
 function subscribe(cb: () => void) {
   const mq = window.matchMedia(DESKTOP)
@@ -55,7 +55,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "cn-toast glass! text-sm!",
-          actionButton: "h-10! rounded-lg! bg-transparent! px-3! text-sm! font-semibold! text-accent-2! hover:bg-white/10!",
+          actionButton: "h-10! rounded-lg! bg-transparent! px-3! text-sm! font-semibold! text-foreground! underline! underline-offset-4! hover:bg-accent!",
         },
       }}
       {...props}

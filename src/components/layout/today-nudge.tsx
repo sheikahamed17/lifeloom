@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { ChevronRight, Clock } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { useTasks } from '@/hooks/use-tasks'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { taskAttention, attentionCopy } from '@/lib/task-attention'
@@ -17,14 +17,13 @@ export function TodayNudge({ userId, onGoToTasks }: { userId: string; onGoToTask
   if (!copy) return null
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       onClick={onGoToTasks}
       aria-label={`${copy}. Go to Tasks`}
-      className="glass-soft h-12 w-full justify-start gap-2 rounded-xl px-4 font-normal"
+      className="h-auto min-h-13 w-full justify-start gap-3 whitespace-normal rounded-2xl bg-card px-4 py-2.5 font-normal hover:bg-card"
     >
-      <Clock className="size-4 shrink-0 text-warning" aria-hidden />
-      <span className="flex-1 text-left font-medium">{copy}</span>
-      <span className="inline-flex shrink-0 items-center gap-0.5 text-muted-foreground">Tasks<ChevronRight className="size-4" aria-hidden /></span>
+      <span className="flex-1 text-left text-[15px] font-semibold">{copy}</span>
+      <span className="inline-flex shrink-0 items-center gap-0.5 text-sm font-medium text-muted-foreground">Tasks<ChevronRight className="size-4" aria-hidden /></span>
     </Button>
   )
 }

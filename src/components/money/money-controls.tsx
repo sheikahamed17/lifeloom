@@ -10,6 +10,9 @@ import { FIELD_NATIVE_SELECT } from '@/components/shared/sort-control'
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from '@/components/ui/native-select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { QUIET_TOGGLE } from '@/components/shared/quiet-toggle'
+
+const LABEL = 'text-[13px] font-semibold text-muted-foreground'
 
 const SOURCE_LABEL: Record<MoneyEntryRow['source'], string> = {
   manual: 'Typed by hand', voice: 'Voice', receipt: 'Receipt photo', sms: 'SMS', email: 'Email', recurring: 'Recurring rule',
@@ -68,8 +71,8 @@ export function MoneyControls({ userId, filter, sort, onFilter, onSort }: Props)
   const field = (key: string, label: string, control: (id: string) => React.ReactNode) => {
     const id = `${uid}-${key}`
     return (
-      <Field className="gap-1">
-        <FieldLabel htmlFor={id} className="text-xs">{label}</FieldLabel>
+      <Field className="gap-2">
+        <FieldLabel htmlFor={id} className={LABEL}>{label}</FieldLabel>
         {control(id)}
       </Field>
     )
@@ -78,7 +81,7 @@ export function MoneyControls({ userId, filter, sort, onFilter, onSort }: Props)
   const direction = filter.direction ?? 'all'
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-2">
       {field('category', 'Category', id => (
         <NativeSelect
           id={id}
@@ -128,21 +131,17 @@ export function MoneyControls({ userId, filter, sort, onFilter, onSort }: Props)
         </NativeSelect>
       ))}
 
-      <FieldSet className="gap-1">
-        <FieldLegend variant="label" className="mb-0 text-xs font-normal text-muted-foreground">Type</FieldLegend>
+      <FieldSet className="gap-0">
+        <FieldLegend variant="label" className={`mb-0 ${LABEL}`}>Type</FieldLegend>
         <ToggleGroup
           aria-label="Type"
-          spacing={1}
+          spacing={5}
           value={[direction]}
           onValueChange={v => { const d = v[0] as 'all' | 'out' | 'in' | undefined; if (d) onFilter({ ...filter, direction: d === 'all' ? null : d }) }}
-          className="glass-soft w-full rounded-lg p-1"
+          className="rounded-none"
         >
           {([['all', 'All'], ['out', 'Spent'], ['in', 'Earned']] as const).map(([d, label]) => (
-            <ToggleGroupItem
-              key={d}
-              value={d}
-              className="h-10 flex-1 text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-accent aria-pressed:text-foreground"
-            >
+            <ToggleGroupItem key={d} value={d} className={QUIET_TOGGLE}>
               {label}
             </ToggleGroupItem>
           ))}

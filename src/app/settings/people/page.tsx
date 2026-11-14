@@ -23,17 +23,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Card, CardContent } from '@/components/ui/card'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { SELECT_CLASS, SettingsCard } from '../_ui'
+import { COUNT_CLASS, FormField, LABEL_CLASS, SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/layout/page-shell'
+import { AttentionRow } from '@/components/shared/attention-row'
+import { IconTile } from '@/components/shared/icon-tile'
 import { RowMenu } from '@/components/shared/row-menu'
 import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 import type { ExpenseShareRow, MoneyEntryRow, PersonRow } from '@/lib/dexie'
 
 const fmt = formatMinor
 const BACK = { href: '/settings', label: 'Settings' }
+const DESCRIPTION = 'Share an expense from the capture chip. When someone pays you back, mark it paid here. The money returns to the account you pick and is never counted as income.'
 
 export default function PeoplePage() {
   return (
@@ -144,44 +146,42 @@ function PeoplePageInner() {
 
   if (!userId) {
     return (
-      <PageShell title="People" back={BACK}>
+      <PageShell title="People" back={BACK} description={DESCRIPTION}>
         <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
-    <PageShell title="People" back={BACK}>
-      <Card>
-       <CardContent className="flex flex-col gap-3">
+    <PageShell title="People" back={BACK} description={DESCRIPTION}>
+      <div className="flex flex-col gap-4">
         {showTotal && (
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold">Owed to you</h2>
-            <span className="tabular-nums text-2xl font-semibold tabular-nums">{fmt(headline.total, prefs.primary_currency)}</span>
+          <div className="flex items-end justify-between gap-2 border-b border-border pb-2.5">
+            <h2 className="text-[19px] font-bold tracking-[-0.02em] lg:text-[22px]">Owed to you</h2>
+            <span className="text-[19px] font-bold tabular-nums tracking-[-0.02em] lg:text-[22px]">{fmt(headline.total, prefs.primary_currency)}</span>
           </div>
         )}
         {showTotal && headline.skipped.length > 0 && (
-          <p className="text-xs text-muted-foreground">Not converted (no exchange rate yet): {headline.skipped.join(', ')}</p>
+          <p className="text-[13px] text-muted-foreground">Not converted (no exchange rate yet): {headline.skipped.join(', ')}</p>
         )}
-        <p className="text-xs text-muted-foreground">
-          Share an expense from the capture chip (“Share with…”). When someone pays you back, mark it paid here: the money returns to the account you pick, and nothing is counted as income.
-        </p>
-        <div className="flex gap-2">
-          <Input
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPerson() } }}
-            placeholder="Add a person…"
-            maxLength={60}
-            aria-label="New person name"
-          />
-          <Button onClick={addPerson} disabled={!newName.trim()}>Add</Button>
-        </div>
-       </CardContent>
-      </Card>
+        <FormField label="Add a person" htmlFor="new-person">
+          <div className="flex gap-2">
+            <Input
+              id="new-person"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPerson() } }}
+              placeholder="Their name"
+              maxLength={60}
+              aria-label="New person name"
+            />
+            <Button className="h-12 shrink-0 px-5" onClick={addPerson} disabled={!newName.trim()}>Add</Button>
+          </div>
+        </FormField>
+      </div>
 
       {active.length === 0 && (
-        <Empty className="glass">
+        <Empty className="rounded-none border-y border-border px-0 py-6">
           <EmptyDescription>No people yet. Add someone above, or share an expense from the capture chip.</EmptyDescription>
         </Empty>
       )}
@@ -205,14 +205,30 @@ function PeoplePageInner() {
       ))}
 
       {archived.length > 0 && (
-        <SettingsCard title={`Archived (${archived.length})`} contentClassName="gap-2">
-          <ul className="glass-soft divide-y divide-border rounded-lg">
-            {archived.map(p => (
-              <li key={p.id} id={p.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1 text-sm">
-                <span className="min-w-0">{p.name}{owedFor.get(p.id) ? ` · still owes ${Object.entries(owedFor.get(p.id)!.byCurrency).map(([c, a]) => fmt(a, c)).join(', ')}` : ''}</span>
-                <Button variant="ghost" onClick={() => archive(p.id, false)} aria-label={`Restore ${p.name}`}>Restore</Button>
-              </li>
-            ))}
+        <SettingsCard
+          title="Archived"
+          className="gap-0"
+          contentClassName="gap-0"
+          action={<span className={COUNT_CLASS}>{archived.length} {archived.length === 1 ? 'person' : 'people'}</span>}
+        >
+          <ul>
+            {archived.map(p => {
+              const stillOwes = owedFor.get(p.id)
+              return (
+                <li key={p.id} id={p.id} className="flex min-h-14 scroll-mt-4 items-center gap-3 border-b border-border py-2">
+                  <IconTile name={p.name} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="truncate text-[15px] font-medium">{p.name}</span>
+                    {stillOwes && (
+                      <span className="text-[13px] text-muted-foreground">
+                        Still owes you {Object.entries(stillOwes.byCurrency).map(([c, a]) => fmt(a, c)).join(', ')}
+                      </span>
+                    )}
+                  </div>
+                  <Button variant="link" className="shrink-0 px-1" onClick={() => archive(p.id, false)} aria-label={`Restore ${p.name}`}>Restore</Button>
+                </li>
+              )
+            })}
           </ul>
         </SettingsCard>
       )}
@@ -253,68 +269,72 @@ function PersonCard({
   const outstanding = owed?.shares ?? []
 
   return (
-    <Card id={person.id} className="scroll-mt-4">
-     <CardContent className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
+    <section id={person.id} className="flex scroll-mt-4 flex-col">
+      <div className="flex min-h-[54px] items-center justify-between gap-2 border-b border-border pb-1">
         {editing ? (
-          <div className="flex flex-1 gap-2">
-            <Input value={name} onChange={e => setName(e.target.value)} maxLength={60} autoFocus aria-label={`Rename ${person.name}`} />
-            <Button onClick={() => { const n = name.trim(); if (n && n !== person.name) onRename(person.id, n); setEditing(false) }}>Save</Button>
-            <Button variant="outline" onClick={() => { setName(person.name); setEditing(false) }}>Cancel</Button>
+          <div className="flex flex-1 flex-wrap gap-2 pb-2">
+            <Input className="min-w-40 flex-1" value={name} onChange={e => setName(e.target.value)} maxLength={60} autoFocus aria-label={`Rename ${person.name}`} />
+            <Button className="h-12" onClick={() => { const n = name.trim(); if (n && n !== person.name) onRename(person.id, n); setEditing(false) }}>Save</Button>
+            <Button className="h-12" variant="outline" onClick={() => { setName(person.name); setEditing(false) }}>Cancel</Button>
           </div>
         ) : (
           <>
-            <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">{person.name}</h2>
+            <h2 className="min-w-0 flex-1 truncate text-[19px] font-bold tracking-[-0.02em] lg:text-[22px]">{person.name}</h2>
             {/* A person's total only when it sums more than one row; one row already says it. */}
             {owed && outstanding.length > 1 && (
-              <span className="whitespace-nowrap text-sm text-muted-foreground">
-                owes <span className="tabular-nums text-foreground">{Object.entries(owed.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
+              <span className="whitespace-nowrap text-[13px] text-muted-foreground">
+                owes you <span className="text-[15px] font-semibold tabular-nums text-foreground">{Object.entries(owed.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
               </span>
             )}
-            {!owed && <span className="text-sm text-muted-foreground">Settled up</span>}
-            <RowMenu
-              label={`Actions for ${person.name}`}
-              open={menuOpen}
-              onOpenChange={setMenuOpen}
-              items={[
-                { label: 'Rename', icon: Pencil, onSelect: () => setEditing(true) },
-                { label: 'Archive', icon: Archive, onSelect: () => onArchive(person.id) },
-              ]}
-            />
+            {!owed && <span className="text-[13px] text-muted-foreground">Settled up</span>}
+            <div className="-mr-2.5 flex shrink-0">
+              <RowMenu
+                label={`Actions for ${person.name}`}
+                open={menuOpen}
+                onOpenChange={setMenuOpen}
+                items={[
+                  { label: 'Rename', icon: Pencil, onSelect: () => setEditing(true) },
+                  { label: 'Archive', icon: Archive, onSelect: () => onArchive(person.id) },
+                ]}
+              />
+            </div>
           </>
         )}
       </div>
 
       {outstanding.length > 0 && (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <Label htmlFor={`receive-${person.id}`}>Paid into</Label>
-            <NativeSelect
-              id={`receive-${person.id}`}
-              value={receiveInto ?? ''}
-              onChange={e => { setAccountTouched(true); setAccountId(e.target.value || null) }}
-              className={cn(SELECT_CLASS, 'w-auto min-w-0 flex-1 sm:flex-none')}
-            >
-              <NativeSelectOption value="">No account</NativeSelectOption>
-              {accounts.map(a => <NativeSelectOption key={a.id} value={a.id}>{a.icon ? `${a.icon} ${a.name}` : a.name}</NativeSelectOption>)}
-            </NativeSelect>
-            {outstanding.length > 1 && (
-              <Button variant="outline" className="ml-auto" disabled={busy} onClick={() => onSettle(outstanding.map(s => s.shareId), receiveInto)}>
-                Mark all paid
-              </Button>
-            )}
-          </div>
-          <ul className="glass-soft divide-y divide-border rounded-lg">
-            {outstanding.map(s => (
-              <li key={s.shareId} className="flex items-center justify-between gap-2 p-3 text-sm">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate">{s.description || 'Untitled'}</div>
-                  <div className="text-xs text-muted-foreground">{formatDay(s.occurred_at, tz)}{s.note ? ` · ${s.note}` : ''}</div>
-                </div>
-                <span className="tabular-nums">{fmt(s.amount, s.currency)}</span>
-                <Button disabled={busy} onClick={() => onSettle([s.shareId], receiveInto)} aria-label={`Mark paid: ${s.description || 'entry'} ${fmt(s.amount, s.currency)}`}>
-                  Mark paid
+          <div className="flex flex-col gap-2 pt-4">
+            <Label htmlFor={`receive-${person.id}`} className={LABEL_CLASS}>Paid into</Label>
+            <div className="flex gap-2">
+              <NativeSelect
+                id={`receive-${person.id}`}
+                value={receiveInto ?? ''}
+                onChange={e => { setAccountTouched(true); setAccountId(e.target.value || null) }}
+                className={cn(SELECT_CLASS, 'min-w-0 flex-1')}
+              >
+                <NativeSelectOption value="">No account</NativeSelectOption>
+                {accounts.map(a => <NativeSelectOption key={a.id} value={a.id}>{a.name}</NativeSelectOption>)}
+              </NativeSelect>
+              {outstanding.length > 1 && (
+                <Button variant="outline" className="h-12 shrink-0" disabled={busy} onClick={() => onSettle(outstanding.map(s => s.shareId), receiveInto)}>
+                  Mark all paid
                 </Button>
+              )}
+            </div>
+          </div>
+          <ul className="flex flex-col gap-2 pt-3">
+            {outstanding.map(s => (
+              <li key={s.shareId}>
+                <AttentionRow
+                  title={<>{s.description || 'Untitled'}, <span className="tabular-nums">{fmt(s.amount, s.currency)}</span></>}
+                  detail={`${formatDay(s.occurred_at, tz)}${s.note ? `, ${s.note}` : ''}`}
+                  action={
+                    <Button className="shrink-0" disabled={busy} onClick={() => onSettle([s.shareId], receiveInto)} aria-label={`Mark paid: ${s.description || 'entry'} ${fmt(s.amount, s.currency)}`}>
+                      Mark paid
+                    </Button>
+                  }
+                />
               </li>
             ))}
           </ul>
@@ -322,26 +342,26 @@ function PersonCard({
       )}
 
       {settled.length > 0 && (
-        <Collapsible open={historyOpen} onOpenChange={setHistoryOpen} className="flex flex-col gap-2">
+        <Collapsible open={historyOpen} onOpenChange={setHistoryOpen} className={cn('flex flex-col', outstanding.length > 0 && 'pt-2')}>
           <CollapsibleTrigger
-            render={<Button variant="ghost" className="-mx-2 h-11 w-[calc(100%+1rem)] justify-between px-2 text-sm font-semibold text-muted-foreground hover:text-foreground" />}
+            render={<Button variant="ghost" className="h-13 w-full justify-between rounded-none border-b border-b-border px-0 text-sm font-semibold text-muted-foreground hover:bg-transparent hover:text-foreground" />}
           >
             <span>Paid ({settled.length})</span>
             <ChevronDown className={cn('size-4 transition-transform', historyOpen && 'rotate-180')} aria-hidden />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <ul className="glass-soft divide-y divide-border rounded-lg">
+            <ul>
               {settled.map(s => {
                 const e = entryById.get(s.money_entry_id)!
                 const acc = accounts.find(a => a.id === s.settled_account_id)
                 return (
-                  <li key={s.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1 text-sm">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate">{e.description || 'Untitled'}</div>
-                      <div className="text-xs text-muted-foreground">Paid {s.settled_at ? formatDay(s.settled_at, tz) : ''}{acc ? ` into ${acc.name}` : ''}</div>
+                  <li key={s.id} className="flex min-h-[60px] items-center justify-between gap-3 border-b border-border py-2">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <div className="truncate text-[15px] font-medium">{e.description || 'Untitled'}</div>
+                      <div className="text-[13px] text-muted-foreground">Paid {s.settled_at ? formatDay(s.settled_at, tz) : ''}{acc ? ` into ${acc.name}` : ''}</div>
                     </div>
-                    <span className="tabular-nums text-muted-foreground">{fmt(s.amount, e.currency)}</span>
-                    <Button variant="ghost" disabled={busy} onClick={() => onUnsettle(s.id)} aria-label={`Mark unpaid: ${e.description || 'entry'}`}>
+                    <span className="shrink-0 text-[15px] font-semibold tabular-nums text-muted-foreground">{fmt(s.amount, e.currency)}</span>
+                    <Button variant="link" className="shrink-0 px-1" disabled={busy} onClick={() => onUnsettle(s.id)} aria-label={`Mark unpaid: ${e.description || 'entry'}`}>
                       Mark unpaid
                     </Button>
                   </li>
@@ -351,7 +371,6 @@ function PersonCard({
           </CollapsibleContent>
         </Collapsible>
       )}
-     </CardContent>
-    </Card>
+    </section>
   )
 }

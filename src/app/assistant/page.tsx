@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, Send, RotateCcw } from 'lucide-react'
+import { Send } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { buildAgentHistory } from '@/lib/assistant'
 import type { AssistantTurn } from '@/lib/assistant'
@@ -17,11 +17,11 @@ import { isQueryPlan } from '@/lib/query-plans'
 import { LockGate } from '@/components/layout/lock-gate'
 import { PageShell } from '@/components/layout/page-shell'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
 import { Spinner } from '@/components/ui/spinner'
 import { VoiceRecorder } from '@/components/capture/voice-recorder'
+
+const DESCRIPTION = 'Ask about your money, tasks, learning and notes.'
 
 const EXAMPLE_QUESTIONS = [
   'How much did I spend on food this month?',
@@ -171,166 +171,162 @@ function AssistantPageInner() {
 
   const isEmpty = turns.length === 0
 
+  function clearConversation() { cancelSpeech(); setTurns([]) }
+
   return (
     <PageShell
       title="Assistant"
+      description={DESCRIPTION}
+      width="wide"
       actions={
-        <Button
-          variant="ghost"
-          size="icon-lg"
-          onClick={() => { cancelSpeech(); setTurns([]) }}
-          disabled={isEmpty}
-          aria-label="Clear conversation"
-        >
-          <RotateCcw className="size-4" aria-hidden />
+        // Phone: the clear action sits by the title. Desktop has it under the ask field.
+        <Button variant="link" onClick={clearConversation} disabled={isEmpty} aria-label="Clear conversation" className="px-0 lg:hidden">
+          Clear conversation
         </Button>
       }
     >
-      {/* Message thread: the page scrolls; the ask bar below stays in reach. */}
-      {isEmpty ? (
-        <Card role="region" aria-labelledby="assistant-empty">
-          <CardContent>
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia>
-                  <MessageCircle className="size-10 text-muted-foreground" aria-hidden />
-                </EmptyMedia>
-                <EmptyTitle><h2 id="assistant-empty" className="text-lg font-semibold">Ask about your data</h2></EmptyTitle>
-                <EmptyDescription>
-                  I can help you understand your money, tasks, learning, and notes.
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                {EXAMPLE_QUESTIONS.map((q, idx) => (
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-14">
+        {/* Message thread: the page scrolls; the ask field below stays in reach. */}
+        {isEmpty ? (
+          <section role="region" aria-labelledby="assistant-empty" className="flex min-w-0 flex-col">
+            <div className="border-b border-border pb-2.5">
+              <h2 id="assistant-empty" className="text-[19px] font-bold tracking-[-0.02em] lg:text-[22px]">Ask about your data</h2>
+            </div>
+            <ul className="flex flex-col">
+              {EXAMPLE_QUESTIONS.map((q, idx) => (
+                <li key={idx} className="border-b border-border">
                   <Button
-                    key={idx}
                     type="button"
-                    variant="secondary"
+                    variant="ghost"
                     onClick={() => setExampleQuestion(q)}
-                    className="h-auto min-h-11 w-full justify-start whitespace-normal px-4 py-3 text-left"
+                    className="h-auto min-h-[52px] w-full justify-start whitespace-normal rounded-none px-0 py-2 text-left text-[15px] font-medium hover:bg-transparent hover:underline"
                   >
                     {q}
                   </Button>
-                ))}
-              </EmptyContent>
-            </Empty>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {turns.map(turn => (
-            <div
-              key={turn.id}
-              className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {turn.role === 'user' ? (
-                // User bubble — right-aligned
-                <div className="max-w-xs lg:max-w-md bg-accent-2/20 rounded-xl px-4 py-3 text-sm">
-                  {turn.text}
-                </div>
-              ) : turn.intent === 'query_money' && isMoneyPlan(turn.payload) ? (
-                // Money answer card
-                <div className="w-full max-w-md">
-                  <QueryAnswerCard
-                    userId={userId}
-                    plan={turn.payload}
-                    onDismiss={() => removeTurn(turn.id)}
-                    onResult={onResultFor(turn)}
-                  />
-                </div>
-              ) : turn.intent === 'query_task' && isTaskPlan(turn.payload) ? (
-                // Task answer card
-                <div className="w-full max-w-md">
-                  <QueryTaskListAnswer
-                    userId={userId}
-                    plan={turn.payload}
-                    onDismiss={() => removeTurn(turn.id)}
-                    onResult={onResultFor(turn)}
-                  />
-                </div>
-              ) : turn.intent === 'query_learning' && isLearningPlan(turn.payload) ? (
-                // Learning answer card
-                <div className="w-full max-w-md">
-                  <QueryLearningListAnswer
-                    userId={userId}
-                    plan={turn.payload}
-                    onDismiss={() => removeTurn(turn.id)}
-                    onResult={onResultFor(turn)}
-                  />
-                </div>
-              ) : turn.intent === 'query_notes' && isNotesPlan(turn.payload) ? (
-                // Notes answer card
-                <div className="w-full max-w-md">
-                  <QueryNotesListAnswer
-                    userId={userId}
-                    plan={turn.payload}
-                    onDismiss={() => removeTurn(turn.id)}
-                    onResult={onResultFor(turn)}
-                  />
-                </div>
-              ) : (
-                // Text bubble for chat/log/error/unknown
-                <div className="max-w-xs lg:max-w-md bg-muted rounded-xl px-4 py-3 text-sm text-muted-foreground">
-                  {turn.intent === 'chat' || turn.intent === null
-                    ? "I can answer questions about your money, tasks, learning, and notes — e.g. 'How much did I spend on food this month?'"
-                    : turn.intent?.startsWith('log_') || turn.intent === 'set_budget'
-                    ? "That sounds like something to record — add it from the capture bar on Money home."
-                    : turn.text || 'Assistant response'}
-                </div>
-              )}
-            </div>
-          ))}
-          {busy && (
-            <div role="status" className="flex w-fit items-center gap-2 rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-              <Spinner className="motion-reduce:animate-none" aria-hidden />
-              Thinking…
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <section aria-label="Conversation" className="flex min-w-0 flex-col gap-4">
+            {turns.map(turn => (
+              <div
+                key={turn.id}
+                className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {turn.role === 'user' ? (
+                  // The question: the one raised surface in the thread, right-aligned.
+                  <div className="max-w-[280px] rounded-2xl bg-card px-4 py-3 text-[15px] leading-[1.4] lg:max-w-[420px]">
+                    {turn.text}
+                  </div>
+                ) : turn.intent === 'query_money' && isMoneyPlan(turn.payload) ? (
+                  // Money answer
+                  <div className="w-full max-w-[480px]">
+                    <QueryAnswerCard
+                      userId={userId}
+                      plan={turn.payload}
+                      onDismiss={() => removeTurn(turn.id)}
+                      onResult={onResultFor(turn)}
+                    />
+                  </div>
+                ) : turn.intent === 'query_task' && isTaskPlan(turn.payload) ? (
+                  // Task answer
+                  <div className="w-full max-w-[480px]">
+                    <QueryTaskListAnswer
+                      userId={userId}
+                      plan={turn.payload}
+                      onDismiss={() => removeTurn(turn.id)}
+                      onResult={onResultFor(turn)}
+                    />
+                  </div>
+                ) : turn.intent === 'query_learning' && isLearningPlan(turn.payload) ? (
+                  // Learning answer
+                  <div className="w-full max-w-[480px]">
+                    <QueryLearningListAnswer
+                      userId={userId}
+                      plan={turn.payload}
+                      onDismiss={() => removeTurn(turn.id)}
+                      onResult={onResultFor(turn)}
+                    />
+                  </div>
+                ) : turn.intent === 'query_notes' && isNotesPlan(turn.payload) ? (
+                  // Notes answer
+                  <div className="w-full max-w-[480px]">
+                    <QueryNotesListAnswer
+                      userId={userId}
+                      plan={turn.payload}
+                      onDismiss={() => removeTurn(turn.id)}
+                      onResult={onResultFor(turn)}
+                    />
+                  </div>
+                ) : (
+                  // Plain text on the ground for chat/log/error/unknown
+                  <p className="max-w-[300px] text-[15px] leading-[1.45] text-muted-foreground lg:max-w-[440px]">
+                    {turn.intent === 'chat' || turn.intent === null
+                      ? "I can answer questions about your money, tasks, learning, and notes, for example 'How much did I spend on food this month?'"
+                      : turn.intent?.startsWith('log_') || turn.intent === 'set_budget'
+                      ? "That sounds like something to record. Add it from the capture bar on Money home."
+                      : turn.text || 'Assistant response'}
+                  </p>
+                )}
+              </div>
+            ))}
+            {busy && (
+              <p role="status" className="flex w-fit items-center gap-2 text-[15px] text-muted-foreground">
+                <Spinner className="motion-reduce:animate-none" aria-hidden />
+                Thinking…
+              </p>
+            )}
+            <div ref={messagesEndRef} />
+          </section>
+        )}
 
-      {/* Ask bar: floating chrome, so it is the one glass layer here. */}
-      <form
-        onSubmit={handleSubmit}
-        className="glass sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 flex items-end gap-2 rounded-xl p-2"
-      >
-        <InputGroup className="h-11 flex-1">
-          <InputGroupInput
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Ask about your data…"
-            disabled={busy}
-            aria-label="Ask about your data"
-            enterKeyHint="send"
-            className="h-full"
-          />
-          <InputGroupAddon align="inline-end">
-            <VoiceRecorder
-              transcribeOnly
-              onTranscript={(t) => { void submitText(t, true) }}
-              disabled={busy || !userId}
-            />
-            <InputGroupButton
-              type="submit"
-              variant="default"
-              disabled={!input.trim() || busy}
-              size="icon-sm"
-              className="size-10"
-              aria-label="Send message"
-            >
-              <Send className="size-4" aria-hidden />
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
-      </form>
+        {/* Ask field: pinned to the bottom of the phone screen, a side column on desktop. */}
+        <div className="sticky bottom-0 z-10 -mx-5 flex flex-col gap-4 bg-background px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:-mx-6 sm:px-6 lg:top-6 lg:bottom-auto lg:mx-0 lg:p-0">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+            {!isEmpty && <p aria-hidden className="hidden text-[17px] font-bold lg:block">Ask about your data</p>}
+            <InputGroup className="h-13 rounded-2xl border-0 bg-card p-1 pl-2 has-disabled:bg-card has-disabled:opacity-100">
+              <InputGroupInput
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="Ask about your data…"
+                disabled={busy}
+                aria-label="Ask about your data"
+                enterKeyHint="send"
+                className="h-full text-[15px]"
+              />
+              <InputGroupAddon align="inline-end" className="gap-1 py-0 pr-0 has-[>button]:mr-0">
+                <VoiceRecorder
+                  compact
+                  transcribeOnly
+                  onTranscript={(t) => { void submitText(t, true) }}
+                  disabled={busy || !userId}
+                />
+                <InputGroupButton
+                  type="submit"
+                  variant="default"
+                  disabled={!input.trim() || busy}
+                  size="icon-sm"
+                  className="size-11 rounded-xl"
+                  aria-label="Send message"
+                >
+                  <Send className="size-4" aria-hidden />
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </form>
+          <Button variant="outline" onClick={clearConversation} disabled={isEmpty} aria-label="Clear conversation" className="hidden w-fit lg:inline-flex">
+            Clear conversation
+          </Button>
+        </div>
+      </div>
     </PageShell>
   )
 }
 
 function AssistantLoading() {
   return (
-    <PageShell title="Assistant">
+    <PageShell title="Assistant" description={DESCRIPTION} width="wide">
       <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner aria-hidden />Loading…</p>
     </PageShell>
   )

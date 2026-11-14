@@ -2,6 +2,7 @@
 
 import { MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 export type RowMenuItem = {
@@ -17,6 +18,8 @@ type Props = {
   items: RowMenuItem[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Extra classes for the trigger, e.g. ink instead of muted in a page header. */
+  triggerClassName?: string
 }
 
 // The menu portals out of the row in the DOM but not in the React tree, so its
@@ -30,11 +33,11 @@ const stop = (e: React.SyntheticEvent) => e.stopPropagation()
  * so Escape, arrow keys, outside press and focus return come from the primitive.
  * `open` stays controlled so a long-press on the row can open it too.
  */
-export function RowMenu({ label, items, open, onOpenChange }: Props) {
+export function RowMenu({ label, items, open, onOpenChange, triggerClassName }: Props) {
   return (
     <DropdownMenu open={open} onOpenChange={o => onOpenChange(o)}>
       <DropdownMenuTrigger
-        render={<Button variant="ghost" size="icon-lg" className="shrink-0 text-muted-foreground hover:text-foreground" />}
+        render={<Button variant="ghost" size="icon-lg" className={cn('shrink-0 text-muted-foreground hover:text-foreground', triggerClassName)} />}
         aria-label={label}
         onClick={stop}
       >
@@ -55,7 +58,7 @@ export function RowMenu({ label, items, open, onOpenChange }: Props) {
             <DropdownMenuItem
               key={it.label}
               variant={it.destructive ? 'destructive' : 'default'}
-              className="min-h-11 px-3"
+              className="min-h-11 px-3 text-[15px]"
               onClick={() => it.onSelect()}
             >
               {Icon && <Icon className="size-4" aria-hidden />}

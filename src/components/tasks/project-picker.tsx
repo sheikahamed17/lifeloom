@@ -7,6 +7,7 @@ import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { QUIET_TOGGLE } from '@/components/shared/quiet-toggle'
 
 type Props = {
   userId: string
@@ -16,7 +17,6 @@ type Props = {
 }
 
 const NONE = '__none__'
-const CHIP = 'min-h-10 rounded-lg border border-input px-3 text-sm text-muted-foreground aria-pressed:border-accent-2/50 aria-pressed:bg-accent-2/20 aria-pressed:text-accent-2'
 
 export function ProjectPicker({ userId, selectedId, onSelect, noneLabel = 'No project' }: Props) {
   const projects = useProjects(userId)
@@ -36,17 +36,17 @@ export function ProjectPicker({ userId, selectedId, onSelect, noneLabel = 'No pr
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-x-5">
       <ToggleGroup
         aria-label="Project"
-        spacing={1}
+        spacing={5}
         value={[selectedId ?? NONE]}
         onValueChange={v => { const next = v[0]; if (next) onSelect(next === NONE ? null : next) }}
-        className="flex-wrap"
+        className="max-w-full flex-wrap gap-y-0"
       >
-        <ToggleGroupItem value={NONE} className={CHIP}>{noneLabel}</ToggleGroupItem>
+        <ToggleGroupItem value={NONE} className={QUIET_TOGGLE}>{noneLabel}</ToggleGroupItem>
         {projects.map(p => (
-          <ToggleGroupItem key={p.id} value={p.id} className={CHIP}>
+          <ToggleGroupItem key={p.id} value={p.id} className={QUIET_TOGGLE}>
             {p.color && <span className="size-2 rounded-full" style={{ backgroundColor: p.color }} aria-hidden />}
             {p.name}
           </ToggleGroupItem>
@@ -64,7 +64,7 @@ export function ProjectPicker({ userId, selectedId, onSelect, noneLabel = 'No pr
           className="w-36"
         />
       ) : (
-        <Button variant="outline" onClick={() => setCreating(true)} className="text-muted-foreground">
+        <Button variant="link" onClick={() => setCreating(true)} className="px-0">
           <Plus className="size-4" aria-hidden />New project
         </Button>
       )}

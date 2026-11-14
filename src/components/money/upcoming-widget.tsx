@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { useRecurringRules } from '@/hooks/use-recurring-rules'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
@@ -16,20 +16,12 @@ import { monthBounds } from '@/lib/money-filter-sort'
 import { makeCategoryResolver } from '@/lib/category-resolve'
 import { formatLocalDate } from '@/lib/format'
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { ChevronRight } from 'lucide-react'
-import { Card } from '@/components/ui/card'
-import { Empty, EmptyContent, EmptyDescription } from '@/components/ui/empty'
-import { Item } from '@/components/ui/item'
-import { Separator } from '@/components/ui/separator'
+import { EMPTY_NOTE, FOOT_LINK, HEAD_NOTE, SectionHeading } from '@/components/money/section-heading'
 
 type Props = { userId: string }
 
-const LINK = cn(buttonVariants({ variant: 'link' }), 'h-11 px-0')
-
-
 export function UpcomingWidget({ userId }: Props) {
+  const headingId = useId()
   const rules = useRecurringRules(userId)
   const entriesRaw = useMoneyEntries(userId)
   const shares = useExpenseShares(userId)
@@ -97,63 +89,57 @@ export function UpcomingWidget({ userId }: Props) {
   const fmt = (amt: number) =>
     (amt / (prefs.primary_currency === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })
   const symbol = currencySymbol(prefs.primary_currency)
-  const netColor = summary.projectedNet >= 0 ? 'text-income' : 'text-destructive'
   const signedFmt = (n: number) => `${n < 0 ? '−' : ''}${symbol}${fmt(Math.abs(n))}`
-  // Supporting figures wear the muted text token (a 60% status colour measured 2.7:1).
-  const subColor = 'text-muted-foreground'
 
   if (upcoming.length === 0) {
     return (
-      <Card role="region" aria-labelledby="upcoming-heading" className="gap-3 p-5">
-        <h2 id="upcoming-heading" className="text-sm font-semibold">Upcoming</h2>
-        <Empty className="p-2">
-          <EmptyDescription>Add a recurring entry (rent, salary, a subscription) to see what’s coming and how the month ends.</EmptyDescription>
-          <EmptyContent>
-            <Link href="/settings/recurring" className={LINK}>Recurring rules<ChevronRight className="size-4" aria-hidden /></Link>
-          </EmptyContent>
-        </Empty>
-      </Card>
+      <section aria-labelledby={headingId} className="flex flex-col">
+        <SectionHeading id={headingId}>Coming up</SectionHeading>
+        <p className={EMPTY_NOTE}>Add a recurring entry (rent, salary, a subscription) to see what’s coming and how the month ends.</p>
+        <Link href="/settings/recurring" className={FOOT_LINK}>Recurring rules</Link>
+      </section>
     )
   }
 
+  // What is scheduled to go out in the 30-day window the list covers.
+  const goingOut = upcoming.reduce((n, e) => (e.direction === 'out' ? n + toPrimary(e.amount, e.currency) : n), 0)
+
   return (
-    <Card role="region" aria-labelledby="upcoming-heading" className="gap-5 p-5">
-      <div className="flex flex-col gap-1">
-        <h2 id="upcoming-heading" className="text-sm font-semibold">Month end, projected</h2>
-        <div className={`tabular-nums text-3xl font-semibold tabular-nums leading-tight ${netColor}`}>
-          {summary.projectedNet < 0 ? '−' : ''}{symbol}{fmt(Math.abs(summary.projectedNet))}
-        </div>
-        <p className={`text-xs tabular-nums ${subColor}`}>
-          {signedFmt(summary.actualNet)} so far, {signedFmt(summary.scheduledIn - summary.scheduledOut)} still scheduled
-        </p>
-      </div>
-
-      <Separator />
-
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-semibold">Upcoming</h3>
-        <ul className="flex flex-col gap-1">
-          {upcoming.slice(0, 5).map((event, idx) => {
-            const catName =
-              resolve(event.category_id)?.name ||
-              event.description ||
-              '—'
-            return (
-              <li key={`${event.ruleId}-${idx}`}>
-                <Item size="xs" className="min-h-10 flex-nowrap gap-3 p-0">
-                  <span className="w-14 shrink-0 text-xs text-muted-foreground">
-                    {formatLocalDate(event.date, prefs.tz, { day: 'numeric', month: 'short' })}
-                  </span>
-                  <span className="flex-1 truncate">{catName}</span>
-                  <span className={`shrink-0 tabular-nums ${event.direction === 'in' ? 'text-income' : 'text-foreground'}`}>
-                    {event.direction === 'in' ? '+' : '−'}{symbol}{fmt(toPrimary(event.amount, event.currency))}
-                  </span>
-                </Item>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
-    </Card>
+    <section aria-labelledby={headingId} className="flex flex-col">
+      <SectionHeading
+        id={headingId}
+        aside={goingOut > 0 && <p className={HEAD_NOTE}><span className="tabular-nums">{symbol}{fmt(goingOut)}</span> in the next 30 days</p>}
+      >
+        Coming up
+      </SectionHeading>
+      <ul className="flex flex-col">
+        {upcoming.slice(0, 5).map((event, idx) => {
+          const catName =
+            resolve(event.category_id)?.name ||
+            event.description ||
+            '—'
+          return (
+            <li key={`${event.ruleId}-${idx}`} className="flex min-h-12 items-center gap-3 border-b border-border py-2 text-[15px]">
+              <span className="w-13 shrink-0 text-[13px] font-semibold text-muted-foreground lg:w-14">
+                {formatLocalDate(event.date, prefs.tz, { day: 'numeric', month: 'short' })}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-medium">{catName}</span>
+              <span className={`shrink-0 font-semibold tabular-nums ${event.direction === 'in' ? 'text-income' : ''}`}>
+                {event.direction === 'in' ? '+' : ''}{symbol}{fmt(toPrimary(event.amount, event.currency))}
+              </span>
+            </li>
+          )
+        })}
+        <li className="flex min-h-13 items-center gap-3 border-b border-border py-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="text-[15px] font-medium">Month end, projected</span>
+            <span className="text-[13px] tabular-nums text-muted-foreground">
+              {signedFmt(summary.actualNet)} so far, {signedFmt(summary.scheduledIn - summary.scheduledOut)} still scheduled
+            </span>
+          </div>
+          <span className="shrink-0 text-[15px] font-semibold tabular-nums">{signedFmt(summary.projectedNet)}</span>
+        </li>
+      </ul>
+    </section>
   )
 }

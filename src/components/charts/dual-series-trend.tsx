@@ -1,11 +1,10 @@
 'use client'
 
 import { useId, useMemo, useState } from 'react'
-import { DIVERGING, SPEND_COLOR, INCOME_COLOR } from '@/lib/chart-palette'
+import { SPEND_COLOR, INCOME_COLOR } from '@/lib/chart-palette'
 import { cn } from '@/lib/utils'
-import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ChartEmpty, ChartHeader, compactMoney, fullMoney, tickClass } from '@/components/charts/chart-kit'
+import { ChartEmpty, ChartSection, ChartTakeaway, fullMoney, tickClass } from '@/components/charts/chart-kit'
 
 interface DualSeriesTrendProps {
   spend: { label: string; amount: number }[]
@@ -15,8 +14,9 @@ interface DualSeriesTrendProps {
 }
 
 /**
- * Income and spend per period on ONE shared axis (never two y-scales), with the
- * net under each period. A period with neither shows no net at all, not "+0".
+ * Income and spend per period on ONE shared axis (never two y-scales): spend in
+ * ink, income in blue. Net per period is in the hover title and the table, and
+ * the sentence under the chart sums it up.
  */
 export function DualSeriesTrend({ spend, income, symbol, jpy }: DualSeriesTrendProps) {
   const id = useId()
@@ -37,15 +37,24 @@ export function DualSeriesTrend({ spend, income, symbol, jpy }: DualSeriesTrendP
     return <ChartEmpty id={id} title="Income and spend">No entries in this range yet.</ChartEmpty>
   }
 
+  // One sentence on what was kept: the range of net across the periods that have entries.
+  const nets = periods.filter(p => p.spend || p.income).map(p => p.income - p.spend)
+  const over = nets.filter(v => v < 0).length
+  const lo = Math.min(...nets)
+  const hi = Math.max(...nets)
+  const takeaway = nets.length === 0
+    ? 'No income or spend in this range yet.'
+    : over > 0
+      ? `Spend was higher than income in ${over} of ${nets.length} ${nets.length === 1 ? 'period' : 'periods'} with entries.`
+      : nets.length === 1 || lo === hi
+        ? `You kept ${money(lo)} of your income${nets.length === 1 ? '' : ' in each period'}.`
+        : `You kept between ${money(lo)} and ${money(hi)} of your income in each period.`
+
+  const gap = n <= 7 ? 'gap-3' : 'gap-1'
+
   return (
-    <Card role="region" aria-labelledby={id}>
-      <ChartHeader id={id} title="Income and spend" showTable={showTable} onToggle={() => setShowTable(s => !s)}>
-        <span className="hidden items-center gap-3 text-xs text-muted-foreground sm:flex">
-          <Legend />
-        </span>
-      </ChartHeader>
-      <CardContent className="flex flex-col gap-3">
-      <div className="flex items-center gap-3 text-xs text-muted-foreground sm:hidden"><Legend /></div>
+    <ChartSection id={id} title="Income and spend" showTable={showTable} onToggle={() => setShowTable(s => !s)}>
+      <div className="flex items-center gap-4 pt-3 text-[13px] text-muted-foreground"><Legend /></div>
       {showTable ? (
         <Table>
           <TableHeader><TableRow><TableHead>Period</TableHead><TableHead className="text-right">Spend</TableHead><TableHead className="text-right">Income</TableHead><TableHead className="text-right">Net</TableHead></TableRow></TableHeader>
@@ -61,60 +70,42 @@ export function DualSeriesTrend({ spend, income, symbol, jpy }: DualSeriesTrendP
           </TableBody>
         </Table>
       ) : (
-        <figure
-          role="img"
-          aria-label={`Income and spend: ${periods.map(p => `${p.label} spend ${money(p.spend)}, income ${money(p.income)}`).join('; ')}`}
-          className="flex flex-col gap-1"
-        >
-          <p className="text-right text-xs text-muted-foreground">Highest <span className="tabular-nums">{money(max)}</span></p>
-          <div className="relative flex h-44 items-end gap-1 border-b border-border">
-            <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border" />
-            {periods.map(p => (
-              <div
-                key={p.label}
-                title={`${p.label}: spend ${money(p.spend)}, income ${money(p.income)}, net ${money(p.income - p.spend)}`}
-                className="group flex h-full flex-1 items-end justify-center gap-0.5"
-              >
-                <div className="w-1/2 max-w-5 rounded-t-[4px] transition-[filter] group-hover:brightness-125" style={{ height: pct(p.spend), backgroundColor: SPEND_COLOR }} />
-                <div className="w-1/2 max-w-5 rounded-t-[4px] transition-[filter] group-hover:brightness-125" style={{ height: pct(p.income), backgroundColor: INCOME_COLOR }} />
-              </div>
-            ))}
-          </div>
-          {/* Net per period: a sign-coloured tick plus a compact figure in text ink; nothing for an empty period. */}
-          <div className="flex gap-1" aria-hidden>
-            {periods.map((p, i) => {
-              const empty = !p.spend && !p.income
-              const net = p.income - p.spend
-              return (
-                <span key={p.label} className={cn('flex flex-1 flex-col items-center gap-0.5', tickClass(i, n))}>
-                  {!empty && (
-                    <>
-                      <span className="h-1 w-6 max-w-full rounded-full" style={{ backgroundColor: net >= 0 ? DIVERGING.positive : DIVERGING.negative }} />
-                      <span className="max-w-full truncate tabular-nums text-xs tabular-nums text-muted-foreground">{net >= 0 ? '+' : ''}{compactMoney(net, symbol, jpy)}</span>
-                    </>
-                  )}
-                </span>
-              )
-            })}
-          </div>
-          <div className="flex gap-1" aria-hidden>
-            {periods.map((p, i) => (
-              <span key={p.label} className={cn('flex-1 truncate text-center text-xs text-muted-foreground', tickClass(i, n), i === n - 1 && 'text-foreground')}>{p.label}</span>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">Under each period: net (income minus spend).</p>
-        </figure>
+        <>
+          <figure
+            role="img"
+            aria-label={`Income and spend: ${periods.map(p => `${p.label} spend ${money(p.spend)}, income ${money(p.income)}`).join('; ')}`}
+            className="flex flex-col gap-1.5 pt-3"
+          >
+            <div className={cn('flex h-[120px] items-end border-b border-border lg:h-36', gap)}>
+              {periods.map(p => (
+                <div
+                  key={p.label}
+                  title={`${p.label}: spend ${money(p.spend)}, income ${money(p.income)}, net ${money(p.income - p.spend)}`}
+                  className="group flex h-full flex-1 items-end justify-center gap-0.5"
+                >
+                  <div className="w-1/2 max-w-[18px] rounded-t-[4px] transition-opacity group-hover:opacity-70" style={{ height: pct(p.spend), backgroundColor: SPEND_COLOR }} />
+                  <div className="w-1/2 max-w-[18px] rounded-t-[4px] transition-opacity group-hover:opacity-70" style={{ height: pct(p.income), backgroundColor: INCOME_COLOR }} />
+                </div>
+              ))}
+            </div>
+            <div className={cn('flex', gap)} aria-hidden>
+              {periods.map((p, i) => (
+                <span key={p.label} className={cn('flex-1 truncate text-center text-xs text-muted-foreground', tickClass(i, n), i === n - 1 && 'font-semibold text-foreground')}>{p.label}</span>
+              ))}
+            </div>
+          </figure>
+          <ChartTakeaway>{takeaway}</ChartTakeaway>
+        </>
       )}
-      </CardContent>
-    </Card>
+    </ChartSection>
   )
 }
 
 function Legend() {
   return (
     <>
-      <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm" style={{ backgroundColor: SPEND_COLOR }} />Spend</span>
-      <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm" style={{ backgroundColor: INCOME_COLOR }} />Income</span>
+      <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-[3px]" style={{ backgroundColor: SPEND_COLOR }} />Spend</span>
+      <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-[3px]" style={{ backgroundColor: INCOME_COLOR }} />Income</span>
     </>
   )
 }

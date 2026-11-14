@@ -1,13 +1,9 @@
 'use client'
 
-import { ChevronRight, Target } from 'lucide-react'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import Link from 'next/link'
-import { IconTile } from '@/components/shared/icon-tile'
-import { buttonVariants } from '@/components/ui/button'
-import { Empty, EmptyContent, EmptyDescription } from '@/components/ui/empty'
 import { Progress } from '@/components/ui/progress'
-import { cn } from '@/lib/utils'
+import { EMPTY_NOTE, FOOT_LINK, HEAD_LINK, SectionHeading } from '@/components/money/section-heading'
 import { useGoals } from '@/hooks/use-goals'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
@@ -25,6 +21,7 @@ import type { AccountLike } from '@/lib/accounts'
 type Props = { userId: string }
 
 export function GoalsWidget({ userId }: Props) {
+  const headingId = useId()
   const goals = useGoals(userId)
   const accounts = useAccounts(userId)
   const entriesRaw = useMoneyEntries(userId)
@@ -75,17 +72,11 @@ export function GoalsWidget({ userId }: Props) {
 
   if (goals.length === 0) {
     return (
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold">Goals</h2>
-        <Empty className="p-2">
-          <EmptyDescription>Set a savings target (a trip, a new laptop) and watch your progress here.</EmptyDescription>
-          <EmptyContent>
-            <Link href="/settings/goals" className={cn(buttonVariants({ variant: 'link' }), 'h-11 self-center px-0')}>
-              Add a goal<ChevronRight className="size-4" aria-hidden />
-            </Link>
-          </EmptyContent>
-        </Empty>
-      </div>
+      <section aria-labelledby={headingId} className="flex flex-col">
+        <SectionHeading id={headingId}>Goals</SectionHeading>
+        <p className={EMPTY_NOTE}>Set a savings target (a trip, a new laptop) and watch your progress here.</p>
+        <Link href="/settings/goals" className={FOOT_LINK}>Add a goal</Link>
+      </section>
     )
   }
 
@@ -93,37 +84,38 @@ export function GoalsWidget({ userId }: Props) {
     `${currencySymbol(cur)}${(amt / (cur === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
   return (
-    <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold">Goals</h2>
-      {goals.map(goal => {
-        const p = goalProgress(goal, accountLikes, entries, transfers, toAcct)
-        const pctDisplay = Math.round(p.pct)
+    <section aria-labelledby={headingId} className="flex flex-col">
+      <SectionHeading id={headingId} aside={<Link href="/settings/goals" className={HEAD_LINK}>Manage</Link>}>
+        Goals
+      </SectionHeading>
+      <ul className="flex flex-col">
+        {goals.map(goal => {
+          const p = goalProgress(goal, accountLikes, entries, transfers, toAcct)
+          const pctDisplay = Math.round(p.pct)
 
-        return (
-          <div key={goal.id} className="flex flex-col gap-1">
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="flex min-w-0 items-center gap-3">
-                <IconTile emoji={goal.icon} icon={Target} size="sm" />
-                <span className="truncate">{goal.name}</span>
-              </span>
-              <span className="tabular-nums text-xs tabular-nums text-muted-foreground">
-                {fmt(p.current, goal.currency)} of {fmt(goal.target_amount, goal.currency)}
-              </span>
-            </div>
-            <Progress
-              value={Math.min(p.pct, 100)}
-              aria-label={`${goal.name} progress ${pctDisplay}%`}
-              className="[&_[data-slot=progress-indicator]]:bg-accent-2 [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-accent"
-            />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{pctDisplay}%</span>
-              {p.remaining > 0 && (
-                <span>{fmt(p.remaining, goal.currency)} to go</span>
-              )}
-            </div>
-          </div>
-        )
-      })}
-    </div>
+          return (
+            <li key={goal.id} className="flex flex-col gap-2 border-b border-border py-3.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 truncate text-[15px] font-medium">{goal.name}</span>
+                <span className="shrink-0 text-[13px] tabular-nums text-muted-foreground">
+                  <span className="font-semibold text-foreground">{fmt(p.current, goal.currency)}</span> of {fmt(goal.target_amount, goal.currency)}
+                </span>
+              </div>
+              <Progress
+                value={Math.min(p.pct, 100)}
+                aria-label={`${goal.name} progress ${pctDisplay}%`}
+                className="[&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-indicator]]:bg-foreground [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-muted"
+              />
+              <div className="flex items-center justify-between text-[13px] tabular-nums text-muted-foreground">
+                <span>{pctDisplay}%</span>
+                {p.remaining > 0 && (
+                  <span>{fmt(p.remaining, goal.currency)} to go</span>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }

@@ -16,13 +16,14 @@ import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
-import { ArchivedCollapsible, SELECT_CLASS, SettingsCard } from '../_ui'
+import { ArchivedCollapsible, COUNT_CLASS, FormField, SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/layout/page-shell'
 import { RowMenu } from '@/components/shared/row-menu'
 import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 import type { CategoryRow } from '@/lib/dexie'
 
 const BACK = { href: '/settings', label: 'Settings' }
+const DESCRIPTION = 'Add, rename, merge and archive spend and income categories.'
 
 export default function CategoriesPage() {
   return (
@@ -37,7 +38,6 @@ function CategoriesPageInner() {
   const undo = useUndo()
   const [userId, setUserId] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
-  const [newIcon, setNewIcon] = useState('')
   const [kind, setKind] = useState<'spend' | 'income'>('spend')
   const [mergingId, setMergingId] = useState<string | null>(null)
   const [mergeTargetId, setMergeTargetId] = useState<string | null>(null)
@@ -94,12 +94,11 @@ function CategoriesPageInner() {
       entity_kind: 'category',
       entity_id: crypto.randomUUID(),
       op_type: 'create',
-      payload: { name: newName.trim(), kind, sort_order: sortOrder, icon: newIcon.trim() || null },
+      payload: { name: newName.trim(), kind, sort_order: sortOrder, icon: null },
       user_id: userId,
     })
     await applyLocalOp(op)
     setNewName('')
-    setNewIcon('')
     pushPullOnce({ userId }).catch(err => console.error('sync', err))
   }
 
@@ -128,33 +127,14 @@ function CategoriesPageInner() {
 
   if (!userId) {
     return (
-      <PageShell title="Categories" back={BACK}>
+      <PageShell title="Categories" back={BACK} description={DESCRIPTION}>
         <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
-    <PageShell title="Categories" back={BACK}>
-      <SettingsCard title="Add a category">
-        <div className="flex gap-2">
-          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name" maxLength={40} aria-label="Category name" />
-          <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} placeholder="Emoji" maxLength={8} className="w-20 text-center" aria-label="Category emoji" />
-        </div>
-        <div className="flex gap-2">
-          <NativeSelect
-            value={kind}
-            onChange={e => setKind(e.target.value as 'spend' | 'income')}
-            className={cn(SELECT_CLASS, 'w-auto')}
-            aria-label="Spend or income"
-          >
-            <NativeSelectOption value="spend">Spend</NativeSelectOption>
-            <NativeSelectOption value="income">Income</NativeSelectOption>
-          </NativeSelect>
-          <Button size="lg" onClick={addCategory} className="flex-1">Add</Button>
-        </div>
-      </SettingsCard>
-
+    <PageShell title="Categories" back={BACK} description={DESCRIPTION}>
       <CategorySection
         title="Spend"
         categories={spend}
@@ -181,6 +161,25 @@ function CategoriesPageInner() {
         onMergeConfirm={doMerge}
         isMerging={isMerging}
       />
+
+      <SettingsCard title="Add a category">
+        <FormField label="Name" htmlFor="cat-name">
+          <Input id="cat-name" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Health" maxLength={40} aria-label="Category name" />
+        </FormField>
+        <FormField label="Spend or income" htmlFor="cat-kind">
+          <NativeSelect
+            id="cat-kind"
+            value={kind}
+            onChange={e => setKind(e.target.value as 'spend' | 'income')}
+            className={SELECT_CLASS}
+            aria-label="Spend or income"
+          >
+            <NativeSelectOption value="spend">Spend</NativeSelectOption>
+            <NativeSelectOption value="income">Income</NativeSelectOption>
+          </NativeSelect>
+        </FormField>
+        <Button size="lg" onClick={addCategory}>Add category</Button>
+      </SettingsCard>
 
       {archived.length > 0 && (
         <ArchivedSection archived={archived} onRestore={restoreCategory} />
@@ -216,20 +215,19 @@ function CategorySection({
 }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
-  const [editIcon, setEditIcon] = useState('')
   const [menuFor, setMenuFor] = useState<string | null>(null)
 
   function startEdit(c: CategoryRow) {
     setEditingId(c.id)
     setEditName(c.name)
-    setEditIcon(c.icon ?? '')
     onMergeChange(null)
   }
 
   async function saveEdit(id: string) {
     const trimmed = editName.trim()
     if (!trimmed) return
-    await onUpdate(id, { name: trimmed, icon: editIcon.trim() || null })
+    // The emoji field is gone from the form; the stored icon is passed through unchanged.
+    await onUpdate(id, { name: trimmed, icon: categories.find(c => c.id === id)?.icon ?? null })
     setEditingId(null)
   }
 
@@ -240,89 +238,83 @@ function CategorySection({
   }
 
   return (
-    <SettingsCard title={title} contentClassName="gap-2">
-      <ul className="glass-soft divide-y divide-border rounded-lg">
-        {categories.length === 0 && <li><Empty className="p-3"><EmptyDescription>No {title.toLowerCase()} categories.</EmptyDescription></Empty></li>}
+    <SettingsCard
+      title={title}
+      className="gap-0"
+      contentClassName="gap-0"
+      action={categories.length > 0 ? <span className={COUNT_CLASS}>{categories.length}</span> : undefined}
+    >
+      <ul>
+        {categories.length === 0 && <li className="border-b border-border"><Empty className="px-0 py-6"><EmptyDescription>No {title.toLowerCase()} categories.</EmptyDescription></Empty></li>}
         {categories.map(c => {
           const sameKindActive = allCategories.filter(cat => cat.kind === c.kind)
           const canMerge = sameKindActive.length >= 2
           if (editingId === c.id) {
             return (
-              <li key={c.id} className="flex flex-col gap-2 p-3">
-                <div className="flex w-full gap-2">
+              <li key={c.id} className="flex flex-col gap-3 border-b border-border py-4">
+                <FormField label="Name" htmlFor={`cat-edit-${c.id}`}>
                   <Input
+                    id={`cat-edit-${c.id}`}
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
-                    placeholder="Name"
                     maxLength={40}
                     autoFocus
-                    className="flex-1"
                     aria-label={`New name for ${c.name}`}
                   />
-                  <Input
-                    value={editIcon}
-                    onChange={e => setEditIcon(e.target.value)}
-                    placeholder="Emoji"
-                    maxLength={8}
-                    className="w-20 text-center"
-                    aria-label={`Emoji for ${c.name}`}
-                  />
-                </div>
-                <div className="flex w-full gap-2">
-                  <Button onClick={() => saveEdit(c.id)} className="flex-1">Save</Button>
-                  <Button variant="outline" onClick={() => setEditingId(null)} className="flex-1">Cancel</Button>
+                </FormField>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={() => saveEdit(c.id)}>Save</Button>
+                  <Button variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
                 </div>
               </li>
             )
           }
           if (mergingId === c.id) {
             return (
-              <li key={c.id} className="flex flex-col gap-2 p-3">
-                <Label htmlFor={`merge-${c.id}`} className="text-sm text-foreground">Merge {c.name} into</Label>
-                <NativeSelect
-                  id={`merge-${c.id}`}
-                  value={mergeTargetId ?? ''}
-                  onChange={e => onMergeTargetChange(e.target.value || null)}
-                  className={SELECT_CLASS}
-                >
-                  <NativeSelectOption value="">Choose a category…</NativeSelectOption>
-                  {sameKindActive
-                    .filter(cat => cat.id !== c.id)
-                    .map(cat => (
-                      <NativeSelectOption key={cat.id} value={cat.id}>
-                        {cat.icon ? `${cat.icon} ${cat.name}` : cat.name}
-                      </NativeSelectOption>
-                    ))}
-                </NativeSelect>
-                <div className="flex w-full gap-2">
-                  <Button
-                    onClick={() => onMergeConfirm(c.id, mergeTargetId ?? '')}
-                    disabled={!mergeTargetId || isMerging}
-                    className="flex-1"
+              <li key={c.id} className="border-b border-border py-2">
+                <div className="flex flex-col gap-2.5 rounded-2xl bg-card p-4">
+                  <Label htmlFor={`merge-${c.id}`} className="text-[15px] font-semibold text-foreground">Merge {c.name} into</Label>
+                  <NativeSelect
+                    id={`merge-${c.id}`}
+                    value={mergeTargetId ?? ''}
+                    onChange={e => onMergeTargetChange(e.target.value || null)}
+                    className={cn(SELECT_CLASS, '[&_select]:border-border')}
                   >
-                    {isMerging ? 'Merging…' : 'Merge'}
-                  </Button>
-                  <Button variant="outline" onClick={() => onMergeChange(null)} className="flex-1">Cancel</Button>
+                    <NativeSelectOption value="">Choose a category…</NativeSelectOption>
+                    {sameKindActive
+                      .filter(cat => cat.id !== c.id)
+                      .map(cat => (
+                        <NativeSelectOption key={cat.id} value={cat.id}>{cat.name}</NativeSelectOption>
+                      ))}
+                  </NativeSelect>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={() => onMergeConfirm(c.id, mergeTargetId ?? '')}
+                      disabled={!mergeTargetId || isMerging}
+                    >
+                      {isMerging ? 'Merging…' : 'Merge'}
+                    </Button>
+                    <Button variant="outline" onClick={() => onMergeChange(null)}>Cancel</Button>
+                  </div>
                 </div>
               </li>
             )
           }
           return (
-            <li key={c.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
-              <span className="min-w-0 truncate text-sm">
-                {c.icon && <span aria-hidden="true" className="mr-1.5">{c.icon}</span>}
-                {c.name}
-              </span>
-              <RowMenu
-                label={`Actions for ${c.name}`}
-                open={menuFor === c.id}
-                onOpenChange={o => setMenuFor(o ? c.id : null)}
-                items={[
-                  { label: 'Edit', icon: Pencil, onSelect: () => startEdit(c) },
-                  ...(canMerge ? [{ label: 'Merge into…', icon: Merge, onSelect: () => startMerge(c) }] : []),
-                  { label: 'Archive', icon: Archive, onSelect: () => onArchive(c.id) },
-                ]}
-              />
+            <li key={c.id} className="flex min-h-[52px] items-center justify-between gap-3 border-b border-border">
+              <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{c.name}</span>
+              <div className="-mr-2.5 flex shrink-0">
+                <RowMenu
+                  label={`Actions for ${c.name}`}
+                  open={menuFor === c.id}
+                  onOpenChange={o => setMenuFor(o ? c.id : null)}
+                  items={[
+                    { label: 'Edit', icon: Pencil, onSelect: () => startEdit(c) },
+                    ...(canMerge ? [{ label: 'Merge into…', icon: Merge, onSelect: () => startMerge(c) }] : []),
+                    { label: 'Archive', icon: Archive, onSelect: () => onArchive(c.id) },
+                  ]}
+                />
+              </div>
             </li>
           )
         })}
@@ -340,14 +332,11 @@ function ArchivedSection({
 }) {
   return (
     <ArchivedCollapsible count={archived.length}>
-      <ul className="glass-soft divide-y divide-border rounded-lg">
+      <ul>
         {archived.map(c => (
-          <li key={c.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
-            <span className="min-w-0 truncate text-sm">
-              {c.icon && <span aria-hidden="true" className="mr-1.5">{c.icon}</span>}
-              {c.name}
-            </span>
-            <Button variant="ghost" onClick={() => onRestore(c.id)} aria-label={`Restore ${c.name}`}>Restore</Button>
+          <li key={c.id} className="flex min-h-[52px] items-center justify-between gap-3 border-b border-border">
+            <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{c.name}</span>
+            <Button variant="link" className="shrink-0 px-1" onClick={() => onRestore(c.id)} aria-label={`Restore ${c.name}`}>Restore</Button>
           </li>
         ))}
       </ul>

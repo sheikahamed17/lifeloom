@@ -11,19 +11,19 @@ import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { parseAmountInput } from '@/lib/parse-amount'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { formatMinor } from '@/lib/currency'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
-import { ArchivedCollapsible, SELECT_CLASS, SettingsCard } from '../_ui'
+import { ArchivedCollapsible, COUNT_CLASS, FormField, SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/layout/page-shell'
 import { RowMenu } from '@/components/shared/row-menu'
 import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 import type { GoalRow } from '@/lib/dexie'
 
 const BACK = { href: '/settings', label: 'Settings' }
+const DESCRIPTION = 'Savings targets and your progress towards them.'
 
 export default function GoalsPage() {
   return (
@@ -38,7 +38,6 @@ function GoalsPageInner() {
   const undo = useUndo()
   const [userId, setUserId] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
-  const [newIcon, setNewIcon] = useState('')
   const [newTargetAmount, setNewTargetAmount] = useState('')
   const [newCurrency, setNewCurrency] = useState<typeof SUPPORTED_CURRENCIES[number]>('INR')
   const [newAccountId, setNewAccountId] = useState<string | null>(null)
@@ -74,7 +73,7 @@ function GoalsPageInner() {
         name: newName.trim(),
         target_amount: targetMinor,
         currency,
-        icon: newIcon.trim() || null,
+        icon: null,
         account_id: newAccountId || null,
         saved_amount: savedMinor,
       },
@@ -82,7 +81,6 @@ function GoalsPageInner() {
     })
     await applyLocalOp(op)
     setNewName('')
-    setNewIcon('')
     setNewTargetAmount('')
     setNewCurrency('INR')
     setNewAccountId(null)
@@ -115,86 +113,22 @@ function GoalsPageInner() {
 
   if (!userId) {
     return (
-      <PageShell title="Goals" back={BACK}>
+      <PageShell title="Goals" back={BACK} description={DESCRIPTION}>
         <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
-    <PageShell title="Goals" back={BACK}>
-      <SettingsCard title="Add a goal">
-        <div className="flex gap-2">
-          <Input
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            placeholder="Name"
-            maxLength={40}
-            aria-label="Goal name"
-          />
-          <Input
-            value={newIcon}
-            onChange={e => setNewIcon(e.target.value)}
-            placeholder="Emoji"
-            maxLength={8}
-            className="w-20 text-center"
-            aria-label="Goal emoji"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Input
-            value={newTargetAmount}
-            onChange={e => setNewTargetAmount(e.target.value)}
-            placeholder="Target amount"
-            type="text"
-            inputMode="decimal"
-            className="h-11"
-            aria-label="Target amount"
-          />
-          <NativeSelect
-            value={newAccountId ?? 'none'}
-            onChange={e => {
-              const val = e.target.value
-              setNewAccountId(val === 'none' ? null : val)
-            }}
-            className={cn(SELECT_CLASS, 'w-auto max-w-[50%]')}
-            aria-label="Linked account"
-          >
-            <NativeSelectOption value="none">No linked account</NativeSelectOption>
-            {assetAccounts.map(acc => (
-              <NativeSelectOption key={acc.id} value={acc.id}>{acc.name}</NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </div>
-        {!newAccountId && (
-          <div className="flex gap-2">
-            <Input
-              value={newSavedAmount}
-              onChange={e => setNewSavedAmount(e.target.value)}
-              placeholder="Saved so far"
-              type="text"
-              inputMode="decimal"
-              className="h-11"
-              aria-label="Saved so far"
-            />
-            <NativeSelect
-              value={newCurrency}
-              onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
-              className={cn(SELECT_CLASS, 'w-auto')}
-              aria-label="Currency"
-            >
-              {SUPPORTED_CURRENCIES.map(curr => (
-                <NativeSelectOption key={curr} value={curr}>{curr}</NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </div>
-        )}
-        <Button onClick={addGoal} className="w-full">Add</Button>
-      </SettingsCard>
-
-      <SettingsCard title="Active goals" contentClassName="gap-2">
-        <ul className="glass-soft divide-y divide-border rounded-lg">
-          {goals.length === 0 && <li><Empty className="p-3"><EmptyDescription>Add your first goal.</EmptyDescription></Empty></li>}
+    <PageShell title="Goals" back={BACK} description={DESCRIPTION}>
+      <SettingsCard
+        title="Active goals"
+        className="gap-0"
+        contentClassName="gap-0"
+        action={goals.length > 0 ? <span className={COUNT_CLASS}>{goals.length}</span> : undefined}
+      >
+        <ul>
+          {goals.length === 0 && <li className="border-b border-border"><Empty className="px-0 py-6"><EmptyDescription>Add your first goal.</EmptyDescription></Empty></li>}
           {goals.map(g => (
             <GoalRowItem
               key={g.id}
@@ -205,6 +139,80 @@ function GoalsPageInner() {
             />
           ))}
         </ul>
+      </SettingsCard>
+
+      <SettingsCard title="Add a goal">
+        <FormField label="Name" htmlFor="goal-name">
+          <Input
+            id="goal-name"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="New laptop"
+            maxLength={40}
+            aria-label="Goal name"
+          />
+        </FormField>
+        <FormField label="Target amount" htmlFor="goal-target">
+          <Input
+            id="goal-target"
+            value={newTargetAmount}
+            onChange={e => setNewTargetAmount(e.target.value)}
+            placeholder="0"
+            type="text"
+            inputMode="decimal"
+            aria-label="Target amount"
+          />
+        </FormField>
+        <FormField
+          label="Linked account"
+          htmlFor="goal-account"
+          hint="A linked goal tracks that account. Without one, you enter what you have saved."
+        >
+          <NativeSelect
+            id="goal-account"
+            value={newAccountId ?? 'none'}
+            onChange={e => {
+              const val = e.target.value
+              setNewAccountId(val === 'none' ? null : val)
+            }}
+            className={SELECT_CLASS}
+            aria-label="Linked account"
+          >
+            <NativeSelectOption value="none">No linked account</NativeSelectOption>
+            {assetAccounts.map(acc => (
+              <NativeSelectOption key={acc.id} value={acc.id}>{acc.name}</NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </FormField>
+        {!newAccountId && (
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Saved so far" htmlFor="goal-saved">
+              <Input
+                id="goal-saved"
+                value={newSavedAmount}
+                onChange={e => setNewSavedAmount(e.target.value)}
+                placeholder="0"
+                type="text"
+                inputMode="decimal"
+                aria-label="Saved so far"
+              />
+            </FormField>
+            <FormField label="Currency" htmlFor="goal-currency">
+              <NativeSelect
+                id="goal-currency"
+                value={newCurrency}
+                onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
+                className={SELECT_CLASS}
+                aria-label="Currency"
+              >
+                {SUPPORTED_CURRENCIES.map(curr => (
+                  <NativeSelectOption key={curr} value={curr}>{curr}</NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </FormField>
+          </div>
+        )}
+        <Button size="lg" onClick={addGoal}>Add goal</Button>
       </SettingsCard>
 
       {archived.length > 0 && (
@@ -227,7 +235,6 @@ function GoalRowItem({
 }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
-  const [editIcon, setEditIcon] = useState('')
   const [editTargetAmount, setEditTargetAmount] = useState('')
   const [editSavedAmount, setEditSavedAmount] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -238,7 +245,6 @@ function GoalRowItem({
   function startEdit(g: GoalRow) {
     setEditingId(g.id)
     setEditName(g.name)
-    setEditIcon(g.icon ?? '')
     setEditTargetAmount((g.target_amount / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 }))
     setEditSavedAmount((g.saved_amount / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 }))
   }
@@ -251,7 +257,8 @@ function GoalRowItem({
 
     const payload: Record<string, string | number | null> = {
       name: trimmed,
-      icon: editIcon.trim() || null,
+      // The emoji field is gone from the form; the stored icon is passed through unchanged.
+      icon: goal.icon ?? null,
       target_amount: targetMinor,
     }
 
@@ -270,77 +277,86 @@ function GoalRowItem({
   }
 
   if (editingId === goal.id) {
+    const fid = `goal-edit-${goal.id}`
     return (
-      <li className="flex flex-col gap-2 p-3">
-        <div className="flex gap-2">
+      <li className="flex flex-col gap-4 border-b border-border py-4">
+        <FormField label="Name" htmlFor={`${fid}-name`}>
           <Input
+            id={`${fid}-name`}
             value={editName}
             onChange={e => setEditName(e.target.value)}
-            placeholder="Name"
             maxLength={40}
             autoFocus
-            className="flex-1"
             aria-label="Goal name"
           />
+        </FormField>
+        <FormField label="Target amount" htmlFor={`${fid}-target`}>
           <Input
-            value={editIcon}
-            onChange={e => setEditIcon(e.target.value)}
-            placeholder="Emoji"
-            maxLength={8}
-            className="w-20 text-center"
-            aria-label="Goal emoji"
-          />
-        </div>
-        <Input
-          value={editTargetAmount}
-          onChange={e => setEditTargetAmount(e.target.value)}
-          placeholder="Target amount"
-          type="text"
-          inputMode="decimal"
-          aria-label="Target amount"
-        />
-        {!goal.account_id && (
-          <Input
-            value={editSavedAmount}
-            onChange={e => setEditSavedAmount(e.target.value)}
-            placeholder="Saved so far"
+            id={`${fid}-target`}
+            value={editTargetAmount}
+            onChange={e => setEditTargetAmount(e.target.value)}
+            placeholder="0"
             type="text"
             inputMode="decimal"
-            aria-label="Saved so far"
+            aria-label="Target amount"
           />
+        </FormField>
+        {!goal.account_id && (
+          <FormField label="Saved so far" htmlFor={`${fid}-saved`}>
+            <Input
+              id={`${fid}-saved`}
+              value={editSavedAmount}
+              onChange={e => setEditSavedAmount(e.target.value)}
+              placeholder="0"
+              type="text"
+              inputMode="decimal"
+              aria-label="Saved so far"
+            />
+          </FormField>
         )}
-        <div className="flex gap-2">
-          <Button onClick={() => saveEdit(goal.id)} className="flex-1">Save</Button>
-          <Button variant="outline" onClick={() => setEditingId(null)} className="flex-1">Cancel</Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={() => saveEdit(goal.id)}>Save</Button>
+          <Button variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
         </div>
       </li>
     )
   }
 
   const target = formatMinor(goal.target_amount, goal.currency)
+  // A linked goal's saved figure is the account's balance, which this page does not
+  // compute, so the bar is drawn only for goals whose saved amount is entered here.
+  const pct = goal.target_amount > 0
+    ? Math.min(100, Math.max(0, Math.round((goal.saved_amount / goal.target_amount) * 100)))
+    : 0
 
   return (
-    <li className="flex items-center gap-1 py-2 pl-3 pr-1">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
-          {goal.icon && <span aria-hidden="true" className="mr-1.5">{goal.icon}</span>}
-          {goal.name}
-        </p>
-        <p className="truncate text-xs text-muted-foreground">
-          {linkedAccount
-            ? `Target ${target} · tracks ${linkedAccount.name}`
-            : `${formatMinor(goal.saved_amount, goal.currency)} saved of ${target}`}
-        </p>
+    <li className="flex items-center gap-3 border-b border-border py-3.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="flex flex-col gap-0.5">
+          <p className="truncate text-[15px] font-semibold">{goal.name}</p>
+          <p className="truncate text-[13px] text-muted-foreground">
+            {linkedAccount
+              ? `Target ${target}, tracks ${linkedAccount.name}`
+              : `${formatMinor(goal.saved_amount, goal.currency)} saved of ${target}`}
+          </p>
+        </div>
+        {!linkedAccount && (
+          <div role="img" aria-label={`${pct}% of the target saved`} className="h-2 rounded-full bg-muted">
+            <div className="h-2 rounded-full bg-foreground" style={{ width: `${pct}%` }} />
+          </div>
+        )}
       </div>
-      <RowMenu
-        label={`Actions for ${goal.name}`}
-        open={menuOpen}
-        onOpenChange={setMenuOpen}
-        items={[
-          { label: 'Edit', icon: Pencil, onSelect: () => startEdit(goal) },
-          { label: 'Archive', icon: Archive, onSelect: () => onArchive(goal.id) },
-        ]}
-      />
+      <div className="-mr-2.5 flex shrink-0">
+        <RowMenu
+          label={`Actions for ${goal.name}`}
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          items={[
+            { label: 'Edit', icon: Pencil, onSelect: () => startEdit(goal) },
+            { label: 'Archive', icon: Archive, onSelect: () => onArchive(goal.id) },
+          ]}
+        />
+      </div>
     </li>
   )
 }
@@ -354,14 +370,11 @@ function ArchivedSection({
 }) {
   return (
     <ArchivedCollapsible count={archived.length}>
-      <ul className="glass-soft divide-y divide-border rounded-lg">
+      <ul>
         {archived.map(g => (
-          <li key={g.id} className="flex min-h-14 items-center justify-between gap-2 py-1 pl-3 pr-1">
-            <span className="min-w-0 truncate text-sm">
-              {g.icon && <span aria-hidden="true" className="mr-1.5">{g.icon}</span>}
-              {g.name}
-            </span>
-            <Button variant="ghost" onClick={() => onRestore(g.id)} aria-label={`Restore ${g.name}`}>Restore</Button>
+          <li key={g.id} className="flex min-h-[52px] items-center justify-between gap-3 border-b border-border">
+            <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{g.name}</span>
+            <Button variant="link" className="shrink-0 px-1" onClick={() => onRestore(g.id)} aria-label={`Restore ${g.name}`}>Restore</Button>
           </li>
         ))}
       </ul>

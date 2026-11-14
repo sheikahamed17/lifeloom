@@ -14,19 +14,20 @@ import { defaultToggleUpdates, pickDefaultAccountId } from '@/lib/default-accoun
 import { parseAmountInput } from '@/lib/parse-amount'
 import { formatMinor } from '@/lib/currency'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
-import { ArchivedCollapsible, SELECT_CLASS, SettingsCard } from '../_ui'
+import { ArchivedCollapsible, COUNT_CLASS, FormField, SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/layout/page-shell'
+import { IconTile } from '@/components/shared/icon-tile'
 import { RowMenu } from '@/components/shared/row-menu'
 import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 import { db, type AccountRow } from '@/lib/dexie'
 
 const BACK = { href: '/settings', label: 'Settings' }
+const DESCRIPTION = 'Bank accounts and cards, and which card is which.'
 
 /** Plain words for the account type: no "asset"/"liability" in the UI. */
 const TYPE_WORD: Record<AccountRow['type'], string> = { asset: 'Bank or cash', liability: 'Card or loan' }
@@ -44,7 +45,6 @@ function AccountsPageInner() {
   const undo = useUndo()
   const [userId, setUserId] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
-  const [newIcon, setNewIcon] = useState('')
   const [newType, setNewType] = useState<'asset' | 'liability'>('asset')
   const [newOpeningBalance, setNewOpeningBalance] = useState('')
   const [newCurrency, setNewCurrency] = useState<typeof SUPPORTED_CURRENCIES[number]>('INR')
@@ -102,14 +102,13 @@ function AccountsPageInner() {
         type: newType,
         opening_balance: openingBalanceMinor,
         currency: newCurrency,
-        icon: newIcon.trim() || null,
+        icon: null,
         match_hints: matchHints.trim() || null,
       },
       user_id: userId,
     })
     await applyLocalOp(op)
     setNewName('')
-    setNewIcon('')
     setNewOpeningBalance('')
     setNewType('asset')
     setNewCurrency('INR')
@@ -142,79 +141,22 @@ function AccountsPageInner() {
 
   if (!userId) {
     return (
-      <PageShell title="Accounts" back={BACK}>
+      <PageShell title="Accounts" back={BACK} description={DESCRIPTION}>
         <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
   }
 
   return (
-    <PageShell title="Accounts" back={BACK}>
-      <SettingsCard title="Add an account">
-        <div className="flex gap-2">
-          <Input
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            placeholder="Name"
-            maxLength={40}
-            aria-label="Account name"
-          />
-          <Input
-            value={newIcon}
-            onChange={e => setNewIcon(e.target.value)}
-            placeholder="Emoji"
-            maxLength={8}
-            className="w-20 text-center"
-            aria-label="Account emoji"
-          />
-        </div>
-        <div className="flex gap-2">
-          <NativeSelect
-            value={newType}
-            onChange={e => setNewType(e.target.value as 'asset' | 'liability')}
-            className={cn(SELECT_CLASS, 'flex-1')}
-            aria-label="Account type"
-          >
-            <NativeSelectOption value="asset">{TYPE_WORD.asset}</NativeSelectOption>
-            <NativeSelectOption value="liability">{TYPE_WORD.liability}</NativeSelectOption>
-          </NativeSelect>
-          <NativeSelect
-            value={newCurrency}
-            onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
-            className={cn(SELECT_CLASS, 'w-auto')}
-            aria-label="Currency"
-          >
-            {SUPPORTED_CURRENCIES.map(curr => (
-              <NativeSelectOption key={curr} value={curr}>{curr}</NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </div>
-        <Input
-          value={matchHints}
-          onChange={e => setMatchHints(e.target.value)}
-          placeholder="Auto-match hints, e.g. 5678, hdfc credit"
-          maxLength={200}
-          aria-label="Auto-match hints"
-        />
-        <p className="text-xs text-muted-foreground">
-          The last four digits in the name (e.g. “Tata Neo 5872”) are matched automatically. Add hints only for extra numbers, like a debit card’s last four on a bank account.
-        </p>
-        <div className="flex gap-2">
-          <Input
-            value={newOpeningBalance}
-            onChange={e => setNewOpeningBalance(e.target.value)}
-            placeholder="Opening balance"
-            type="text"
-            inputMode="decimal"
-            aria-label="Opening balance"
-          />
-          <Button onClick={addAccount} className="flex-1">Add</Button>
-        </div>
-      </SettingsCard>
-
-      <SettingsCard title="Active accounts" contentClassName="gap-2">
-        <ul className="glass-soft divide-y divide-border rounded-lg">
-          {accounts.length === 0 && <li><Empty className="p-3"><EmptyDescription>Add your first account.</EmptyDescription></Empty></li>}
+    <PageShell title="Accounts" back={BACK} description={DESCRIPTION}>
+      <SettingsCard
+        title="Active accounts"
+        className="gap-0"
+        contentClassName="gap-0"
+        action={accounts.length > 0 ? <span className={COUNT_CLASS}>{accounts.length}</span> : undefined}
+      >
+        <ul>
+          {accounts.length === 0 && <li className="border-b border-border"><Empty className="px-0 py-6"><EmptyDescription>Add your first account.</EmptyDescription></Empty></li>}
           {accounts.map(a => (
             <AccountRowItem
               key={a.id}
@@ -227,29 +169,99 @@ function AccountsPageInner() {
           ))}
         </ul>
         {accounts.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            <Star className="mr-1 inline size-3.5 fill-accent-2 align-[-2px] text-accent-2" aria-hidden />
+          <p className="pt-3 text-[13px] text-muted-foreground">
             The starred account is picked for you when you add an entry by hand, voice or receipt.
           </p>
         )}
       </SettingsCard>
 
-      <SettingsCard title="Past alerts" contentClassName="gap-2">
+      <SettingsCard
+        title="Past alerts"
+        className="gap-2"
+        contentClassName="gap-2"
+        action={backfill.length > 0 ? <span className="text-[13px] font-semibold text-warning">{backfill.length} untagged</span> : undefined}
+      >
         {backfill.length > 0 ? (
-          <div className="flex items-center justify-between gap-3">
-            <p className="min-w-0 text-sm">
+          <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3.5">
+            <p className="min-w-0 flex-1 text-sm">
               {backfill.length} past SMS or email {backfill.length === 1 ? 'entry matches' : 'entries match'} your accounts but {backfill.length === 1 ? 'has' : 'have'} no account yet.
             </p>
-            <Button onClick={runBackfill} disabled={tagging}>
+            <Button onClick={runBackfill} disabled={tagging} className="shrink-0">
               {tagging ? 'Tagging…' : `Tag ${backfill.length}`}
             </Button>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No untagged past alerts match your accounts.</p>
+          <p className="pt-2 text-sm text-muted-foreground">No untagged past alerts match your accounts.</p>
         )}
         <p role="status" className="text-sm text-muted-foreground empty:hidden">
           {tagged ? `Tagged ${tagged} past ${tagged === 1 ? 'entry' : 'entries'}.` : ''}
         </p>
+      </SettingsCard>
+
+      <SettingsCard title="Add an account">
+        <FormField label="Name" htmlFor="acc-name">
+          <Input
+            id="acc-name"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="Tata Neu 5872"
+            maxLength={40}
+            aria-label="Account name"
+          />
+        </FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Type" htmlFor="acc-type">
+            <NativeSelect
+              id="acc-type"
+              value={newType}
+              onChange={e => setNewType(e.target.value as 'asset' | 'liability')}
+              className={SELECT_CLASS}
+              aria-label="Account type"
+            >
+              <NativeSelectOption value="asset">{TYPE_WORD.asset}</NativeSelectOption>
+              <NativeSelectOption value="liability">{TYPE_WORD.liability}</NativeSelectOption>
+            </NativeSelect>
+          </FormField>
+          <FormField label="Currency" htmlFor="acc-currency">
+            <NativeSelect
+              id="acc-currency"
+              value={newCurrency}
+              onChange={e => setNewCurrency(e.target.value as typeof SUPPORTED_CURRENCIES[number])}
+              className={SELECT_CLASS}
+              aria-label="Currency"
+            >
+              {SUPPORTED_CURRENCIES.map(curr => (
+                <NativeSelectOption key={curr} value={curr}>{curr}</NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </FormField>
+        </div>
+        <FormField label="Opening balance" htmlFor="acc-opening">
+          <Input
+            id="acc-opening"
+            value={newOpeningBalance}
+            onChange={e => setNewOpeningBalance(e.target.value)}
+            placeholder="0"
+            type="text"
+            inputMode="decimal"
+            aria-label="Opening balance"
+          />
+        </FormField>
+        <FormField
+          label="Auto-match hints"
+          htmlFor="acc-hints"
+          hint="The last four digits in the name are matched for you. Add hints only for extra numbers, like a debit card on a bank account."
+        >
+          <Input
+            id="acc-hints"
+            value={matchHints}
+            onChange={e => setMatchHints(e.target.value)}
+            placeholder="5678, hdfc credit"
+            maxLength={200}
+            aria-label="Auto-match hints"
+          />
+        </FormField>
+        <Button size="lg" onClick={addAccount}>Add account</Button>
       </SettingsCard>
 
       {archived.length > 0 && (
@@ -274,7 +286,6 @@ function AccountRowItem({
 }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
-  const [editIcon, setEditIcon] = useState('')
   const [editOpeningBalance, setEditOpeningBalance] = useState('')
   const [editMatchHints, setEditMatchHints] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -284,7 +295,6 @@ function AccountRowItem({
   function startEdit(a: AccountRow) {
     setEditingId(a.id)
     setEditName(a.name)
-    setEditIcon(a.icon ?? '')
     setEditOpeningBalance((a.opening_balance / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 }))
     setEditMatchHints(a.match_hints ?? '')
   }
@@ -296,7 +306,8 @@ function AccountRowItem({
     if (openingBalanceMinor === null) return
     await onUpdate(id, {
       name: trimmed,
-      icon: editIcon.trim() || null,
+      // The emoji field is gone from the form; the stored icon is passed through unchanged.
+      icon: account.icon ?? null,
       opening_balance: openingBalanceMinor,
       match_hints: editMatchHints.trim() || null,
     })
@@ -304,45 +315,43 @@ function AccountRowItem({
   }
 
   if (editingId === account.id) {
+    const fid = `acc-edit-${account.id}`
     return (
-      <li className="flex flex-col gap-2 p-3">
-        <div className="flex gap-2">
+      <li className="flex flex-col gap-4 border-b border-border py-4">
+        <FormField label="Name" htmlFor={`${fid}-name`}>
           <Input
+            id={`${fid}-name`}
             value={editName}
             onChange={e => setEditName(e.target.value)}
-            placeholder="Name"
             maxLength={40}
             autoFocus
-            className="flex-1"
             aria-label="Account name"
           />
+        </FormField>
+        <FormField label="Opening balance" htmlFor={`${fid}-opening`}>
           <Input
-            value={editIcon}
-            onChange={e => setEditIcon(e.target.value)}
-            placeholder="Emoji"
-            maxLength={8}
-            className="w-20 text-center"
-            aria-label="Account emoji"
+            id={`${fid}-opening`}
+            value={editOpeningBalance}
+            onChange={e => setEditOpeningBalance(e.target.value)}
+            placeholder="0"
+            type="text"
+            inputMode="decimal"
+            aria-label="Opening balance"
           />
-        </div>
-        <Input
-          value={editOpeningBalance}
-          onChange={e => setEditOpeningBalance(e.target.value)}
-          placeholder="Opening balance"
-          type="text"
-          inputMode="decimal"
-          aria-label="Opening balance"
-        />
-        <Input
-          value={editMatchHints}
-          onChange={e => setEditMatchHints(e.target.value)}
-          placeholder="Auto-match hints, e.g. 5678, hdfc credit"
-          maxLength={200}
-          aria-label="Auto-match hints"
-        />
-        <div className="flex gap-2">
-          <Button onClick={() => saveEdit(account.id)} className="flex-1">Save</Button>
-          <Button variant="outline" onClick={() => setEditingId(null)} className="flex-1">Cancel</Button>
+        </FormField>
+        <FormField label="Auto-match hints" htmlFor={`${fid}-hints`}>
+          <Input
+            id={`${fid}-hints`}
+            value={editMatchHints}
+            onChange={e => setEditMatchHints(e.target.value)}
+            placeholder="5678, hdfc credit"
+            maxLength={200}
+            aria-label="Auto-match hints"
+          />
+        </FormField>
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={() => saveEdit(account.id)}>Save</Button>
+          <Button variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
         </div>
       </li>
     )
@@ -351,39 +360,39 @@ function AccountRowItem({
   // One line for name + figure, one muted line for what the figure is; actions stay compact.
   const meta = [TYPE_WORD[account.type], 'opening balance', account.match_hints ? `matches ${account.match_hints}` : null]
     .filter(Boolean)
-    .join(' · ')
+    .join(', ')
 
   return (
-    <li className="flex items-center gap-1 py-2 pl-3 pr-1">
-      <div className="min-w-0 flex-1">
+    <li className="flex min-h-[60px] items-center gap-3 border-b border-border py-2">
+      <IconTile name={account.name} />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="min-w-0 truncate text-sm font-medium">
-            {account.icon && <span aria-hidden="true" className="mr-1.5">{account.icon}</span>}
-            {account.name}
-          </span>
-          <span className="shrink-0 tabular-nums text-sm tabular-nums">{formatMinor(account.opening_balance, account.currency)}</span>
+          <span className="min-w-0 truncate text-[15px] font-semibold">{account.name}</span>
+          <span className="shrink-0 text-[15px] font-semibold tabular-nums">{formatMinor(account.opening_balance, account.currency)}</span>
         </div>
-        <p className="truncate text-xs text-muted-foreground">{meta}</p>
+        <p className="truncate text-[13px] text-muted-foreground">{meta}</p>
       </div>
-      <Button
-        variant="ghost"
-        size="icon-lg"
-        onClick={() => onToggleDefault(account.id)}
-        aria-pressed={isDefault}
-        aria-label={`Default account: ${account.name}`}
-        title={isDefault ? 'Default account' : 'Make default'}
-      >
-        <Star className={isDefault ? 'size-4 fill-accent-2 text-accent-2' : 'size-4 text-muted-foreground'} aria-hidden />
-      </Button>
-      <RowMenu
-        label={`Actions for ${account.name}`}
-        open={menuOpen}
-        onOpenChange={setMenuOpen}
-        items={[
-          { label: 'Edit', icon: Pencil, onSelect: () => startEdit(account) },
-          { label: 'Archive', icon: Archive, onSelect: () => onArchive(account.id) },
-        ]}
-      />
+      <div className="-mr-2.5 flex shrink-0">
+        <Button
+          variant="ghost"
+          size="icon-lg"
+          onClick={() => onToggleDefault(account.id)}
+          aria-pressed={isDefault}
+          aria-label={`Default account: ${account.name}`}
+          title={isDefault ? 'Default account' : 'Make default'}
+        >
+          <Star className={isDefault ? 'size-5 fill-foreground text-foreground' : 'size-5 text-muted-foreground'} aria-hidden />
+        </Button>
+        <RowMenu
+          label={`Actions for ${account.name}`}
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          items={[
+            { label: 'Edit', icon: Pencil, onSelect: () => startEdit(account) },
+            { label: 'Archive', icon: Archive, onSelect: () => onArchive(account.id) },
+          ]}
+        />
+      </div>
     </li>
   )
 }
@@ -397,17 +406,14 @@ function ArchivedSection({
 }) {
   return (
     <ArchivedCollapsible count={archived.length}>
-      <ul className="glass-soft divide-y divide-border rounded-lg">
+      <ul>
         {archived.map(a => (
-          <li key={a.id} className="flex items-center justify-between gap-2 py-2 pl-3 pr-1">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm">
-                {a.icon && <span aria-hidden="true" className="mr-1.5">{a.icon}</span>}
-                {a.name}
-              </p>
-              <p className="text-xs text-muted-foreground">{TYPE_WORD[a.type]}</p>
+          <li key={a.id} className="flex min-h-[60px] items-center justify-between gap-3 border-b border-border py-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <p className="truncate text-[15px] font-medium">{a.name}</p>
+              <p className="text-[13px] text-muted-foreground">{TYPE_WORD[a.type]}</p>
             </div>
-            <Button variant="ghost" onClick={() => onRestore(a.id)} aria-label={`Restore ${a.name}`}>Restore</Button>
+            <Button variant="link" className="shrink-0 px-1" onClick={() => onRestore(a.id)} aria-label={`Restore ${a.name}`}>Restore</Button>
           </li>
         ))}
       </ul>

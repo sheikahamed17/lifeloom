@@ -19,6 +19,7 @@ import { db, type TaskRow } from '@/lib/dexie'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 type Props = { userId: string; filter: TaskFilter; projectId?: string | null; tag?: string | null; sort?: TaskSort; onEdit?: (row: TaskRow) => void }
 
@@ -35,6 +36,7 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
     const sortedTopLevel = sortTasks(unsortedNodes as TaskRow[], sort) as TaskNode[]
     return sortedTopLevel
   }, [unsortedNodes, sort])
+  const groups = useMemo(() => groupByDue(nodes, new Date()), [nodes])
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
   const { prefs } = useUserPrefs()
@@ -128,8 +130,11 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
     const hasChildren = !!progress
     const isCompleted = hasChildren ? progress!.done === progress!.total : !!t.completed_at
     const isOverdue = !isCompleted && t.due_at && t.due_at < new Date().toISOString()
+    const project = t.project_id ? projectById.get(t.project_id) : undefined
     return (
-      <div id={`pulse-row-${t.id}`} className="relative">
+      // The swipe layer clips its content, so it is pulled 12px wider than the column:
+      // the row menu can then sit in the margin and the text still lines up with the rule.
+      <div id={`pulse-row-${t.id}`} className="relative -mx-3">
         <SwipeRow
           isOpen={openId === t.id}
           onOpenChange={o => setOpenId(o ? t.id : null)}
@@ -137,70 +142,72 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
           onLongPress={() => setMenuFor(t.id)}
           onDelete={() => deleteTask(t)}
           deleteLabel={`Delete task: ${t.title.slice(0, 30)}${t.title.length > 30 ? '…' : ''}`}
-          className="glass-soft flex items-start justify-between gap-3 rounded-xl p-3"
+          className={cn('flex items-center gap-3 py-2 pl-3 pr-1 lg:gap-3.5', node ? 'min-h-[60px]' : 'min-h-[52px]')}
         >
-          {/* The circle completes the task; a tap anywhere else on the row opens the editor. */}
-          {/* A parent's circle is read-only: it reflects its sub-tasks. */}
+          {/* The checkbox completes the task; a tap anywhere else on the row opens the editor. */}
+          {/* A parent's checkbox is read-only: it reflects its sub-tasks. */}
           <Checkbox
             checked={isCompleted}
             readOnly={hasChildren}
             onCheckedChange={() => { if (!hasChildren) toggleComplete(t) }}
             aria-label={hasChildren ? `${t.title}: ${progress!.done} of ${progress!.total} sub-tasks done` : (isCompleted ? `Mark "${t.title}" open` : `Complete "${t.title}"`)}
-            className="mt-0.5 size-5 rounded-full after:-inset-3 data-checked:border-accent-2 data-checked:bg-accent-2"
+            className="mr-1 size-[22px] rounded-md border-muted-foreground bg-card after:-inset-[11px]"
           />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span className={`md:text-base ${isCompleted ? 'text-muted-foreground line-through' : ''}`}>
-                {t.title}
-                {progress && <span className="ml-2 tabular-nums text-xs text-muted-foreground">{progress.done}/{progress.total}</span>}
-              </span>
-              <span className="text-xs text-muted-foreground">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 lg:flex-row lg:items-center lg:gap-3.5">
+            <span className={cn('min-w-0 text-[15px] lg:flex-[2] lg:text-base', isCompleted ? 'text-muted-foreground line-through' : 'font-semibold')}>
+              {t.title}
+              {progress && <span className="ml-2 text-[13px] font-normal tabular-nums text-muted-foreground">{progress.done}/{progress.total}</span>}
+            </span>
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground lg:contents lg:text-sm">
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 empty:hidden lg:flex-1 lg:empty:block">
                 {t.recur_period && t.recur_interval && (
-                  <span className="mr-2 inline-flex items-center gap-0.5 text-accent-2">
-                    <Repeat className="h-3 w-3" /> {formatRecurrence(t.recur_period, t.recur_interval)}
+                  <span className="inline-flex items-center gap-1">
+                    <Repeat className="size-3.5" aria-hidden /> {formatRecurrence(t.recur_period, t.recur_interval)}
                   </span>
                 )}
-                {t.project_id && projectById.get(t.project_id) && (
-                  <span className="mr-2 inline-flex items-center gap-1">
-                    {projectById.get(t.project_id)!.color && (
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: projectById.get(t.project_id)!.color! }} />
+                {project && (
+                  <span className="inline-flex items-center gap-1.5">
+                    {project.color && (
+                      <span className="size-2 rounded-full" style={{ backgroundColor: project.color }} aria-hidden />
                     )}
-                    {projectById.get(t.project_id)!.name}
+                    {project.name}
                   </span>
                 )}
                 {(t.tags ?? []).map(tg => (
-                  <span key={tg} className="mr-1 text-accent-2">#{tg}</span>
+                  <span key={tg}>#{tg}</span>
                 ))}
                 {t.priority !== 'medium' && (
-                  <span className={`mr-2 ${t.priority === 'high' ? 'text-destructive' : ''}`}>
+                  <span className={t.priority === 'high' ? 'font-semibold text-foreground' : undefined}>
                     {t.priority}
                   </span>
                 )}
+              </span>
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 lg:w-56 lg:shrink-0 lg:justify-end lg:text-right">
                 {t.due_at && (
-                  <span className={`tabular-nums ${isOverdue ? 'text-warning' : ''}`}>
+                  <span className={cn('tabular-nums', isOverdue && 'font-medium text-warning')}>
                     due {formatLocalDateTime(t.due_at, prefs.tz)}
                     {isOverdue && ' · overdue'}
                   </span>
                 )}
-                <EntryTimestamp occurredAt={t.created_at} className="ml-2 tabular-nums" />
+                <EntryTimestamp occurredAt={t.created_at} className="tabular-nums" />
                 {isOverdue && t.nudge_muted_at && (
-                  <span className="ml-1 inline-flex items-center align-middle" aria-label="Reminders muted">
-                    <BellOff className="h-3 w-3" />
+                  <span className="inline-flex items-center" aria-label="Reminders muted">
+                    <BellOff className="size-3.5" />
                   </span>
                 )}
               </span>
-            </div>
-          <div className="-my-2 -mr-2">
-            <RowMenu
-              label={`Actions for task: ${t.title.slice(0, 30)}${t.title.length > 30 ? '…' : ''}`}
-              open={menuFor === t.id}
-              onOpenChange={o => setMenuFor(o ? t.id : null)}
-              items={[
-                ...(onEdit ? [{ label: 'Edit', icon: Pencil, onSelect: () => onEdit(t) }] : []),
-                ...(isOverdue ? [{ label: t.nudge_muted_at ? 'Resume reminding' : 'Stop reminding', icon: t.nudge_muted_at ? Bell : BellOff, onSelect: () => toggleMute(t) }] : []),
-                { label: 'Delete', icon: Trash2, destructive: true, onSelect: () => deleteTask(t) },
-              ]}
-            />
+            </span>
           </div>
+          <RowMenu
+            label={`Actions for task: ${t.title.slice(0, 30)}${t.title.length > 30 ? '…' : ''}`}
+            open={menuFor === t.id}
+            onOpenChange={o => setMenuFor(o ? t.id : null)}
+            items={[
+              ...(onEdit ? [{ label: 'Edit', icon: Pencil, onSelect: () => onEdit(t) }] : []),
+              ...(isOverdue ? [{ label: t.nudge_muted_at ? 'Resume reminding' : 'Stop reminding', icon: t.nudge_muted_at ? Bell : BellOff, onSelect: () => toggleMute(t) }] : []),
+              { label: 'Delete', icon: Trash2, destructive: true, onSelect: () => deleteTask(t) },
+            ]}
+          />
         </SwipeRow>
 
       </div>
@@ -209,7 +216,7 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
 
   if (nodes.length === 0) {
     return (
-      <Empty className="glass-soft">
+      <Empty className="items-start px-0 py-6 text-left">
         <EmptyDescription>
           {filter === 'open' && 'No open tasks. Add one by saying or typing "remind me to…"'}
           {filter === 'completed' && 'No completed tasks yet.'}
@@ -220,37 +227,103 @@ export function TaskList({ userId, filter, projectId = null, tag = null, sort = 
   }
 
   return (
-    <ul className="flex flex-col gap-2">
-      {nodes.map(node => {
-        const parentDone = !!node.completed_at
-        return (
-          <li key={node.id} className="flex flex-col gap-1">
-            {renderRow(node, node)}
-            {node.children.length > 0 && (
-              <ul className="ml-6 flex flex-col gap-1">
-                {node.children.map(c => <li key={c.id}>{renderRow(c)}</li>)}
-              </ul>
-            )}
-            {!parentDone && <SubtaskAdd parentId={node.id} onAdd={addSubtask} />}
-          </li>
-        )
-      })}
-    </ul>
+    <div className="flex flex-col gap-7">
+      {groups.map(group => (
+        <section key={group.key} aria-labelledby={`task-group-${group.key}`} className="flex flex-col">
+          <div className="flex items-baseline justify-between gap-3 border-b border-border pb-2.5">
+            <h3 id={`task-group-${group.key}`} className="text-[17px] font-bold tracking-[-0.02em] lg:text-[19px]">{group.label}</h3>
+            {group.note && <p className="text-[13px] font-semibold text-warning lg:text-sm">{group.note}</p>}
+          </div>
+          <ul className="flex flex-col">
+            {group.nodes.map(node => {
+              const parentDone = !!node.completed_at
+              return (
+                <li key={node.id} className="flex flex-col border-b border-border">
+                  {renderRow(node, node)}
+                  {node.children.length > 0 && (
+                    <ul className="ml-[38px] flex flex-col">
+                      {node.children.map(c => <li key={c.id}>{renderRow(c)}</li>)}
+                    </ul>
+                  )}
+                  {!parentDone && <SubtaskAdd parentId={node.id} onAdd={addSubtask} />}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
   )
+}
+
+type GroupKey = 'overdue' | 'today' | 'week' | 'later' | 'none' | 'done'
+type TaskGroup = { key: GroupKey; label: string; note?: string; nodes: TaskNode[] }
+
+const GROUP_LABELS: Record<GroupKey, string> = {
+  overdue: 'Overdue',
+  today: 'Today',
+  week: 'This week',
+  later: 'Later',
+  none: 'No due date',
+  done: 'Done',
+}
+const GROUP_ORDER: GroupKey[] = ['overdue', 'today', 'week', 'later', 'none', 'done']
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Split the already filtered and sorted tasks into the ruled sections of the list.
+ * Presentation only: the order inside each section is the order the list was given.
+ */
+function groupByDue(nodes: TaskNode[], now: Date): TaskGroup[] {
+  const nowMs = now.getTime()
+  const tomorrow = new Date(now); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowMs = tomorrow.getTime()
+  const weekEndMs = tomorrowMs + 6 * DAY_MS
+  const buckets = new Map<GroupKey, TaskNode[]>()
+  let oldestOverdueMs = nowMs
+
+  for (const node of nodes) {
+    const progress = subtaskProgress(node)
+    const done = progress ? progress.done === progress.total : !!node.completed_at
+    let key: GroupKey
+    if (done) key = 'done'
+    else if (!node.due_at) key = 'none'
+    else {
+      const dueMs = new Date(node.due_at).getTime()
+      if (dueMs < nowMs) { key = 'overdue'; oldestOverdueMs = Math.min(oldestOverdueMs, dueMs) }
+      else if (dueMs < tomorrowMs) key = 'today'
+      else if (dueMs < weekEndMs) key = 'week'
+      else key = 'later'
+    }
+    const list = buckets.get(key)
+    if (list) list.push(node)
+    else buckets.set(key, [node])
+  }
+
+  const daysLate = Math.floor((nowMs - oldestOverdueMs) / DAY_MS)
+  const overdueCount = buckets.get('overdue')?.length ?? 0
+  const lateNote = daysLate < 1
+    ? undefined
+    : `${overdueCount > 1 ? 'Up to ' : ''}${daysLate} ${daysLate === 1 ? 'day' : 'days'} late`
+
+  return GROUP_ORDER.flatMap(key => {
+    const list = buckets.get(key)
+    return list ? [{ key, label: GROUP_LABELS[key], note: key === 'overdue' ? lateNote : undefined, nodes: list }] : []
+  })
 }
 
 function SubtaskAdd({ parentId, onAdd }: { parentId: string; onAdd: (parentId: string, title: string) => void }) {
   const [title, setTitle] = useState('')
   return (
-    <div className="ml-6 flex items-center gap-1">
-      <Plus className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+    <div className="ml-[38px] flex items-center gap-2">
+      <Plus className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
       <Input
         value={title}
         onChange={e => setTitle(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAdd(parentId, title); setTitle('') } }}
         placeholder="add sub-task…"
         aria-label="Add sub-task"
-        className="flex-1 border-0 bg-transparent text-xs shadow-none focus-visible:ring-0 md:text-xs"
+        className="h-11 flex-1 rounded-none border-0 bg-transparent px-0 text-[13px] shadow-none focus-visible:ring-0 md:text-[13px] lg:h-9"
       />
     </div>
   )

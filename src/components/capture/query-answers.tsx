@@ -35,28 +35,28 @@ export function QueryTaskListAnswer({ userId, plan, onDismiss, onResult }: { use
       count={filtered.length}
       onDismiss={onDismiss}
     >
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col divide-y divide-border">
         {filtered.map(t => {
           const isCompleted = !!t.completed_at
           const isOverdue = !isCompleted && t.due_at && t.due_at < nowIso
           return (
             <li
               key={t.id}
-              className="glass-soft rounded-xl relative flex items-start justify-between gap-3 p-3"
+              className="flex min-h-[52px] items-start justify-between gap-3 py-3"
             >
               <div className="flex flex-1 items-start gap-2 text-left">
                 {isCompleted ? (
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent-2" aria-label="Task completed" />
+                  <CheckCircle2 className="mt-0.5 size-[18px] shrink-0 text-foreground" aria-label="Task completed" />
                 ) : (
-                  <Circle className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" aria-label={isOverdue ? "Task overdue" : "Task pending"} />
+                  <Circle className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" aria-label={isOverdue ? "Task overdue" : "Task pending"} />
                 )}
-                <div className="flex flex-col">
+                <div className="flex flex-col gap-0.5 text-[15px] font-medium">
                   <span className={isCompleted ? 'text-muted-foreground line-through' : ''}>
                     {t.title}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[13px] font-normal text-muted-foreground">
                     {t.priority !== 'medium' && (
-                      <span className={`mr-2 ${t.priority === 'high' ? 'text-destructive' : ''}`}>
+                      <span className={`mr-2 ${t.priority === 'high' ? 'font-medium text-warning' : ''}`}>
                         {t.priority}
                       </span>
                     )}
@@ -97,26 +97,26 @@ export function QueryLearningListAnswer({ userId, plan, onDismiss, onResult }: {
       count={filtered.length}
       onDismiss={onDismiss}
     >
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col divide-y divide-border">
         {filtered.map(l => (
           <li
             key={l.id}
-            className="glass-soft rounded-xl relative flex flex-col gap-2 p-3"
+            className="flex flex-col gap-2 py-3"
           >
-            <p className="text-sm">{l.text}</p>
+            <p className="text-[15px]">{l.text}</p>
             {l.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
                 {l.tags.map(tag => (
-                  <Badge key={tag} variant="outline" className="border-border bg-accent text-muted-foreground">
+                  <Badge key={tag} variant="outline" className="h-auto border-0 bg-transparent p-0 text-[13px] font-medium text-muted-foreground">
                     {tag}
                   </Badge>
                 ))}
               </div>
             )}
-            <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
+            <div className="flex items-center justify-between gap-2 text-[13px] text-muted-foreground">
               <div className="flex items-center gap-2">
                 {l.attribution && (
-                  <span className="truncate">— {l.attribution}</span>
+                  <span className="truncate">{l.attribution}</span>
                 )}
               </div>
               <span className="tabular-nums flex-shrink-0">
@@ -150,24 +150,24 @@ export function QueryNotesListAnswer({ userId, plan, onDismiss, onResult }: { us
       count={filtered.length}
       onDismiss={onDismiss}
     >
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col divide-y divide-border">
         {filtered.map(n => (
           <li
             key={n.id}
-            className="glass-soft rounded-xl relative flex flex-col gap-2 p-3"
+            className="flex flex-col gap-2 py-3"
           >
-            <p className="text-sm">{n.title || n.body}</p>
-            {n.title && <p className="text-xs text-muted-foreground line-clamp-2">{n.body}</p>}
+            <p className="text-[15px] font-medium">{n.title || n.body}</p>
+            {n.title && <p className="line-clamp-2 text-[13px] text-muted-foreground">{n.body}</p>}
             {n.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
                 {n.tags.map(tag => (
-                  <Badge key={tag} variant="outline" className="border-border bg-accent text-muted-foreground">
+                  <Badge key={tag} variant="outline" className="h-auto border-0 bg-transparent p-0 text-[13px] font-medium text-muted-foreground">
                     {tag}
                   </Badge>
                 ))}
               </div>
             )}
-            <div className="flex items-center justify-end text-xs text-muted-foreground">
+            <div className="flex items-center justify-end text-[13px] text-muted-foreground">
               <span className="tabular-nums flex-shrink-0">
                 {formatLocalDateTime(n.occurred_at, prefs.tz)}
               </span>

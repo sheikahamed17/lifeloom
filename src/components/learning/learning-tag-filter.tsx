@@ -1,16 +1,17 @@
 'use client'
 
 import { useMemo } from 'react'
-import { X } from 'lucide-react'
 import { useLearnings } from '@/hooks/use-learnings'
-import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { QUIET_TOGGLE } from '@/components/shared/quiet-toggle'
 
 type Props = {
   userId: string
   selectedTag: string | null
   onChange: (tag: string | null) => void
 }
+
+const ALL = '__all__'
 
 export function LearningTagFilter({ userId, selectedTag, onChange }: Props) {
   const items = useLearnings(userId)
@@ -22,32 +23,21 @@ export function LearningTagFilter({ userId, selectedTag, onChange }: Props) {
 
   if (distinctTags.length === 0) return null
 
+  // "All" is the cleared state; pressing the active tag again also clears it.
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-muted-foreground">Filter:</span>
-      <ToggleGroup
-        aria-label="Filter by tag"
-        value={selectedTag ? [selectedTag] : []}
-        onValueChange={v => onChange(v[0] ?? null)}
-        className="max-w-full flex-wrap"
-      >
-        {distinctTags.map(tag => (
-          <ToggleGroupItem
-            key={tag}
-            value={tag}
-            variant="outline"
-            className="min-h-11 rounded-lg px-3 text-xs text-muted-foreground aria-pressed:border-accent-2/50 aria-pressed:bg-accent-2/15 aria-pressed:text-accent-2"
-          >
-            {tag}
-            {selectedTag === tag && <X className="size-3" aria-hidden />}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      {selectedTag && (
-        <Button variant="ghost" size="lg" onClick={() => onChange(null)} className="px-2 text-xs text-muted-foreground hover:text-foreground">
-          Clear
-        </Button>
-      )}
-    </div>
+    <ToggleGroup
+      aria-label="Filter by tag"
+      spacing={5}
+      value={[selectedTag ?? ALL]}
+      onValueChange={v => { const next = v[0]; onChange(!next || next === ALL ? null : next) }}
+      className="max-w-full flex-wrap gap-y-0"
+    >
+      <ToggleGroupItem value={ALL} className={QUIET_TOGGLE}>All</ToggleGroupItem>
+      {distinctTags.map(tag => (
+        <ToggleGroupItem key={tag} value={tag} className={QUIET_TOGGLE}>
+          {tag}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   )
 }

@@ -23,10 +23,10 @@ const PERIODS: { value: Period; label: string }[] = [
 export function PeriodPicker({ period, intervalCount, onChange }: Props) {
   const id = useId()
   return (
-    <div className="glass-soft flex flex-col gap-2 rounded-xl p-2">
+    <div className="flex flex-col gap-2">
       <ToggleGroup
         aria-label="Repeat period"
-        spacing={1}
+        spacing={5}
         value={[period]}
         onValueChange={v => { const next = v[0] as Period | undefined; if (next) onChange(next, intervalCount) }}
         className="w-full"
@@ -35,14 +35,14 @@ export function PeriodPicker({ period, intervalCount, onChange }: Props) {
           <ToggleGroupItem
             key={p.value}
             value={p.value}
-            className="h-10 flex-1 border border-transparent px-2 text-muted-foreground aria-pressed:border-accent-2/50 aria-pressed:bg-accent-2/15 aria-pressed:text-accent-2"
+            className="h-11 min-w-0 rounded-none border-b-2 border-transparent bg-transparent px-0 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:border-foreground aria-pressed:bg-transparent aria-pressed:font-bold aria-pressed:text-foreground"
           >
             {p.label}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
-      <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={id} className="text-sm text-foreground">every</Label>
+      <div className="flex items-center gap-3">
+        <Label htmlFor={id} className="text-[13px] font-semibold text-muted-foreground">Every</Label>
         <Input
           id={id}
           type="number"

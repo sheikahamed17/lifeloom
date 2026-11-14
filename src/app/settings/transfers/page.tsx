@@ -19,14 +19,13 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Switch } from '@/components/ui/switch'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Card } from '@/components/ui/card'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SELECT_CLASS, SettingsCard } from '../_ui'
+import { COUNT_CLASS, FormField, SELECT_CLASS, SettingsCard } from '../_ui'
 import { PageShell } from '@/components/layout/page-shell'
 import { UndoProvider, useUndo } from '@/components/providers/undo-provider'
 
 const BACK = { href: '/settings', label: 'Settings' }
+const DESCRIPTION = 'Move money between your accounts.'
 
 export default function TransfersPage() {
   return (
@@ -157,7 +156,7 @@ function TransfersPageInner() {
 
   if (!userId) {
     return (
-      <PageShell title="Transfers" back={BACK}>
+      <PageShell title="Transfers" back={BACK} description={DESCRIPTION}>
         <Skeleton className="h-40 w-full rounded-xl" role="status" aria-label="Loading" />
       </PageShell>
     )
@@ -166,76 +165,86 @@ function TransfersPageInner() {
   const canSubmit = fromAccountId && toAccountId && amount.trim() && parseAmountInput(amount) !== null && parseAmountInput(amount)! > 0
 
   return (
-    <PageShell title="Transfers" back={BACK}>
+    <PageShell title="Transfers" back={BACK} description={DESCRIPTION}>
       <SettingsCard title="Move money">
-        <NativeSelect
-          value={fromAccountId ?? 'none'}
-          onChange={e => {
-            const val = e.target.value
-            setFromAccountId(val === 'none' ? null : val)
-            setToAccountId(null) // Reset to-account when from changes
-          }}
-          className={SELECT_CLASS}
-          aria-label="From account"
+        <FormField label="From account" htmlFor="tr-from">
+          <NativeSelect
+            id="tr-from"
+            value={fromAccountId ?? 'none'}
+            onChange={e => {
+              const val = e.target.value
+              setFromAccountId(val === 'none' ? null : val)
+              setToAccountId(null) // Reset to-account when from changes
+            }}
+            className={SELECT_CLASS}
+            aria-label="From account"
+          >
+            <NativeSelectOption value="none">From account…</NativeSelectOption>
+            {accounts.map(acc => (
+              <NativeSelectOption key={acc.id} value={acc.id}>{acc.name}</NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </FormField>
+
+        <FormField
+          label="To account"
+          htmlFor="tr-to"
+          hint={fromAccount && eligibleToAccounts.length === 0
+            ? `You have no other ${fromAccount.currency} account to move money into.`
+            : undefined}
         >
-          <NativeSelectOption value="none">From account…</NativeSelectOption>
-          {accounts.map(acc => (
-            <NativeSelectOption key={acc.id} value={acc.id}>
-              {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+          <NativeSelect
+            id="tr-to"
+            value={toAccountId ?? 'none'}
+            onChange={e => {
+              const val = e.target.value
+              setToAccountId(val === 'none' ? null : val)
+            }}
+            disabled={eligibleToAccounts.length === 0}
+            className={SELECT_CLASS}
+            aria-label="To account"
+          >
+            <NativeSelectOption value="none">To account…</NativeSelectOption>
+            {eligibleToAccounts.map(acc => (
+              <NativeSelectOption key={acc.id} value={acc.id}>{acc.name}</NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </FormField>
 
-        <NativeSelect
-          value={toAccountId ?? 'none'}
-          onChange={e => {
-            const val = e.target.value
-            setToAccountId(val === 'none' ? null : val)
-          }}
-          disabled={eligibleToAccounts.length === 0}
-          className={SELECT_CLASS}
-          aria-label="To account"
-        >
-          <NativeSelectOption value="none">To account…</NativeSelectOption>
-          {eligibleToAccounts.map(acc => (
-            <NativeSelectOption key={acc.id} value={acc.id}>
-              {acc.icon ? `${acc.icon} ${acc.name}` : acc.name}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+        <FormField label="Amount" htmlFor="tr-amount">
+          <Input
+            id="tr-amount"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            placeholder="0"
+            type="text"
+            inputMode="decimal"
+            aria-label="Transfer amount"
+          />
+        </FormField>
 
-        {fromAccount && eligibleToAccounts.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            You have no other {fromAccount.currency} account to move money into.
-          </p>
-        )}
+        <FormField label="Date" htmlFor="tr-date">
+          <Input
+            id="tr-date"
+            value={occurredAt}
+            onChange={e => setOccurredAt(e.target.value)}
+            type="date"
+            aria-label="Transfer date"
+          />
+        </FormField>
 
-        <Input
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          placeholder="Amount"
-          type="text"
-          inputMode="decimal"
-          aria-label="Transfer amount"
-        />
+        <FormField label="Note, if you want one" htmlFor="tr-note">
+          <Input
+            id="tr-note"
+            value={note}
+            onChange={e => setNote(e.target.value.slice(0, 120))}
+            maxLength={120}
+            aria-label="Transfer note"
+          />
+        </FormField>
 
-        <Input
-          value={occurredAt}
-          onChange={e => setOccurredAt(e.target.value)}
-          type="date"
-          aria-label="Transfer date"
-        />
-
-        <Input
-          value={note}
-          onChange={e => setNote(e.target.value.slice(0, 120))}
-          placeholder="Note (optional)"
-          maxLength={120}
-          aria-label="Transfer note"
-        />
-
-        <Field orientation="horizontal" className="min-h-11 items-center justify-between gap-3 rounded-lg bg-muted px-3">
-          <FieldLabel htmlFor="transfer-repeat" className="text-sm font-normal text-foreground">Repeat</FieldLabel>
+        <Field orientation="horizontal" className="min-h-[60px] items-center justify-between gap-3 border-y border-border">
+          <FieldLabel htmlFor="transfer-repeat" className="text-[15px] font-medium text-foreground">Repeat this transfer</FieldLabel>
           <Switch
             id="transfer-repeat"
             checked={repeat}
@@ -244,20 +253,24 @@ function TransfersPageInner() {
           />
         </Field>
         {repeat && (
-          <NativeSelect
-            value={period}
-            onChange={e => { const v = e.target.value as typeof period; setPeriod(v) }}
-            aria-label="Repeat period"
-            className={SELECT_CLASS}
-          >
-            <NativeSelectOption value="daily">Every day</NativeSelectOption>
-            <NativeSelectOption value="weekly">Every week</NativeSelectOption>
-            <NativeSelectOption value="monthly">Every month</NativeSelectOption>
-            <NativeSelectOption value="yearly">Every year</NativeSelectOption>
-          </NativeSelect>
+          <FormField label="How often" htmlFor="tr-period">
+            <NativeSelect
+              id="tr-period"
+              value={period}
+              onChange={e => { const v = e.target.value as typeof period; setPeriod(v) }}
+              aria-label="Repeat period"
+              className={SELECT_CLASS}
+            >
+              <NativeSelectOption value="daily">Every day</NativeSelectOption>
+              <NativeSelectOption value="weekly">Every week</NativeSelectOption>
+              <NativeSelectOption value="monthly">Every month</NativeSelectOption>
+              <NativeSelectOption value="yearly">Every year</NativeSelectOption>
+            </NativeSelect>
+          </FormField>
         )}
 
         <Button
+          size="lg"
           onClick={addTransfer}
           disabled={!canSubmit}
           className="w-full"
@@ -266,57 +279,51 @@ function TransfersPageInner() {
         </Button>
       </SettingsCard>
 
-      <SettingsCard title="History" contentClassName="gap-2">
+      <SettingsCard
+        title="History"
+        className="gap-0"
+        contentClassName="gap-0"
+        action={transfers.length > 0
+          ? <span className={COUNT_CLASS}>{transfers.length} {transfers.length === 1 ? 'transfer' : 'transfers'}</span>
+          : undefined}
+      >
         {transfers.length === 0 ? (
-          <Empty className="glass-soft p-3">
+          <Empty className="rounded-none border-b border-border px-0 py-6">
             <EmptyDescription>No transfers yet.</EmptyDescription>
           </Empty>
         ) : (
-          <Card className="glass-soft gap-0 rounded-lg py-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-3">Transfer</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-12 pr-1"><span className="sr-only">Actions</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transfers.map(t => {
-                  const fromName = accountNameMap.get(t.from_account_id) || 'Unknown account'
-                  const toName = accountNameMap.get(t.to_account_id) || 'Unknown account'
+          <ul>
+            {transfers.map(t => {
+              const fromName = accountNameMap.get(t.from_account_id) || 'Unknown account'
+              const toName = accountNameMap.get(t.to_account_id) || 'Unknown account'
 
-                  return (
-                    <TableRow key={t.id}>
-                      <TableCell className="max-w-0 py-2 pl-3 whitespace-normal">
-                        <span className="flex min-w-0 items-center gap-1.5 text-sm">
-                          <span className="truncate">{fromName}</span>
-                          <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                          <span className="sr-only">to</span>
-                          <span className="truncate">{toName}</span>
-                        </span>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {formatDay(t.occurred_at, prefs.tz)}{t.note ? ` · ${t.note}` : ''}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-sm tabular-nums">{formatMinor(t.amount, t.currency)}</TableCell>
-                      <TableCell className="pr-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-lg"
-                          onClick={() => deleteTransfer(t.id)}
-                          aria-label={`Delete transfer from ${fromName} to ${toName}`}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="size-4" aria-hidden />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </Card>
+              return (
+                <li key={t.id} className="flex min-h-16 items-center gap-3 border-b border-border py-2 lg:min-h-[60px] lg:gap-6">
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5 lg:flex-row lg:items-center lg:gap-6">
+                    <span className="flex min-w-0 items-center gap-1.5 text-[15px] font-medium lg:flex-1">
+                      <span className="truncate">{fromName}</span>
+                      <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                      <span className="sr-only">to</span>
+                      <span className="truncate">{toName}</span>
+                    </span>
+                    <p className="truncate text-[13px] text-muted-foreground lg:flex-1 lg:text-sm">
+                      {formatDay(t.occurred_at, prefs.tz)}{t.note ? `, ${t.note}` : ''}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-right text-[15px] font-semibold tabular-nums lg:min-w-[88px] lg:text-base">{formatMinor(t.amount, t.currency)}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    onClick={() => deleteTransfer(t.id)}
+                    aria-label={`Delete transfer from ${fromName} to ${toName}`}
+                    className="-mr-2 shrink-0 text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="size-5" aria-hidden />
+                  </Button>
+                </li>
+              )
+            })}
+          </ul>
         )}
       </SettingsCard>
     </PageShell>

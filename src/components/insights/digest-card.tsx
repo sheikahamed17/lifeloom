@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/lib/dexie'
 import { InsightCard } from '@/components/insights/insight-card'
@@ -42,28 +42,26 @@ export function DigestCard({ userId }: { userId: string }) {
     await db.sync_meta.put({ key: dismissalKey as string, value: new Date().toISOString() })
   }
 
-  // The dismiss sits under the card, not on it: a 44 px target in the card's corner
-  // would cover the week's date in InsightCard's header.
+  // The dismiss sits under the review, not on it: a 44 px target in the corner
+  // would cover the week's date in InsightCard's heading row.
   return (
     <div className="flex flex-col gap-1">
       <InsightCard insight={row} variant="card" />
       <div className="flex items-center justify-between gap-2">
         <Button
-          variant="ghost"
-          size="lg"
+          variant="link"
           nativeButton={false}
           render={<Link href="/insights" />}
-          className="-ml-3 gap-1 px-3 text-muted-foreground hover:text-foreground"
+          className="px-0 text-sm"
         >
           See past weeks
-          <ChevronRight className="size-4" aria-hidden />
         </Button>
         <Button
           variant="ghost"
           size="icon-lg"
           onClick={dismiss}
           aria-label="Dismiss this week's review"
-          className="text-muted-foreground hover:text-foreground"
+          className="-mr-3 text-muted-foreground hover:text-foreground"
         >
           <X className="size-4" aria-hidden />
         </Button>

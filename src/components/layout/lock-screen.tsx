@@ -1,11 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Lock } from 'lucide-react'
 import { verifyPin } from '@/lib/pin-lock'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 
 export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
@@ -25,13 +23,12 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 
   return (
     <>
-      <main className="flex min-h-[calc(100dvh_-_env(safe-area-inset-top))] items-center justify-center p-4">
-        <Card className="w-full max-w-xs p-2">
-          <CardHeader className="items-center justify-items-center text-center">
-            <Lock className="mb-2 size-8 text-accent-2" aria-hidden />
-            <CardTitle><h1 className="text-lg font-semibold">Enter your PIN</h1></CardTitle>
-          </CardHeader>
-          <CardContent>
+      <main className="flex min-h-[calc(100dvh_-_env(safe-area-inset-top))] items-center justify-center p-5">
+        <div className="flex w-full max-w-xs flex-col gap-8">
+          <div className="flex flex-col gap-10">
+            <p className="text-xl font-bold tracking-[-0.02em]">Lifeloom</p>
+            <h1 className="text-[28px] font-bold leading-tight tracking-[-0.03em]">Enter your PIN</h1>
+          </div>
             <form onSubmit={submit} className="flex flex-col gap-4">
               <Input
                 type="password"
@@ -41,7 +38,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
                 value={pin}
                 onChange={e => setPin(e.target.value)}
                 aria-label="PIN"
-                className="h-12 text-center tabular-nums text-2xl tracking-[0.4em] md:text-2xl"
+                className="h-14 text-center text-2xl tabular-nums tracking-[0.4em] md:text-2xl"
               />
               <Button type="submit" size="lg" disabled={busy || pin.length === 0}>
                 {busy ? 'Checking…' : 'Unlock'}
@@ -52,8 +49,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
                 </Alert>
               )}
             </form>
-          </CardContent>
-        </Card>
+        </div>
       </main>
     </>
   )

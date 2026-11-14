@@ -1,26 +1,33 @@
 'use client'
 
-import { BookOpen, CheckSquare, NotebookPen, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Tab } from '@/hooks/use-tab-state'
 
 type Props = {
   taskBadgeCount?: number      // overdue + open count; undefined = no badge
-  /** `inline`: desktop underline tabs in the page flow. `dock`: the phone's fixed bottom bar. */
+  /** `inline`: desktop text tabs in the header bar. `dock`: the phone's floating bottom dock. */
   variant: 'inline' | 'dock'
 }
 
-const TABS: { id: Tab; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
-  { id: 'money', icon: Wallet, label: 'Money' },
-  { id: 'tasks', icon: CheckSquare, label: 'Tasks' },
-  { id: 'learning', icon: BookOpen, label: 'Learn' },
-  { id: 'notes', icon: NotebookPen, label: 'Notes' },
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'money', label: 'Money' },
+  { id: 'tasks', label: 'Tasks' },
+  { id: 'learning', label: 'Learn' },
+  { id: 'notes', label: 'Notes' },
 ]
 
-/** Height the dock occupies above the safe area, so pages can pad their last item clear of it. */
-export const DOCK_CLEARANCE = 'pb-[calc(6rem_+_env(safe-area-inset-bottom))]'
+/**
+ * The dock block is 5.5rem tall above the safe area (10px gap + 66px dock + 12px). The phone
+ * capture field is fixed directly above it: use this as its `bottom`.
+ */
+export const ABOVE_DOCK = 'max-lg:bottom-[calc(5.5rem_+_env(safe-area-inset-bottom))]'
+
+/**
+ * Bottom padding that keeps a page's last item clear of the phone dock AND the capture
+ * field fixed above it (5.5rem dock + 3.75rem field + breathing room).
+ */
+export const DOCK_CLEARANCE = 'pb-[calc(11rem_+_env(safe-area-inset-bottom))]'
 
 /**
  * The section switcher. It renders ONLY the tab list: the `<Tabs>` root and the
@@ -36,38 +43,35 @@ export function TabBar({ taskBadgeCount, variant }: Props) {
       aria-label="Sections"
       variant={dock ? 'default' : 'line'}
       className={cn(
-        'group-data-horizontal/tabs:h-auto w-full',
-        dock ? 'gap-1 bg-transparent p-0' : 'justify-start gap-1 border-b border-border p-0',
+        'group-data-horizontal/tabs:h-auto',
+        dock
+          ? 'grid w-full grid-cols-4 gap-1 rounded-[22px] bg-panel p-[5px]'
+          : 'items-stretch justify-start gap-1 p-0',
       )}
     >
       {TABS.map(t => {
-        const Icon = t.icon
         const count = t.id === 'tasks' ? badge : null
         return (
           <TabsTrigger
             key={t.id}
             value={t.id}
             className={cn(
-              'focus-visible:ring-2 focus-visible:ring-ring/50',
+              'group/trigger gap-1.5 border-0 focus-visible:ring-2 focus-visible:ring-ring/50 data-active:font-bold',
               dock
-                ? 'h-auto min-h-14 flex-col gap-1 rounded-lg py-2 text-xs text-muted-foreground after:hidden data-active:bg-accent data-active:text-foreground data-active:shadow-none'
-                : 'h-11 flex-none gap-2 rounded-none px-4 text-sm text-muted-foreground group-data-horizontal/tabs:after:bottom-[-1px] data-active:text-foreground',
+                ? 'h-14 rounded-[17px] text-sm text-panel-foreground/80 after:hidden hover:text-panel-foreground focus-visible:ring-panel-highlight data-active:bg-background data-active:text-foreground! group-data-[variant=default]/tabs-list:data-active:shadow-none'
+                : 'h-auto min-h-11 flex-none self-stretch rounded-none px-3.5 text-[15px] text-muted-foreground group-data-horizontal/tabs:after:bottom-[-1px] group-data-horizontal/tabs:after:h-[3px] data-active:text-foreground',
             )}
           >
-            {dock ? (
-              <>
-                <span className="relative">
-                  <Icon className="size-5" aria-hidden />
-                  {count && <span className="absolute -right-3 -top-2"><DueBadge value={count} /></span>}
-                </span>
-                {t.label}
-              </>
-            ) : (
-              <>
-                <Icon className="size-4" aria-hidden />
-                {t.label}
-                {count && <DueBadge value={count} />}
-              </>
+            {t.label}
+            {count && (
+              <span
+                className={cn(
+                  'text-xs font-bold tabular-nums',
+                  dock ? 'text-panel-highlight group-data-active/trigger:text-warning' : 'text-warning',
+                )}
+              >
+                <span className="sr-only">, </span>{count}<span className="sr-only"> due</span>
+              </span>
             )}
           </TabsTrigger>
         )
@@ -77,16 +81,8 @@ export function TabBar({ taskBadgeCount, variant }: Props) {
 
   if (!dock) return list
   return (
-    <div className="glass fixed bottom-[calc(0.75rem_+_env(safe-area-inset-bottom))] left-3 right-3 z-40 rounded-xl p-1.5">
-      {list}
+    <div className="fixed inset-x-0 bottom-0 z-40 bg-background px-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] pt-2.5">
+      <div className="mx-auto w-full max-w-xl">{list}</div>
     </div>
-  )
-}
-
-function DueBadge({ value }: { value: string }) {
-  return (
-    <Badge className="h-4 bg-warning px-1.5 font-semibold tabular-nums text-background">
-      <span className="sr-only">, </span>{value}<span className="sr-only"> due</span>
-    </Badge>
   )
 }

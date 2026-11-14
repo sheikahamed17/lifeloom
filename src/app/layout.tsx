@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#ffffff',
+  themeColor: '#F2F3EE',
   // Allow pinch-zoom: never disable user scaling (WCAG 1.4.4) — it also lets the
   // user shrink the view if the app feels too large on their device. Mobile inputs
   // are 16px (text-base), so re-enabling zoom does NOT reintroduce iOS's

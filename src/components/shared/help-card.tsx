@@ -15,11 +15,11 @@ export function HelpCard({
   return (
     <Card role="group" aria-label="Lifeloom help">
       <CardHeader>
-        <CardTitle><h2 className="text-sm font-semibold">Here&apos;s what I can do</h2></CardTitle>
-        <CardDescription className="text-xs">
-          Type or say one line — I&rsquo;ll file it in the right place.
+        <CardTitle><h2>Here&apos;s what I can do</h2></CardTitle>
+        <CardDescription className="text-[13px]">
+          Type or say one line and I&rsquo;ll file it in the right place.
         </CardDescription>
-        <CardAction className="-mr-2 -mt-2">
+        <CardAction className="-mr-2 self-center">
           <Button
             variant="ghost"
             size="icon-lg"
@@ -32,16 +32,16 @@ export function HelpCard({
         </CardAction>
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-2">
+      <CardContent className="-mt-4 flex flex-col divide-y divide-border">
         {HELP_EXAMPLES.map((example) => (
           <Button
             key={`${example.domain}-${example.prompt}`}
-            variant="outline"
+            variant="ghost"
             onClick={() => onPick(example.prompt)}
-            className="h-auto min-h-11 flex-col items-start gap-1 whitespace-normal px-3 py-2 text-left"
+            className="h-auto min-h-[52px] flex-col items-start gap-0.5 whitespace-normal rounded-none px-0 py-2.5 text-left"
           >
-            <span className="text-sm font-medium">{example.label}</span>
-            <code className="tabular-nums text-xs font-normal text-muted-foreground">
+            <span className="text-[15px] font-medium">{example.label}</span>
+            <code className="font-sans text-[13px] font-normal text-muted-foreground">
               {example.prompt}
             </code>
           </Button>

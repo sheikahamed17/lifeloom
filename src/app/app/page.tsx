@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CircleHelp, PenLine, X } from 'lucide-react'
+import { ArrowUp, CircleHelp, Loader2, PenLine, Plus, X } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { LockGate } from '@/components/layout/lock-gate'
 import { AppHeader } from '@/components/layout/app-header'
@@ -10,6 +10,7 @@ import { ReviewQueue } from '@/components/money/review-queue'
 import { MonthSummary, MoneyOverview } from '@/components/money/money-overview'
 import { ListSection } from '@/components/shared/list-section'
 import { GettingStarted } from '@/components/money/getting-started'
+import { MonthPanel } from '@/components/money/month-panel'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,7 +32,7 @@ import { SortControl } from '@/components/shared/sort-control'
 import { type DateSort, type TaskSort } from '@/lib/list-sort'
 import { VoiceRecorder } from '@/components/capture/voice-recorder'
 import { ReceiptButton } from '@/components/capture/receipt-button'
-import { TabBar, DOCK_CLEARANCE } from '@/components/layout/tab-bar'
+import { TabBar, ABOVE_DOCK, DOCK_CLEARANCE } from '@/components/layout/tab-bar'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { TaskList } from '@/components/tasks/task-list'
 import { TaskFilter } from '@/components/tasks/task-filter'
@@ -108,6 +109,8 @@ function AppPageInner() {
   const [querySource, setQuerySource] = useState<'voice' | 'text' | null>(null)
   const [parsing, setParsing] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  // Phone only: voice, receipt, "by hand" and help sit behind the + in the capture field.
+  const [toolsOpen, setToolsOpen] = useState(false)
   // Unplaced input is never wiped silently (critique P0): the text stays and this explains.
   const [captureNotice, setCaptureNotice] = useState<null | 'unplaced' | 'unreachable'>(null)
   const undo = useUndo()
@@ -126,7 +129,7 @@ function AppPageInner() {
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  // The capture bar is sticky, so a capture can start deep in the list: bring
+  // The capture field stays on screen, so a capture can start deep in the list: bring
   // whatever it opens (editor, answer, help, the "couldn't tell" message) into view.
   const captureResult = draft ? 'chip' : queryPlan ? 'answer' : showHelp ? 'help' : captureNotice
   useEffect(() => {
@@ -740,156 +743,16 @@ function AppPageInner() {
 
   return (
     <>
-      {/* One Tabs root for the whole page (display: contents keeps the grid below intact): the desktop
-          tab list, the phone dock and the four panels are all part of the same tab set. */}
+      {/* One Tabs root for the whole page (display: contents, so it adds no box): the desktop tab
+          list in the header, the phone dock and the four panels are all part of the same tab set. */}
       <Tabs value={activeTab} onValueChange={v => setTab(v as Tab)} className="contents">
-      <main className={`mx-auto grid w-full max-w-6xl content-start gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-x-8 lg:p-8 ${DOCK_CLEARANCE}`}>
-        {/* Full width on desktop so every destination fits beside the name. */}
-        <div className="lg:col-span-2">
-          <AppHeader onSearch={() => setSearchOpen(true)} />
-        </div>
-        <div className="flex min-w-0 flex-col gap-6">
-
-          {/* The capture bar: the text field leads, voice / receipt / manual are secondary.
-              Sticky, so capture is one tap away from anywhere in the list. */}
-          <form
-            onSubmit={(e) => { e.preventDefault(); parseText() }}
-            className="glass sticky top-[calc(0.5rem_+_env(safe-area-inset-top))] z-30 flex flex-col gap-1 rounded-xl p-2"
-          >
-            <Label htmlFor="capture-input" className="sr-only">Capture a note, task or spend</Label>
-            <div className="relative">
-              <Input
-                id="capture-input"
-                ref={captureInputRef}
-                value={text}
-                onChange={e => { setText(e.target.value); if (captureNotice) setCaptureNotice(null) }}
-                placeholder="Add a note, task or spend…"
-                autoComplete="off"
-                enterKeyHint="send"
-                disabled={captureBusy}
-                className="h-11 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
-              />
-              {/* The "/" shortcut is a keyboard thing: hint it on desktop only, and only while the field is empty. */}
-              {!text && !captureBusy && <Kbd className="absolute right-2 top-1/2 hidden -translate-y-1/2 lg:inline-flex" aria-hidden>/</Kbd>}
-            </div>
-            <div className="flex items-center gap-0.5">
-              <VoiceRecorder
-                compact
-                disabled={captureBusy}
-                onParsed={(payload, transcript, intent) => {
-                  if (intent === 'chat') {
-                    setShowHelp(true)
-                  } else if (!payload) {
-                    setText(transcript)
-                    setCaptureNotice('unplaced')
-                  } else if (isQueryPlan(payload)) {
-                    setQueryPlan(payload)
-                    setQuerySource('voice')
-                  } else {
-                    setDraft(payload as ChipDraft)
-                  }
-                }}
-              />
-              <ReceiptButton
-                disabled={captureBusy}
-                onParsed={(payload, previewUrl) => {
-                  setDraft({ ...(payload as unknown as ChipDraft), receiptPreviewUrl: previewUrl } as ChipDraft)
-                }}
-              />
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                aria-label="Add an entry by hand"
-                disabled={captureBusy}
-                onClick={() => setDraft(blankDraftForKind(tabKind(), prefs.primary_currency ?? 'INR', new Date().toISOString()))}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <PenLine className="size-5" aria-hidden />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                aria-label="What can I capture?"
-                aria-expanded={showHelp}
-                disabled={captureBusy}
-                onClick={() => setShowHelp(s => !s)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <CircleHelp className="size-5" aria-hidden />
-              </Button>
-              <span className="flex-1" />
-              {!online && (
-                <span role="status" className="mr-2 text-xs text-warning">Offline: saved on this device</span>
-              )}
-              <Button type="submit" className={cn('h-10 px-5', text.trim() && !captureBusy && '')} disabled={captureBusy || !text.trim()}>
-                {parsing ? 'Adding…' : 'Add'}
-              </Button>
-            </div>
-          </form>
-
-          <div ref={captureResultRef} className="flex scroll-mt-36 flex-col gap-4 empty:hidden md:gap-5">
-          {captureNotice && !draft && (
-            <Alert className="glass-soft flex flex-col gap-2 rounded-xl p-3 sm:flex-row sm:items-center">
-              <AlertDescription className="flex-1 text-foreground">
-                {captureNotice === 'unplaced' ? 'I couldn’t tell what that is.' : 'Couldn’t reach the AI just now.'}{' '}
-                <span className="text-muted-foreground">Try “spent 80 on chai”, “remind me to call mom at 6” or “note: the wifi password is on the router”.</span>
-              </AlertDescription>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={addManually}>Add it manually</Button>
-                <Button variant="ghost" size="icon" aria-label="Dismiss" onClick={() => setCaptureNotice(null)}><X className="size-4" aria-hidden /></Button>
-              </div>
-            </Alert>
-          )}
-
-          {queuedCount > 0 && (
-            <p aria-live="polite" className="px-1 text-xs text-muted-foreground">
-              {queuedCount} capture{queuedCount === 1 ? '' : 's'} waiting to send
-            </p>
-          )}
-
-          {draft && (
-            <ConfirmationChip
-              userId={user.id}
-              draft={draft}
-              categoryById={categoryById}
-              onConfirm={confirmEntry}
-              mode={editId ? 'edit' : 'create'}
-              onCancel={() => {
-                if (draft?.kind === 'money' && draft.draftId) deleteReceiptDraft(draft.draftId).catch(console.error)
-                setDraft(null)
-                setEditId(null)
-              }}
-            />
-          )}
-
-          {queryPlan && queryPlan.kind === 'query_money' && (
-            <QueryAnswerCard userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
-          )}
-          {queryPlan && queryPlan.kind === 'query_task' && (
-            <QueryTaskListAnswer userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
-          )}
-          {queryPlan && queryPlan.kind === 'query_learning' && (
-            <QueryLearningListAnswer userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
-          )}
-          {queryPlan && queryPlan.kind === 'query_notes' && (
-            <QueryNotesListAnswer userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
-          )}
-
-          {showHelp && !draft && !queryPlan && (
-            <HelpCard
-              onPick={(p) => {
-                setShowHelp(false)
-                setText(p)
-                captureInputRef.current?.focus()
-              }}
-              onDismiss={() => setShowHelp(false)}
-            />
-          )}
-          </div>
+      <AppHeader onSearch={() => setSearchOpen(true)} tabs={<TabBar variant="inline" taskBadgeCount={taskBadgeCount} />} />
+      <main className={`mx-auto flex w-full max-w-[1200px] flex-col gap-8 px-5 pt-1 sm:px-6 lg:flex-row lg:items-start lg:gap-14 lg:p-8 ${DOCK_CLEARANCE}`}>
+        <div className="flex min-w-0 flex-col gap-8 lg:flex-[999_1_560px] lg:gap-10">
 
           {showPushNudge && (
-            <Alert role="status" className="glass-soft flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2">
-              <AlertDescription className="text-foreground">Get a notification when a task is due?</AlertDescription>
+            <Alert role="status" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border-0 bg-card py-2.5 pl-4 pr-2.5">
+              <AlertDescription className="text-[15px] font-semibold text-foreground">Get a notification when a task is due?</AlertDescription>
               <div className="flex gap-1">
                 <Button
                   variant="outline"
@@ -916,12 +779,8 @@ function AppPageInner() {
 
           <TodayNudge userId={user.id} onGoToTasks={() => setTab('tasks')} />
 
-          {/* Desktop section switcher, in the page flow (the phone uses the dock). */}
-          <div className="hidden lg:block">
-            <TabBar variant="inline" taskBadgeCount={taskBadgeCount} />
-          </div>
-
-          <TabsContent value="money" className="flex flex-col gap-6">
+          <TabsContent value="money" className="flex flex-col gap-8 lg:gap-10">
+              <div className="-mx-2 sm:mx-0"><MonthPanel userId={user.id} /></div>
               <GettingStarted userId={user.id} />
               <ReviewQueue userId={user.id} focusId={categorizeId} />
               <div className="lg:hidden">
@@ -937,7 +796,8 @@ function AppPageInner() {
                 <MoneyList userId={user.id} onEdit={editMoney} filter={moneyFilter} sort={moneySort} />
               </ListSection>
           </TabsContent>
-          <TabsContent value="tasks">
+          <TabsContent value="tasks" className="flex flex-col gap-8 lg:gap-10">
+            <div className="-mx-2 sm:mx-0"><TaskSummary userId={user.id} /></div>
             <ListSection
               id="tasks"
               title="Tasks"
@@ -965,7 +825,8 @@ function AppPageInner() {
               <TaskList userId={user.id} filter={taskFilter} projectId={taskProjectId} tag={taskTag} sort={taskSort} onEdit={editTask} />
             </ListSection>
           </TabsContent>
-          <TabsContent value="learning">
+          <TabsContent value="learning" className="flex flex-col gap-8 lg:gap-10">
+            <LearningSummary userId={user.id} />
             <ListSection
               id="learnings"
               title="Learnings"
@@ -1007,21 +868,178 @@ function AppPageInner() {
           </TabsContent>
         </div>
 
-        {/* Desktop right column: the money Overview (scrolls with the page), or the tab's summary. */}
-        <aside className="hidden min-w-0 lg:block" aria-label={activeTab === 'money' ? 'Money overview' : 'Summary'}>
-          {activeTab === 'money' ? (
-            <MoneyOverview userId={user.id} onSelectCategory={filterByCategory} withDigest />
-          ) : (
-            <div className="sticky top-6 flex flex-col gap-4">
-              {activeTab === 'tasks' && <TaskSummary userId={user.id} />}
-              {activeTab === 'learning' && <LearningSummary userId={user.id} />}
+        {/* Side column (desktop). Below `lg` it dissolves (display: contents): the capture form is fixed
+            above the dock, whatever it opened moves to the top of the page, and the summary is hidden. */}
+        <div className="max-lg:contents lg:flex lg:min-w-0 lg:flex-[1_1_340px] lg:flex-col lg:gap-10">
+          <div className="max-lg:contents lg:flex lg:flex-col lg:gap-5">
+            {/* The capture field: notes, tasks and expenses. On the phone it is fixed above the dock, so it
+                is one tap away on every tab; on desktop it heads the side column. Voice, receipt,
+                "by hand" and help are a quiet row under it (behind the + button on the phone). */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); parseText() }}
+              className={cn('z-30 bg-background max-lg:fixed max-lg:inset-x-0 max-lg:px-3 max-lg:pt-3', ABOVE_DOCK)}
+            >
+              <div className="mx-auto flex w-full max-w-xl flex-col gap-2 lg:max-w-none lg:gap-2.5">
+                <h2 className="hidden text-[17px] font-bold lg:block">Add something</h2>
+                <Label htmlFor="capture-input" className="sr-only">Add a note, task or expense</Label>
+                <div className="flex items-center gap-2 lg:gap-1 lg:rounded-2xl lg:bg-card lg:p-1 lg:has-[input:focus-visible]:ring-3 lg:has-[input:focus-visible]:ring-ring/50">
+                  <div className="flex min-w-0 flex-1 items-center rounded-[14px] bg-card max-lg:has-[input:focus-visible]:ring-3 max-lg:has-[input:focus-visible]:ring-ring/50">
+                    <Input
+                      id="capture-input"
+                      ref={captureInputRef}
+                      value={text}
+                      onChange={e => { setText(e.target.value); if (captureNotice) setCaptureNotice(null) }}
+                      placeholder="A note, task or expense"
+                      autoComplete="off"
+                      enterKeyHint="send"
+                      disabled={captureBusy}
+                      className="h-12 flex-1 border-0 bg-transparent px-4 text-base focus-visible:border-transparent focus-visible:ring-0 md:text-[15px] lg:h-11 lg:pl-3"
+                    />
+                    {/* The "/" shortcut is a keyboard thing: hint it on desktop only, and only while the field is empty. */}
+                    {!text && !captureBusy && <Kbd className="mr-2 hidden lg:inline-flex" aria-hidden>/</Kbd>}
+                    <Button
+                      variant="ghost"
+                      size="icon-lg"
+                      aria-label="More ways to add"
+                      aria-expanded={toolsOpen}
+                      aria-controls="capture-tools"
+                      onClick={() => setToolsOpen(o => !o)}
+                      className="shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground lg:hidden"
+                    >
+                      <Plus className={cn('size-5 transition-transform motion-reduce:transition-none', toolsOpen && 'rotate-45')} aria-hidden />
+                    </Button>
+                  </div>
+                  <Button type="submit" size="icon" aria-label="Add" aria-busy={parsing} disabled={captureBusy || !text.trim()} className="shrink-0">
+                    {parsing
+                      ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
+                      : <ArrowUp className="size-5" aria-hidden />}
+                  </Button>
+                </div>
+                <div id="capture-tools" className={cn('min-w-0 items-center gap-1 lg:-ml-2.5 lg:flex', toolsOpen ? 'flex' : 'hidden')}>
+                  <VoiceRecorder
+                    compact
+                    disabled={captureBusy}
+                    onParsed={(payload, transcript, intent) => {
+                      if (intent === 'chat') {
+                        setShowHelp(true)
+                      } else if (!payload) {
+                        setText(transcript)
+                        setCaptureNotice('unplaced')
+                      } else if (isQueryPlan(payload)) {
+                        setQueryPlan(payload)
+                        setQuerySource('voice')
+                      } else {
+                        setDraft(payload as ChipDraft)
+                      }
+                    }}
+                  />
+                  <ReceiptButton
+                    disabled={captureBusy}
+                    onParsed={(payload, previewUrl) => {
+                      setDraft({ ...(payload as unknown as ChipDraft), receiptPreviewUrl: previewUrl } as ChipDraft)
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    aria-label="Add an entry by hand"
+                    disabled={captureBusy}
+                    onClick={() => setDraft(blankDraftForKind(tabKind(), prefs.primary_currency ?? 'INR', new Date().toISOString()))}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <PenLine className="size-5" aria-hidden />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    aria-label="What can I capture?"
+                    aria-expanded={showHelp}
+                    disabled={captureBusy}
+                    onClick={() => setShowHelp(s => !s)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <CircleHelp className="size-5" aria-hidden />
+                  </Button>
+                </div>
+                {!online && (
+                  <p role="status" className="px-1 text-[13px] font-medium text-warning lg:px-0">Offline: saved on this device</p>
+                )}
+                <p className="hidden text-[13px] text-muted-foreground lg:block">Money from your bank emails is added for you.</p>
+              </div>
+            </form>
+
+              <div ref={captureResultRef} className="flex scroll-mt-4 flex-col gap-4 empty:hidden max-lg:order-first lg:scroll-mt-6">
+              {captureNotice && !draft && (
+                <Alert className="flex flex-col gap-3 rounded-2xl border-0 bg-card p-4 sm:flex-row sm:items-center lg:flex-col lg:items-stretch">
+                  <AlertDescription className="flex-1 text-foreground">
+                    {captureNotice === 'unplaced' ? 'I couldn’t tell what that is.' : 'Couldn’t reach the AI just now.'}{' '}
+                    <span className="text-muted-foreground">Try “spent 80 on chai”, “remind me to call mom at 6” or “note: the wifi password is on the router”.</span>
+                  </AlertDescription>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={addManually}>Add it manually</Button>
+                    <Button variant="ghost" size="icon" aria-label="Dismiss" onClick={() => setCaptureNotice(null)}><X className="size-4" aria-hidden /></Button>
+                  </div>
+                </Alert>
+              )}
+
+              {queuedCount > 0 && (
+                <p aria-live="polite" className="text-[13px] text-muted-foreground">
+                  {queuedCount} capture{queuedCount === 1 ? '' : 's'} waiting to send
+                </p>
+              )}
+
+              {draft && (
+                <ConfirmationChip
+                  userId={user.id}
+                  draft={draft}
+                  categoryById={categoryById}
+                  onConfirm={confirmEntry}
+                  mode={editId ? 'edit' : 'create'}
+                  onCancel={() => {
+                    if (draft?.kind === 'money' && draft.draftId) deleteReceiptDraft(draft.draftId).catch(console.error)
+                    setDraft(null)
+                    setEditId(null)
+                  }}
+                />
+              )}
+
+              {queryPlan && queryPlan.kind === 'query_money' && (
+                <QueryAnswerCard userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
+              )}
+              {queryPlan && queryPlan.kind === 'query_task' && (
+                <QueryTaskListAnswer userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
+              )}
+              {queryPlan && queryPlan.kind === 'query_learning' && (
+                <QueryLearningListAnswer userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
+              )}
+              {queryPlan && queryPlan.kind === 'query_notes' && (
+                <QueryNotesListAnswer userId={user.id} plan={queryPlan} onResult={handleAnswerResult} onDismiss={dismissQuery} />
+              )}
+
+              {showHelp && !draft && !queryPlan && (
+                <HelpCard
+                  onPick={(p) => {
+                    setShowHelp(false)
+                    setText(p)
+                    captureInputRef.current?.focus()
+                  }}
+                  onDismiss={() => setShowHelp(false)}
+                />
+              )}
+              </div>
+
+          </div>
+
+          {(activeTab === 'money' || activeTab === 'notes') && (
+            <aside className="hidden min-w-0 lg:block" aria-label={activeTab === 'money' ? 'Money overview' : 'Summary'}>
+              {activeTab === 'money' && <MoneyOverview userId={user.id} onSelectCategory={filterByCategory} withDigest />}
               {activeTab === 'notes' && <NotesSummary userId={user.id} />}
-            </div>
+            </aside>
           )}
-        </aside>
+        </div>
       </main>
 
-      {/* Phone + tablet dock (desktop uses the in-flow switcher above). */}
+      {/* Phone + tablet dock (desktop has the same tabs in the header). */}
       <div className="lg:hidden">
         <TabBar variant="dock" taskBadgeCount={taskBadgeCount} />
       </div>

@@ -1,19 +1,19 @@
 'use client'
 
-import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { STEP_BUTTON, StepActions, StepHeading } from '@/components/setup/step-layout'
 
 export function Welcome({ onNext }: { onNext: () => void }) {
   return (
-    <div className="flex flex-col items-center gap-4 text-center">
-      <Sparkles className="size-8 text-accent-2" aria-hidden />
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Welcome to your Lifeloom</h1>
-        <p className="text-sm text-muted-foreground">
-          This is your own private instance — your data, your keys, fully isolated and yours alone. Let&apos;s get it set up; it takes about a minute.
+    <div className="flex flex-col gap-6">
+      <StepHeading title="Welcome to your Lifeloom">
+        <p>
+          This is your own private instance. Your data and your keys, fully isolated and yours alone. Let&apos;s get it set up. It takes about a minute.
         </p>
-      </div>
-      <Button onClick={onNext} className="w-full">Get started</Button>
+      </StepHeading>
+      <StepActions>
+        <Button onClick={onNext} size="lg" className={STEP_BUTTON}>Get started</Button>
+      </StepActions>
     </div>
   )
 }

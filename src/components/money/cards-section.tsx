@@ -1,14 +1,9 @@
 'use client'
 
-import { CreditCard } from 'lucide-react'
 import { formatDay } from '@/lib/format'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import Link from 'next/link'
-import { IconTile } from '@/components/shared/icon-tile'
-import { buttonVariants } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
-import { cn } from '@/lib/utils'
+import { HEAD_LINK, SectionHeading } from '@/components/money/section-heading'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
@@ -29,6 +24,7 @@ type Props = { userId: string }
 // spend charged to it, and the last payment. Read-only aggregation over existing
 // accounts/money/transfers; renders nothing when there are no liability accounts.
 export function CardsSection({ userId }: Props) {
+  const headingId = useId()
   const accounts = useAccounts(userId)
   const entriesRaw = useMoneyEntries(userId)
   const shares = useExpenseShares(userId)
@@ -59,42 +55,30 @@ export function CardsSection({ userId }: Props) {
     `${currencySymbol(cur)}${(amt / (cur === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
   return (
-    <Card role="region" aria-labelledby="cards-heading" className="gap-4 p-5">
-      <h2 id="cards-heading" className="text-sm font-semibold">Cards &amp; debts</h2>
-      <ul className="flex flex-col gap-2">
+    <section aria-labelledby={headingId} className="flex flex-col">
+      <SectionHeading id={headingId}>Cards &amp; debts</SectionHeading>
+      <ul className="flex flex-col">
         {summaries.map(({ acct, s }) => (
-          <li key={acct.id} className="border-t border-border pt-2 first:border-t-0 first:pt-0">
-            <Item size="xs" className="flex-nowrap items-start p-0">
-              <ItemContent className="min-w-0 gap-1">
-                <ItemTitle className="max-w-full gap-3 text-sm font-normal">
-                  <IconTile emoji={acct.icon} icon={CreditCard} size="sm" />
-                  <span className="truncate">{acct.name}</span>
-                </ItemTitle>
-                <ItemDescription className="text-xs">
-                  This month <span className="tabular-nums">{fmtIn(s.monthSpend, acct.currency)}</span>
-                </ItemDescription>
-                {s.recentPayments.length > 0 && (
-                  <ItemDescription className="text-xs">
-                    Last payment {fmtIn(s.recentPayments[0].amount, acct.currency)} on {formatDay(s.recentPayments[0].occurred_at)}
-                  </ItemDescription>
-                )}
-              </ItemContent>
-              <ItemActions className="flex-col items-end gap-0">
-                <span className="text-xs text-muted-foreground">You owe</span>
-                <span className={`tabular-nums text-sm font-medium ${s.owed > 0 ? 'text-destructive' : 'text-income'}`}>
-                  {fmtIn(s.owed, acct.currency)}
+          <li key={acct.id} className="flex min-h-15 items-center gap-4 border-b border-border py-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="truncate text-[15px] font-medium">{acct.name}</span>
+              <span className="text-[13px] text-muted-foreground">
+                This month <span className="tabular-nums">{fmtIn(s.monthSpend, acct.currency)}</span>
+              </span>
+              {s.recentPayments.length > 0 && (
+                <span className="text-[13px] text-muted-foreground">
+                  Last payment {fmtIn(s.recentPayments[0].amount, acct.currency)} on {formatDay(s.recentPayments[0].occurred_at)}
                 </span>
-                <Link
-                  href="/settings/transfers"
-                  className={cn(buttonVariants({ variant: 'ghost' }), '-mr-2 min-h-11 px-2 font-normal text-accent-2')}
-                >
-                  Pay it off
-                </Link>
-              </ItemActions>
-            </Item>
+              )}
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-0.5">
+              <span className="text-xs text-muted-foreground">You owe</span>
+              <span className="text-[15px] font-semibold tabular-nums">{fmtIn(s.owed, acct.currency)}</span>
+            </div>
+            <Link href="/settings/transfers" className={HEAD_LINK}>Pay it off</Link>
           </li>
         ))}
       </ul>
-    </Card>
+    </section>
   )
 }

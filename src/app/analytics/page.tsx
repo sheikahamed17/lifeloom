@@ -5,9 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { PageShell } from '@/components/layout/page-shell'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { BarTrend } from '@/components/charts/bar-trend'
 import { DualSeriesTrend } from '@/components/charts/dual-series-trend'
@@ -195,83 +192,85 @@ export default function AnalyticsPage() {
   const symbol = currencySymbol(prefs.primary_currency)
   const jpy = prefs.primary_currency === 'JPY'
 
+  const TOGGLE_ITEM = 'h-11 rounded-none border-b-2 border-transparent bg-transparent px-0 text-[15px] font-medium text-muted-foreground hover:bg-transparent aria-pressed:border-foreground aria-pressed:bg-transparent data-[state=on]:bg-transparent aria-pressed:font-semibold aria-pressed:text-foreground'
   const bucketToggle = (
-    <ToggleGroup
-      aria-label="Group by"
-      className="glass-soft p-0.5"
-      value={[bucket]}
-      onValueChange={next => { if (next[0]) setBucket(next[0] as 'week' | 'month') }}
-    >
-      <ToggleGroupItem value="week" className="h-10 px-3">Weeks</ToggleGroupItem>
-      <ToggleGroupItem value="month" className="h-10 px-3">Months</ToggleGroupItem>
-    </ToggleGroup>
+    <div className="flex items-center gap-5">
+      <span aria-hidden className="text-[13px] font-semibold text-muted-foreground">Group by</span>
+      <ToggleGroup
+        aria-label="Group by"
+        spacing={5}
+        value={[bucket]}
+        onValueChange={next => { if (next[0]) setBucket(next[0] as 'week' | 'month') }}
+      >
+        <ToggleGroupItem value="week" className={TOGGLE_ITEM}>Weeks</ToggleGroupItem>
+        <ToggleGroupItem value="month" className={TOGGLE_ITEM}>Months</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
   )
 
+  const HEADING = 'text-[19px] font-bold leading-snug tracking-[-0.02em] lg:text-[22px]'
+  const fmt = (v: number) => `${symbol}${(v / (jpy ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  const comparison = periods.length >= 2
+    ? `${periods[periods.length - 1].label} so far against ${periods[periods.length - 2].label}`
+    : undefined
+
   return (
-    <PageShell title="Analytics" width="wide" actions={bucketToggle}>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {accts.length === 0 ? (
-          <Card role="region" aria-labelledby="networth-heading">
-            <CardHeader>
-              <CardTitle><h2 id="networth-heading" className="text-sm font-semibold">Net worth</h2></CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Empty className="border p-4">
-                <EmptyHeader>
-                  <EmptyDescription>
-                    Add your accounts in <Link href="/settings/accounts" className="text-accent-2 underline-offset-4 hover:underline">Settings → Accounts</Link> to see net worth over time.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </CardContent>
-          </Card>
-        ) : (
-          <NetWorthLine data={netWorthSeriesData} symbol={symbol} jpy={jpy} />
-        )}
+    <PageShell
+      title="Analytics"
+      width="wide"
+      description={bucket === 'week' ? 'The last twelve weeks, up to today.' : 'The last six months, up to today.'}
+      actions={bucketToggle}
+    >
+      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] lg:items-start lg:gap-x-14 lg:gap-y-10">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+          {accts.length === 0 ? (
+            <section role="region" aria-labelledby="networth-heading" className="flex flex-col">
+              <div className="border-b border-border pb-2.5">
+                <h2 id="networth-heading" className={HEADING}>Net worth</h2>
+              </div>
+              <p className="pt-3.5 text-[15px] text-muted-foreground">
+                Add your accounts in <Link href="/settings/accounts" className="font-medium text-foreground underline underline-offset-4">Settings → Accounts</Link> to see net worth over time.
+              </p>
+            </section>
+          ) : (
+            <NetWorthLine data={netWorthSeriesData} current={currentNet} symbol={symbol} jpy={jpy} />
+          )}
+        </div>
 
-        <DualSeriesTrend spend={spendSeries} income={incomeSeries} symbol={symbol} jpy={jpy} />
+        <div className="flex min-w-0 flex-col gap-8 lg:col-start-1 lg:row-start-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-12">
+          <DualSeriesTrend spend={spendSeries} income={incomeSeries} symbol={symbol} jpy={jpy} />
+          <BarTrend data={spendSeries} symbol={symbol} jpy={jpy} label={bucket === 'week' ? 'Spend per week' : 'Spend per month'} />
+        </div>
 
-        <BarTrend data={spendSeries} symbol={symbol} jpy={jpy} label={bucket === 'week' ? 'Spend per week' : 'Spend per month'} />
+        <div className="flex min-w-0 flex-col gap-8 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:gap-10">
+          <MoversBars movers={movers} symbol={symbol} jpy={jpy} comparison={comparison} />
 
-        <MoversBars movers={movers} symbol={symbol} jpy={jpy} />
-
-        <Card role="region" aria-labelledby="unusual-heading" className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle><h2 id="unusual-heading" className="text-sm font-semibold">Unusual spending this month</h2></CardTitle>
-          </CardHeader>
-          <CardContent>
+          <section role="region" aria-labelledby="unusual-heading" className="flex flex-col">
+            <div className="border-b border-border pb-2.5">
+              <h2 id="unusual-heading" className={HEADING}>Unusual spending this month</h2>
+            </div>
             {anomalies.length > 0 ? (
-              <ul className="flex flex-col gap-3">
-                {anomalies.map(anomaly => {
-                  const fmt = (v: number) => `${symbol}${(v / (jpy ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  return (
-                    <li key={anomaly.name} className="flex flex-col gap-0.5">
-                      <span className="flex items-center gap-1.5 text-sm font-medium">
-                        {anomaly.icon && <span aria-hidden="true">{anomaly.icon}</span>}
-                        {anomaly.name}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        <span className="tabular-nums text-foreground">{fmt(anomaly.current)}</span>, {' '}
-                        <Badge variant="destructive" className="align-middle">{anomaly.pct}% above</Badge> your usual{' '}
+              <ul className="flex flex-col">
+                {anomalies.map(anomaly => (
+                  <li key={anomaly.name} className="flex min-h-14 items-center justify-between gap-3 border-b border-border py-2.5">
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="truncate text-[15px] font-medium">{anomaly.name}</span>
+                      <span className="text-[13px] text-muted-foreground">
+                        <span className="font-semibold text-warning">{anomaly.pct}% above</span> your usual{' '}
                         <span className="tabular-nums">{fmt(anomaly.baseline)}</span>
                       </span>
-                    </li>
-                  )
-                })}
+                    </span>
+                    <span className="shrink-0 text-[15px] font-semibold tabular-nums">{fmt(anomaly.current)}</span>
+                  </li>
+                ))}
               </ul>
             ) : (
-              <Empty className="border p-4">
-                <EmptyHeader>
-                  <EmptyDescription>Nothing unusual: every category is close to its normal level.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
+              <p className="pt-3.5 text-[15px] text-muted-foreground">Nothing unusual: every category is close to its normal level.</p>
             )}
-          </CardContent>
-        </Card>
-
-        <div className="lg:col-span-2">
-          <CategorySmallMultiples series={catSeries} periods={periods} symbol={symbol} jpy={jpy} />
+          </section>
         </div>
+
+        <CategorySmallMultiples series={catSeries} periods={periods} symbol={symbol} jpy={jpy} className="lg:col-start-1 lg:row-start-3" />
       </div>
     </PageShell>
   )

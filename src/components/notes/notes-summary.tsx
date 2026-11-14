@@ -2,10 +2,6 @@
 
 import { useMemo } from 'react'
 import { useNotes } from '@/hooks/use-notes'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Item, ItemGroup, ItemTitle } from '@/components/ui/item'
-import { Separator } from '@/components/ui/separator'
 
 type Props = { userId: string }
 
@@ -41,34 +37,26 @@ export function NotesSummary({ userId }: Props) {
     { label: 'Total', value: notes.length },
   ]
 
+  // Notes have no headline figure, so this is a plain ruled section, not the green panel.
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold">Notes</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        <ItemGroup className="gap-0">
-          {rows.map(r => (
-            <Item key={r.label} role="listitem" size="xs" className="flex-nowrap justify-between py-1.5">
-              <ItemTitle className="font-normal">{r.label}</ItemTitle>
-              <span className="tabular-nums">{r.value}</span>
-            </Item>
-          ))}
-        </ItemGroup>
+    <section aria-labelledby="notes-summary-heading" className="flex flex-col">
+      <div className="border-b border-border pb-2.5">
+        <h2 id="notes-summary-heading" className="text-[19px] font-bold tracking-[-0.02em] lg:text-[22px]">Notes</h2>
+      </div>
+      <dl className="flex flex-col">
+        {rows.map(r => (
+          <div key={r.label} className="flex min-h-[52px] items-center justify-between gap-4 border-b border-border">
+            <dt className="text-[15px] font-medium">{r.label}</dt>
+            <dd className="text-base font-semibold tabular-nums">{r.value}</dd>
+          </div>
+        ))}
         {topTags.length > 0 && (
-          <>
-            <Separator />
-            <div className="flex flex-col gap-1.5 text-xs">
-              <span className="text-muted-foreground">Top tags</span>
-              <div className="flex flex-wrap gap-1">
-                {topTags.map(tag => (
-                  <Badge key={tag} variant="secondary" className="text-muted-foreground">{tag}</Badge>
-                ))}
-              </div>
-            </div>
-          </>
+          <div className="flex min-h-[52px] flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border py-2">
+            <dt className="text-[15px] font-medium">Top tags</dt>
+            <dd className="text-[13px] text-muted-foreground">{topTags.join(', ')}</dd>
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </dl>
+    </section>
   )
 }

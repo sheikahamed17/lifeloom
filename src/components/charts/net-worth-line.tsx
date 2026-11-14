@@ -1,24 +1,34 @@
 'use client'
 
 import { useId, useMemo, useState } from 'react'
-import { SEQUENTIAL_HUE } from '@/lib/chart-palette'
-import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ChartEmpty, ChartHeader, useMeasuredWidth } from '@/components/charts/chart-kit'
+import { PanelStat, SummaryPanel } from '@/components/shared/summary-panel'
+import { useMeasuredWidth } from '@/components/charts/chart-kit'
 
 interface NetWorthLineProps {
   data: { label: string; net: number }[]
+  /** Net worth right now, in minor units of the primary currency: the panel's headline. */
+  current: number
   symbol: string
   jpy: boolean
 }
 
-export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
+// From `lg:` the panel is two columns: figures on the left, the line on the right.
+const TWO_COLUMN = 'lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-end lg:gap-x-12 lg:[&>*:nth-child(2)]:col-start-2 lg:[&>*:nth-child(2)]:row-span-2 lg:[&>*:nth-child(2)]:row-start-1'
+
+/**
+ * The page's one green panel: net worth today as the headline, the line over the
+ * last periods drawn on the panel, and where it started and how far it moved.
+ */
+export function NetWorthLine({ data, current, symbol, jpy }: NetWorthLineProps) {
   const [showData, setShowData] = useState(false)
   const id = useId()
-  // Draw at the card's real width so 12 px labels stay 12 px and the line fills the card.
+  // Draw at the panel's real width so the line fills it and marks keep their size.
   const [wrapRef, measured] = useMeasuredWidth<HTMLDivElement>()
 
-  const isEmpty = useMemo(() => data.length <= 1, [data])
+  const isEmpty = data.length <= 1
 
   const { minNet, maxNet } = useMemo(() => {
     if (data.length === 0) return { minNet: 0, maxNet: 0 }
@@ -31,215 +41,159 @@ export function NetWorthLine({ data, symbol, jpy }: NetWorthLineProps) {
   const yMax = Math.max(0, maxNet)
   const yRange = yMax - yMin
 
-  // Prevent division by zero for uniform scale
   const hasNegative = minNet < 0
   const hasPositive = maxNet > 0
 
   const formatNet = (amount: number) => {
     const divisor = jpy ? 1 : 100
-    const formatted = (amount / divisor).toLocaleString('en-US', {
+    const formatted = (Math.abs(amount) / divisor).toLocaleString('en-US', {
       maximumFractionDigits: jpy ? 0 : 2,
     })
-    return `${symbol}${formatted}`
+    return `${amount < 0 ? '−' : ''}${symbol}${formatted}`
   }
 
   // SVG layout constants
-  const padding = { top: 20, right: 25, bottom: 40, left: 30 }
+  const padX = 10
+  const padY = 10
   const width = Math.max(240, measured || 320)
-  const height = 240
-  const plotWidth = width - padding.left - padding.right
-  const plotHeight = height - padding.top - padding.bottom
+  const height = 120
+  const plotWidth = width - padX * 2
+  const plotHeight = height - padY * 2
 
-  // Calculate zero line y position (recessive baseline)
-  const zeroLineY = yRange > 0 ? padding.top + plotHeight * ((yMax - 0) / yRange) : padding.top + plotHeight / 2
+  const zeroLineY = yRange > 0 ? padY + plotHeight * (yMax / yRange) : padY + plotHeight / 2
 
-  // Points on the line
   const points = useMemo(() => {
     return data.map((d, i) => {
-      const x = padding.left + (i / (data.length - 1)) * plotWidth
+      const x = padX + (data.length > 1 ? i / (data.length - 1) : 0.5) * plotWidth
       const normalizedY = yRange > 0 ? (yMax - d.net) / yRange : 0.5
-      const y = padding.top + normalizedY * plotHeight
+      const y = padY + normalizedY * plotHeight
       return { x, y, ...d, index: i }
     })
-  }, [data, padding.left, padding.top, plotWidth, plotHeight, yRange, yMax])
+  }, [data, plotWidth, plotHeight, yRange, yMax])
 
-  // Construct the path for the line
-  const pathData = useMemo(() => {
-    if (points.length === 0) return ''
-    return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-  }, [points])
+  const pathData = useMemo(
+    () => points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' '),
+    [points],
+  )
 
-  // Area path (from line down to zero baseline)
-  const areaPath = useMemo(() => {
-    if (points.length === 0) return ''
-    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-    const returnPath = [...points].reverse().map((p, i) => `${i === 0 ? 'L' : 'L'} ${p.x} ${zeroLineY}`).join(' ')
-    return linePath + ' ' + returnPath + ' Z'
-  }, [points, zeroLineY])
-
-  // Last point (emphasized)
   const lastPoint = points[points.length - 1]
+  const first = data[0]
+  const n = data.length
 
-  const xLabels = useMemo(() => {
-    if (data.length <= 3) return data.map((d, i) => ({ i, label: d.label }))
-    // For more than 3 points, thin out the labels
-    const step = Math.ceil(data.length / 4)
-    const labels: { i: number; label: string }[] = []
-    data.forEach((d, i) => {
-      if (i % step === 0) labels.push({ i, label: d.label })
-    })
-    return labels
-  }, [data])
+  // With many points, label only every few so the names do not collide; the latest is always named.
+  const step = n <= 7 ? 1 : Math.ceil(n / 4)
 
-  if (isEmpty) {
-    return <ChartEmpty id={id} title="Net worth">Not enough history yet. This fills in as your accounts age.</ChartEmpty>
-  }
+  const change = first ? current - first.net : 0
+  const diffs = data.slice(1).map((d, i) => d.net - data[i].net)
+  const takeaway = isEmpty || !first
+    ? 'Not enough history yet. This fills in as your accounts age.'
+    : diffs.every(v => v > 0)
+      ? `Net worth has gone up every month since ${first.label}.`
+      : diffs.every(v => v < 0)
+        ? `Net worth has gone down every month since ${first.label}.`
+        : change === 0
+          ? `Net worth is where it was in ${first.label}.`
+          : `Net worth is ${formatNet(Math.abs(change))} ${change > 0 ? 'higher' : 'lower'} than in ${first.label}.`
 
   return (
-    <Card role="region" aria-labelledby={id}>
-      <ChartHeader id={id} title="Net worth" showTable={showData} onToggle={() => setShowData(s => !s)} />
-
-      <CardContent>
-      {showData ? (
-        <Table>
-          <TableHeader><TableRow><TableHead>Period</TableHead><TableHead className="text-right">Net worth</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {data.map((d) => (
-              <TableRow key={d.label}>
-                <TableCell>{d.label}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatNet(d.net)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
-        <div ref={wrapRef}>
-          <svg
-            viewBox={`0 0 ${width} ${height}`}
-            className="block h-60 w-full"
-            role="img"
-            aria-label={`Net worth trend: ${data.map((d) => `${d.label} ${formatNet(d.net)}`).join(', ')}`}
-          >
-            {/* Zero baseline (recessive when range crosses zero) */}
-            {hasNegative && hasPositive && (
-              <line
-                x1={padding.left}
-                y1={zeroLineY}
-                x2={width - padding.right}
-                y2={zeroLineY}
-                stroke="currentColor"
-                strokeWidth="1"
-                opacity="0.15"
-              />
-            )}
-
-            {/* Y-axis gridlines and labels */}
-            {yRange > 0 && (
+    <div role="region" aria-labelledby={id}>
+      <SummaryPanel
+        className={cn(!isEmpty && TWO_COLUMN)}
+        eyebrow={<span id={id}>Net worth today</span>}
+        value={formatNet(current)}
+        stats={!isEmpty && first ? (
+          <>
+            <PanelStat label={`In ${first.label}`} value={formatNet(first.net)} />
+            <PanelStat label={`Change since ${first.label}`} value={`${change > 0 ? '+' : ''}${formatNet(change)}`} />
+          </>
+        ) : undefined}
+      >
+        {isEmpty ? (
+          <p className="text-[13px] text-panel-muted">{takeaway}</p>
+        ) : (
+          <div className="flex min-w-0 flex-col gap-2">
+            {showData ? (
+              <Table className="[&_td]:text-panel-foreground [&_th]:text-panel-muted [&_tr]:border-panel-border [&_tr:hover]:bg-transparent">
+                <TableHeader><TableRow><TableHead>Period</TableHead><TableHead className="text-right">Net worth</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {data.map((d) => (
+                    <TableRow key={d.label}>
+                      <TableCell>{d.label}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatNet(d.net)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
               <>
-                {/* Max value gridline */}
-                <line
-                  x1={padding.left}
-                  y1={padding.top}
-                  x2={width - padding.right}
-                  y2={padding.top}
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  opacity="0.1"
-                  strokeDasharray="2,2"
-                />
-                <text
-                  x={width - padding.right - 5}
-                  y={padding.top - 5}
-                  textAnchor="end"
-                  className="text-xs fill-muted-foreground"
-                  dy="0.3em"
-                >
-                  {formatNet(maxNet)}
-                </text>
+                <div ref={wrapRef}>
+                  <svg
+                    viewBox={`0 0 ${width} ${height}`}
+                    className="block h-[120px] w-full"
+                    role="img"
+                    aria-label={`Net worth trend: ${data.map((d) => `${d.label} ${formatNet(d.net)}`).join(', ')}`}
+                  >
+                    {/* Recessive gridlines: top, middle and bottom of the plot */}
+                    {[0, 0.5, 1].map(t => (
+                      <line
+                        key={t}
+                        x1={0}
+                        x2={width}
+                        y1={padY + plotHeight * t}
+                        y2={padY + plotHeight * t}
+                        className="stroke-panel-border"
+                        strokeWidth="1"
+                      />
+                    ))}
 
-                {/* Min value gridline */}
-                <line
-                  x1={padding.left}
-                  y1={padding.top + plotHeight}
-                  x2={width - padding.right}
-                  y2={padding.top + plotHeight}
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  opacity="0.1"
-                  strokeDasharray="2,2"
-                />
-                <text
-                  x={width - padding.right - 5}
-                  y={padding.top + plotHeight + 10}
-                  textAnchor="end"
-                  className="text-xs fill-muted-foreground"
-                  dy="0.3em"
-                >
-                  {formatNet(yMin)}
-                </text>
+                    {/* Zero baseline, only when the range crosses zero */}
+                    {hasNegative && hasPositive && (
+                      <line x1={0} x2={width} y1={zeroLineY} y2={zeroLineY} className="stroke-panel-muted" strokeWidth="1" strokeDasharray="2,3" />
+                    )}
+
+                    <path d={pathData} fill="none" className="stroke-panel-foreground" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                    {/* The latest point is the one emphasised mark */}
+                    {lastPoint && <circle cx={lastPoint.x} cy={lastPoint.y} r="5" className="fill-panel-highlight" />}
+
+                    {/* Hover targets larger than the marks */}
+                    {points.map((p) => (
+                      <circle key={`hit-${p.index}`} cx={p.x} cy={p.y} r={14} fill="transparent">
+                        <title>{`${p.label}: ${formatNet(p.net)}`}</title>
+                      </circle>
+                    ))}
+                  </svg>
+                </div>
+                <div className="flex justify-between text-xs text-panel-muted" aria-hidden>
+                  {data.map((d, i) => (
+                    <span
+                      key={d.label}
+                      className={cn(
+                        i === n - 1 && 'font-semibold text-panel-highlight',
+                        i !== n - 1 && (n - 1 - i) % step !== 0 && 'invisible',
+                      )}
+                    >
+                      {d.label}
+                    </span>
+                  ))}
+                </div>
               </>
             )}
-
-            {/* Area fill (subtle) */}
-            <path d={areaPath} fill={SEQUENTIAL_HUE} opacity="0.08" />
-
-            {/* Line */}
-            <path d={pathData} fill="none" stroke={SEQUENTIAL_HUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-
-            {/* Data points with hover titles */}
-            {points.map((p) => (
-              <circle
-                key={p.index}
-                cx={p.x}
-                cy={p.y}
-                r={p.index === points.length - 1 ? 5 : 4}
-                fill={SEQUENTIAL_HUE}
-                stroke="var(--background)"
-                strokeWidth="2"
-                opacity={p.index === points.length - 1 ? 1 : 0.7}
-              />
-            ))}
-
-            {/* Last point marker (emphasized) */}
-            {lastPoint && (
-              <circle
-                cx={lastPoint.x}
-                cy={lastPoint.y}
-                r="8"
-                fill="none"
-                stroke={SEQUENTIAL_HUE}
-                strokeWidth="1.5"
-                opacity="0.4"
-              />
-            )}
-
-            {/* Hover targets larger than the marks */}
-            {points.map((p) => (
-              <circle key={`hit-${p.index}`} cx={p.x} cy={p.y} r={14} fill="transparent">
-                <title>{`${p.label}: ${formatNet(p.net)}`}</title>
-              </circle>
-            ))}
-
-            {/* X-axis labels */}
-            {xLabels.map((item) => {
-              const p = points[item.i]
-              return (
-                <text
-                  key={item.i}
-                  x={p.x}
-                  y={height - 8}
-                  textAnchor="middle"
-                  className="text-xs fill-muted-foreground"
-                  dy="0.3em"
-                >
-                  {item.label}
-                </text>
-              )
-            })}
-          </svg>
-        </div>
-      )}
-      </CardContent>
-    </Card>
+            <div className="flex flex-wrap items-center justify-between gap-x-4">
+              <p className="text-[13px] text-panel-muted">{takeaway}</p>
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => setShowData(s => !s)}
+                aria-pressed={showData}
+                className="h-11 px-0 text-[13px] text-panel-foreground hover:text-panel-foreground"
+              >
+                {showData ? 'Show chart' : 'Show table'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </SummaryPanel>
+    </div>
   )
 }

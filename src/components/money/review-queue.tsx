@@ -1,38 +1,46 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Mail, MessageSquare } from 'lucide-react'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Separator } from '@/components/ui/separator'
+import { FieldLegend, FieldSet } from '@/components/ui/field'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { AttentionRow } from '@/components/shared/attention-row'
 import { CategoryPicker } from '@/components/money/category-picker'
 import { EntryTimestamp } from '@/components/money/entry-timestamp'
+import { FOOT_LINK, SectionHeading } from '@/components/money/section-heading'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useMoneyRowActions } from '@/hooks/use-money-row-actions'
-import { reviewQueue } from '@/lib/review-queue'
-import { signedAmount } from '@/lib/capture-feedback'
+import { useUserPrefs } from '@/hooks/use-user-prefs'
+import { reviewQueue, type ReviewItem } from '@/lib/review-queue'
+import { formatMinor } from '@/lib/currency'
+import { formatLocalDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import type { AccountRow } from '@/lib/dexie'
 
 const SHOWN = 4
 
+type Pick = { category: { id: string; name: string } | null; account: AccountRow | null }
+
 /**
  * "Needs you": email and SMS imports that still want a category or an account,
- * at the top of Money home (owner decision, 13 Nov 2026). Replaces the 10 px
- * pills that used to be scattered through the list. Renders nothing when clear.
+ * at the top of Money home (owner decision, 13 Nov 2026). Each one is a white
+ * attention row with a single action; choosing opens its review below the row.
+ * Renders nothing when clear.
  */
 export function ReviewQueue({ userId, focusId }: { userId: string; focusId?: string | null }) {
   const entries = useMoneyEntries(userId)
   const { setCategory, linkCard, activeAccounts } = useMoneyRowActions(userId)
   const items = useMemo(() => reviewQueue(entries, activeAccounts.length), [entries, activeAccounts.length])
-  const [open, setOpen] = useState<{ id: string; what: 'category' | 'account' } | null>(null)
+  const [open, setOpen] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [handledFocus, setHandledFocus] = useState<string | null>(null)
 
-  // Push deep-link (/app?categorize=<id>): open that entry's picker once and bring it into view.
+  // Push deep-link (/app?categorize=<id>): open that entry's review once and bring it into view.
   if (focusId && focusId !== handledFocus && items.some(i => i.entry.id === focusId)) {
     setHandledFocus(focusId)
-    setOpen({ id: focusId, what: 'category' })
+    setOpen(focusId)
     if (items.findIndex(i => i.entry.id === focusId) >= SHOWN) setShowAll(true)
   }
   useEffect(() => {
@@ -44,84 +52,172 @@ export function ReviewQueue({ userId, focusId }: { userId: string; focusId?: str
   const shown = items.slice(0, SHOWN)
   const extra = items.slice(SHOWN)
 
-  const renderItem = ({ entry: e, needsCategory, cardLast4 }: typeof items[number], index: number) => {
-    const SourceIcon = e.source === 'sms' ? MessageSquare : Mail
-    const isOpen = (what: 'category' | 'account') => open?.id === e.id && open.what === what
-    const toggle = (what: 'category' | 'account') => setOpen(isOpen(what) ? null : { id: e.id, what })
+  // Save what was chosen, then move on to the next entry in the queue (if any).
+  async function save(item: ReviewItem, pick: Pick) {
+    const index = items.findIndex(i => i.entry.id === item.entry.id)
+    const next = items[index + 1]?.entry.id ?? null
+    setOpen(next)
+    if (next && index + 1 >= SHOWN) setShowAll(true)
+    if (pick.category) await setCategory(item.entry, pick.category.id, pick.category.name)
+    if (pick.account && item.cardLast4) await linkCard(item.entry, item.cardLast4, pick.account)
+  }
+
+  const renderItem = (item: ReviewItem, index: number) => {
+    const { entry: e, needsCategory, cardLast4 } = item
+    const isOpen = open === e.id
+    const title = e.description || e.merchant || 'Imported entry'
+    const need = needsCategory
+      ? cardLast4 ? 'No category or account yet.' : 'No category yet.'
+      : `Card •${cardLast4} has no account yet.`
     return (
-      <li key={e.id} id={`review-${e.id}`} className="flex flex-col gap-2 py-3">
-        {index > 0 && <Separator className="-mt-3 mb-1" />}
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{e.description || e.merchant || 'Imported entry'}</p>
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <SourceIcon className="size-3.5" aria-hidden />
-              <span className="sr-only">{e.source === 'sms' ? 'From SMS,' : 'From email,'}</span>
-              <EntryTimestamp occurredAt={e.occurred_at} className="tabular-nums" />
-            </p>
-          </div>
-          <span className={cn('whitespace-nowrap tabular-nums text-sm font-medium tabular-nums', e.direction === 'out' ? 'text-destructive' : 'text-income')}>
-            {signedAmount(e.amount, e.currency, e.direction)}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {needsCategory && (
-            <Button variant="outline" aria-expanded={isOpen('category')} onClick={() => toggle('category')}>
-              Set category
+      <li key={e.id} id={`review-${e.id}`} className={cn('rounded-2xl', isOpen && 'bg-card')}>
+        <AttentionRow
+          title={title}
+          detail={<>{e.source === 'sms' ? 'From SMS' : 'From email'}, <EntryTimestamp occurredAt={e.occurred_at} className="tabular-nums" />. {need}</>}
+          value={e.direction === 'in'
+            ? <span className="text-income">+{formatMinor(e.amount, e.currency)}</span>
+            : formatMinor(e.amount, e.currency)}
+          action={
+            <Button
+              variant="outline"
+              aria-expanded={isOpen}
+              aria-controls={isOpen ? `review-panel-${e.id}` : undefined}
+              aria-label={isOpen ? `Close ${title}` : `Choose for ${title}`}
+              onClick={() => setOpen(isOpen ? null : e.id)}
+            >
+              {isOpen ? 'Close' : 'Choose'}
             </Button>
-          )}
-          {cardLast4 && (
-            <Button variant="outline" aria-expanded={isOpen('account')} onClick={() => toggle('account')}>
-              Which account is •{cardLast4}?
-            </Button>
-          )}
-        </div>
-        {isOpen('category') && (
-          <CategoryPicker
+          }
+        />
+        {isOpen && (
+          <ReviewEditor
+            key={e.id}
             userId={userId}
-            kind={e.direction === 'out' ? 'spend' : 'income'}
-            selectedId={e.category_id}
-            onSelect={(id, name) => { setOpen(null); void setCategory(e, id, name) }}
+            item={item}
+            accounts={activeAccounts}
+            hasNext={index < items.length - 1}
+            onSave={pick => void save(item, pick)}
+            onClose={() => setOpen(null)}
           />
-        )}
-        {isOpen('account') && cardLast4 && (
-          <div role="group" aria-label={`Account for card ending ${cardLast4}`} className="flex flex-col gap-2">
-            <p className="text-xs text-muted-foreground">Lifeloom will remember this card for its future alerts.</p>
-            <div className="flex flex-wrap gap-1.5">
-              {activeAccounts.map(acc => (
-                <Button key={acc.id} variant="outline" onClick={() => { setOpen(null); void linkCard(e, cardLast4, acc) }}>
-                  {acc.icon && <span aria-hidden="true">{acc.icon}</span>}{acc.name}
-                </Button>
-              ))}
-            </div>
-          </div>
         )}
       </li>
     )
   }
 
   return (
-    <Card role="region" aria-labelledby="needs-you-heading" className="gap-1 p-5">
-      <h2 id="needs-you-heading" className="text-sm font-semibold">
-        Needs you <span className="font-normal text-muted-foreground">· {items.length}</span>
-      </h2>
+    <section aria-labelledby="needs-you-heading" className="flex flex-col">
+      <SectionHeading
+        id="needs-you-heading"
+        ruled={false}
+        aside={<p className="shrink-0 text-[13px] font-semibold text-warning lg:text-sm">{items.length} open</p>}
+      >
+        Needs you
+      </SectionHeading>
       <Collapsible open={showAll} onOpenChange={setShowAll} className="flex flex-col">
-        <ul className={cn('flex flex-col', extra.length === 0 && '[&>li:last-child]:pb-0')}>
+        <ul className="flex flex-col gap-2 pt-2">
           {shown.map((it, i) => renderItem(it, i))}
         </ul>
         {extra.length > 0 && (
           <CollapsibleContent>
-            <ul className="flex flex-col [&>li:last-child]:pb-0">
+            <ul className="flex flex-col gap-2 pt-2">
               {extra.map((it, i) => renderItem(it, SHOWN + i))}
             </ul>
           </CollapsibleContent>
         )}
         {items.length > SHOWN && (
-          <CollapsibleTrigger className={cn(buttonVariants({ variant: 'ghost' }), 'mt-1 min-h-11 w-fit self-start px-2 text-accent-2')}>
+          <CollapsibleTrigger className={cn(FOOT_LINK, 'mt-1')}>
             {showAll ? 'Show fewer' : `Show all ${items.length}`}
           </CollapsibleTrigger>
         )}
       </Collapsible>
-    </Card>
+    </section>
+  )
+}
+
+const LEGEND = 'mb-0 w-full border-b border-border pb-2.5 text-[17px] font-bold tracking-[-0.02em]'
+
+/**
+ * Reviewing one imported entry: the facts, then a radio-style list for each thing it
+ * still needs, one primary action and one text action. Nothing is saved until Save.
+ */
+function ReviewEditor({ userId, item, accounts, hasNext, onSave, onClose }: {
+  userId: string
+  item: ReviewItem
+  accounts: AccountRow[]
+  hasNext: boolean
+  onSave: (pick: Pick) => void
+  onClose: () => void
+}) {
+  const { entry: e, needsCategory, cardLast4 } = item
+  const { prefs } = useUserPrefs()
+  const [pick, setPick] = useState<Pick>({ category: null, account: null })
+  const account = e.account_id ? accounts.find(a => a.id === e.account_id) : undefined
+
+  return (
+    <div id={`review-panel-${e.id}`} className="flex flex-col gap-6 px-4 pb-4">
+      <dl className="flex flex-wrap gap-x-8 gap-y-3 border-t border-border pt-3.5">
+        <div className="flex flex-col gap-0.5">
+          <dt className="text-xs text-muted-foreground">When</dt>
+          <dd className="text-[15px] font-semibold tabular-nums">{formatLocalDateTime(e.occurred_at, prefs.tz)}</dd>
+        </div>
+        {account && (
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-muted-foreground">{e.direction === 'out' ? 'From' : 'Into'}</dt>
+            <dd className="text-[15px] font-semibold">{account.name}</dd>
+          </div>
+        )}
+        {e.merchant && e.merchant !== (e.description || e.merchant) && (
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-muted-foreground">Merchant</dt>
+            <dd className="text-[15px] font-semibold">{e.merchant}</dd>
+          </div>
+        )}
+      </dl>
+
+      {needsCategory && (
+        <FieldSet className="min-w-0 gap-0">
+          <FieldLegend className={LEGEND}>{e.direction === 'out' ? 'What was it for?' : 'What was it from?'}</FieldLegend>
+          <CategoryPicker
+            userId={userId}
+            kind={e.direction === 'out' ? 'spend' : 'income'}
+            selectedId={pick.category?.id ?? e.category_id}
+            onSelect={(id, name) => setPick(p => ({ ...p, category: { id, name } }))}
+          />
+        </FieldSet>
+      )}
+
+      {cardLast4 && (
+        <FieldSet className="min-w-0 gap-0">
+          <FieldLegend className={LEGEND}>Which account is •{cardLast4}?</FieldLegend>
+          <RadioGroup
+            aria-label={`Account for card ending ${cardLast4}`}
+            value={pick.account?.id ?? ''}
+            onValueChange={id => setPick(p => ({ ...p, account: accounts.find(a => a.id === id) ?? null }))}
+            className="gap-0"
+          >
+            {accounts.map(acc => (
+              <Label
+                key={acc.id}
+                className={cn(
+                  'min-h-13 gap-3 border-b border-border px-1 text-[15px] tracking-normal text-foreground',
+                  pick.account?.id === acc.id ? 'font-semibold' : 'font-medium',
+                )}
+              >
+                <RadioGroupItem value={acc.id} className="size-5 border-muted-foreground" />
+                {acc.name}
+              </Label>
+            ))}
+          </RadioGroup>
+          <p className="pt-2.5 text-[13px] text-muted-foreground">Lifeloom will remember this card for its future alerts.</p>
+        </FieldSet>
+      )}
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
+        <Button size="lg" disabled={!pick.category && !pick.account} onClick={() => onSave(pick)}>
+          {hasNext ? 'Save and show the next one' : 'Save'}
+        </Button>
+        <Button variant="link" onClick={onClose}>Not now</Button>
+      </div>
+    </div>
   )
 }

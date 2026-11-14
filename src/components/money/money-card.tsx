@@ -1,15 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp } from 'lucide-react'
-import { IconTile } from '@/components/shared/icon-tile'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { useId, useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { cn } from '@/lib/utils'
+import { Bar, EMPTY_NOTE, FOOT_LINK, SectionHeading } from '@/components/money/section-heading'
+import { QUIET_TOGGLE } from '@/components/shared/quiet-toggle'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
 import { withYourShare } from '@/lib/shares'
@@ -27,7 +23,9 @@ type Props = { userId: string; onSelectCategory?: (name: string) => void }
 
 type PeriodKind = 'week' | 'month'
 
+/** "Where it went": this week's or month's spend by category, as ruled rows with a share bar. */
 export function MoneyCard({ userId, onSelectCategory }: Props) {
+  const headingId = useId()
   const [period, setPeriod] = useState<PeriodKind>('month')
   const range = useMemo(() => currentPeriodRange(period), [period])
   const prevRange = useMemo(() => previousPeriodRange(period, range), [period, range])
@@ -90,7 +88,7 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
   const [expanded, setExpanded] = useState(false)
   const firstRows = bd.rows.slice(0, 6)
   const extraRows = bd.rows.slice(6)
-  
+
   const weeklyBars = useMemo(
     () => weeklySpendBars(trend, prefs.primary_currency, rates, prefs.fx_overrides ?? {}, new Date().toISOString()),
     [trend, prefs.primary_currency, rates, prefs.fx_overrides],
@@ -101,113 +99,100 @@ export function MoneyCard({ userId, onSelectCategory }: Props) {
 
   const maxAmount = Math.max(1, ...bd.rows.map(r => r.amount))
   const renderRow = (row: typeof bd.rows[number]) => (
-    <li key={row.name}>
+    <li key={row.name} className="border-b border-border">
       <Button
         variant="ghost"
         onClick={() => onSelectCategory?.(row.name)}
         title={`${row.count} ${row.count === 1 ? 'entry' : 'entries'}. Show them in the list`}
         aria-label={`${row.name}: ${symbol}${fmt(row.amount)}, ${row.pct.toFixed(0)}% of spending, ${row.count} ${row.count === 1 ? 'entry' : 'entries'}. Show them in the list`}
-        className="-mx-2 h-auto min-h-11 w-[calc(100%+1rem)] justify-start gap-2 px-2 text-left font-normal"
+        className="-mx-2 h-11 w-[calc(100%+1rem)] justify-start gap-3 rounded-lg px-2 text-left text-sm font-normal"
       >
-        <span className="flex w-36 shrink-0 items-center gap-2.5"><IconTile emoji={row.icon} size="sm" /><span className="truncate">{row.name}</span></span>
-        <Progress
-          value={(row.amount / maxAmount) * 100}
-          aria-hidden
-          className="min-w-0 flex-1 flex-nowrap [&_[data-slot=progress-indicator]]:bg-foreground/70 [&_[data-slot=progress-track]]:h-1.5"
-        />
-        <span className="shrink-0 tabular-nums">{symbol}{fmt(row.amount)}</span>
-        <span className="w-10 shrink-0 text-right text-muted-foreground tabular-nums">{row.pct.toFixed(0)}%</span>
+        <span className="w-21 shrink-0 truncate font-medium lg:w-24">{row.name}</span>
+        <Bar pct={(row.amount / maxAmount) * 100} className="flex-1" />
+        <span className="min-w-16 shrink-0 text-right font-semibold tabular-nums">{symbol}{fmt(row.amount)}</span>
       </Button>
     </li>
   )
 
+  // The takeaway is computed from the same rows the list shows; nothing is said without data.
+  const [top, second] = bd.rows
+  const takeaway = top
+    ? `${top.name} is ${top.pct.toFixed(0)}% of this ${period} so far.${second ? ` ${second.name} is next at ${second.pct.toFixed(0)}%.` : ''}`
+    : null
+
   return (
-    <Card role="region" aria-labelledby="spent-heading" className="gap-5 p-5">
-      <header className="flex items-center justify-between gap-2">
-        <h2 id="spent-heading" className="text-sm font-semibold">Spent this {period}</h2>
-        <ToggleGroup
-          aria-label="Period"
-          spacing={0}
-          value={[period]}
-          onValueChange={v => { const next = v[0] as PeriodKind | undefined; if (next) setPeriod(next) }}
-          className="glass-soft rounded-lg p-0.5"
-        >
-          {(['week', 'month'] as const).map(p => (
-            <ToggleGroupItem
-              key={p}
-              value={p}
-              className="h-9 rounded-md px-3 text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-accent aria-pressed:text-foreground"
-            >
-              {p === 'week' ? 'Week' : 'Month'}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </header>
+    <section aria-labelledby={headingId} className="flex flex-col">
+      <SectionHeading
+        id={headingId}
+        className="items-center pb-0"
+        aside={
+          <ToggleGroup
+            aria-label="Period"
+            spacing={4}
+            value={[period]}
+            onValueChange={v => { const next = v[0] as PeriodKind | undefined; if (next) setPeriod(next) }}
+            className="-mb-px rounded-none"
+          >
+            {(['week', 'month'] as const).map(p => (
+              <ToggleGroupItem key={p} value={p} className={QUIET_TOGGLE}>
+                {p === 'week' ? 'Week' : 'Month'}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        }
+      >
+        Where it went
+      </SectionHeading>
 
-      {/* The figure carries its own name; no neon glow (glow is for the primary action only). */}
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="tabular-nums text-4xl font-semibold tabular-nums leading-tight">{symbol}{fmt(bd.spend)}</span>
-        {delta !== null && (
-          <span className={`inline-flex items-center gap-0.5 text-sm ${delta > 0 ? 'text-destructive' : 'text-income'}`}>
-            {delta > 0 ? <ArrowUp className="size-3.5" aria-hidden /> : <ArrowDown className="size-3.5" aria-hidden />}
-            {Math.abs(delta).toFixed(0)}%<span className="text-muted-foreground"> {delta > 0 ? 'more' : 'less'} than last {period}</span>
-          </span>
-        )}
-      </div>
-
-      <WeeklyBars values={weeklyBars} symbol={symbol} jpy={prefs.primary_currency === 'JPY'} />
-
-      <Collapsible open={expanded} onOpenChange={setExpanded} className="flex flex-col gap-1">
-        <ul className="flex flex-col gap-1">
-          {bd.rows.length === 0 && <li className="text-xs text-muted-foreground">No entries yet this {period}.</li>}
-          {firstRows.map(renderRow)}
-        </ul>
+      <Collapsible open={expanded} onOpenChange={setExpanded} className="flex flex-col">
+        {bd.rows.length === 0 && <p className={EMPTY_NOTE}>No entries yet this {period}.</p>}
+        <ul className="flex flex-col">{firstRows.map(renderRow)}</ul>
         <CollapsibleContent>
-          <ul className="flex flex-col gap-1">{extraRows.map(renderRow)}</ul>
+          <ul className="flex flex-col">{extraRows.map(renderRow)}</ul>
         </CollapsibleContent>
         {extraRows.length > 0 && (
-          <CollapsibleTrigger className={cn(buttonVariants({ variant: 'ghost' }), '-mx-2 min-h-11 w-fit self-start px-2 text-accent-2')}>
+          <CollapsibleTrigger className={FOOT_LINK}>
             {expanded ? 'Show fewer' : `Show all ${bd.rows.length} categories`}
           </CollapsibleTrigger>
         )}
       </Collapsible>
 
-      {bd.income > 0 && (
-        <>
-          <Separator />
-          <div className="flex gap-4 text-sm">
-            <span>
-              Earned <span className="tabular-nums font-medium tabular-nums">{symbol}{fmt(bd.income)}</span>
-            </span>
-            <span className={bd.net >= 0 ? 'text-income' : 'text-destructive'}>
-              {bd.net >= 0 ? 'Saved' : 'Overspent'} <span className="tabular-nums font-medium tabular-nums">{symbol}{fmt(Math.abs(bd.net))}</span>
-            </span>
-          </div>
-        </>
+      {(takeaway || delta !== null || period === 'week') && bd.rows.length > 0 && (
+        <p className="pt-3 text-[13px] text-muted-foreground">
+          {period === 'week' && <><span className="tabular-nums">{symbol}{fmt(bd.spend)}</span> spent this week. </>}
+          {takeaway}
+          {delta !== null && <> {Math.abs(delta).toFixed(0)}% {delta > 0 ? 'more' : 'less'} than last {period}.</>}
+        </p>
       )}
 
-      {(conversionApplied || skippedCurrencies.size > 0) && (
-        <>
-          <Separator />
-          <p className="text-xs text-muted-foreground">
-            {conversionApplied && conversionDate && <>Includes conversion via ECB {conversionDate}. </>}
-            {skippedCurrencies.size > 0 && <>Excluded {[...skippedCurrencies].join(', ')} (no FX rate yet).</>}
-          </p>
-        </>
+      {period === 'week' && bd.income > 0 && (
+        <p className="pt-1 text-[13px] text-muted-foreground">
+          Earned <span className="tabular-nums">{symbol}{fmt(bd.income)}</span>. {bd.net >= 0 ? 'Saved' : 'Overspent'}{' '}
+          <span className="tabular-nums">{symbol}{fmt(Math.abs(bd.net))}</span>.
+        </p>
       )}
-    </Card>
+
+      <WeeklyBars values={weeklyBars} symbol={symbol} jpy={prefs.primary_currency === 'JPY'} />
+
+      {(conversionApplied || skippedCurrencies.size > 0) && (
+        <p className="pt-3 text-xs text-muted-foreground">
+          {conversionApplied && conversionDate && <>Includes conversion via ECB {conversionDate}. </>}
+          {skippedCurrencies.size > 0 && <>Excluded {[...skippedCurrencies].join(', ')} (no FX rate yet).</>}
+        </p>
+      )}
+    </section>
   )
 }
 
 // Single-series magnitude-over-time bars (last N weekly spend totals). Current
-// week emphasized in accent, prior weeks recessive; per-bar native title is the
-// hover layer + accessibility. Single series → no legend (the caption names it).
+// week in ink, prior weeks recessive; per-bar native title is the hover layer +
+// accessibility. Single series → no legend (the caption names it).
 function WeeklyBars({ values, symbol, jpy }: { values: number[]; symbol: string; jpy: boolean }) {
   const max = Math.max(1, ...values)
   const fmt = (v: number) => `${symbol}${(v / (jpy ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
   const last = values.length - 1
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5 pt-5">
       <div
         className="flex h-12 items-end gap-1"
         role="img"
@@ -220,7 +205,7 @@ function WeeklyBars({ values, symbol, jpy }: { values: number[]; symbol: string;
             <div
               key={i}
               title={`${weeksAgo === 0 ? 'This week' : `${weeksAgo} wk ago`}: ${fmt(v)}`}
-              className={`flex-1 rounded-t ${i === last ? 'bg-accent-2' : 'bg-accent'}`}
+              className={`flex-1 rounded-t ${i === last ? 'bg-foreground' : 'bg-border'}`}
               style={{ height: `${pct}%` }}
             />
           )

@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { Trash2, Plus } from 'lucide-react'
+import { useId, useMemo, useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { db } from '@/lib/dexie'
 import { useBudgets } from '@/hooks/use-budgets'
@@ -13,16 +13,13 @@ import { useFxRates } from '@/hooks/use-fx-rates'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { convertViaRates } from '@/lib/fx'
 import { currencySymbol } from '@/lib/currency'
-import { FIELD_NATIVE_SELECT } from '@/components/shared/sort-control'
-import { IconTile } from '@/components/shared/icon-tile'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { EMPTY_NOTE, HEAD_LINK, SectionHeading } from '@/components/money/section-heading'
+import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { computeBudgetProgress, yearMonthInTz } from '@/lib/budget-exec'
@@ -31,11 +28,14 @@ import { useUndo } from '@/components/providers/undo-provider'
 
 type Props = { userId: string }
 
+// Ink while there is room; the attention colour once a budget is nearly or fully spent.
 const STATE_CLASS = {
-  ok:   '[&_[data-slot=progress-indicator]]:bg-accent-2',
+  ok:   '[&_[data-slot=progress-indicator]]:bg-foreground',
   warn: '[&_[data-slot=progress-indicator]]:bg-warning',
-  over: '[&_[data-slot=progress-indicator]]:bg-destructive',
+  over: '[&_[data-slot=progress-indicator]]:bg-warning',
 } as const
+
+const LABEL = 'text-[13px] font-semibold text-muted-foreground'
 
 function fmt(amountMinor: number, currency: string): string {
   const major = amountMinor / (currency === 'JPY' ? 1 : 100)
@@ -64,6 +64,8 @@ async function removeBudget(userId: string, categoryId: string) {
 }
 
 export function BudgetSection({ userId }: Props) {
+  const headingId = useId()
+  const formId = useId()
   const budgets = useBudgets(userId)
   const spendCats = useCategories(userId, 'spend')
   const entriesRaw = useMoneyEntries(userId)
@@ -102,39 +104,33 @@ export function BudgetSection({ userId }: Props) {
   }
 
   return (
-    <Card role="region" aria-labelledby="budgets-heading" className="p-5">
-      <Collapsible open={adding} onOpenChange={setAdding} className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 id="budgets-heading" className="text-sm font-semibold">Budgets</h2>
-          {unbudgeted.length > 0 && (
-            <CollapsibleTrigger
-              aria-label="Add budget"
-              className={cn(buttonVariants({ variant: 'ghost' }), '-mr-2 min-h-11 px-2 text-accent-2')}
-            >
-              <Plus className="size-4" aria-hidden /> Add
+    <section aria-labelledby={headingId}>
+      <Collapsible open={adding} onOpenChange={setAdding} className="flex flex-col">
+        <SectionHeading
+          id={headingId}
+          aside={unbudgeted.length > 0 && (
+            <CollapsibleTrigger aria-label="Add budget" className={HEAD_LINK}>
+              {adding ? 'Close' : 'Add'}
             </CollapsibleTrigger>
           )}
-        </div>
+        >
+          Budgets
+        </SectionHeading>
 
         {progress.length === 0 && !adding && (
-          <Empty className="p-3">
-            <EmptyDescription>No budgets yet. Add one, or type “set a budget for food 8000” above.</EmptyDescription>
-          </Empty>
+          <p className={EMPTY_NOTE}>No budgets yet. Add one, or type “set a budget for food 8000” above.</p>
         )}
 
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col">
           {progress.map(p => {
             const cat = catById.get(p.categoryId)
             return (
-              <li key={p.categoryId} className="flex flex-col gap-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-3">
-                    <IconTile emoji={cat?.icon} size="sm" />
-                    <span>{cat?.name ?? 'Category'}</span>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="tabular-nums text-xs tabular-nums text-muted-foreground">
-                      {fmt(p.spent, primary)} of {fmt(p.limit, primary)}
+              <li key={p.categoryId} className="flex flex-col border-b border-border pb-3.5">
+                <div className="flex min-h-11 items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-[15px] font-medium">{cat?.name ?? 'Category'}</span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    <span className={cn('text-[13px] tabular-nums text-muted-foreground', p.state === 'over' && 'font-medium text-warning')}>
+                      <span className={cn('font-semibold', p.state !== 'over' && 'text-foreground')}>{fmt(p.spent, primary)}</span> of {fmt(p.limit, primary)}
                     </span>
                     <Button
                       variant="ghost"
@@ -154,7 +150,7 @@ export function BudgetSection({ userId }: Props) {
                 <Progress
                   value={Math.min(p.pct, 100)}
                   aria-label={`${cat?.name ?? 'Category'} budget ${p.pct}%`}
-                  className={cn('[&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-accent', STATE_CLASS[p.state])}
+                  className={cn('[&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-muted', STATE_CLASS[p.state])}
                 />
               </li>
             )
@@ -162,40 +158,40 @@ export function BudgetSection({ userId }: Props) {
         </ul>
 
         <CollapsibleContent>
-          <div className="flex flex-col gap-2">
-            <Separator />
-            <NativeSelect
-              aria-label="Category"
-              className={FIELD_NATIVE_SELECT}
-              value={newCatId}
-              onChange={e => setNewCatId(e.target.value)}
-            >
-              <NativeSelectOption value="">Select a category…</NativeSelectOption>
-              {unbudgeted.map(c => <NativeSelectOption key={c.id} value={c.id}>{c.name}</NativeSelectOption>)}
-            </NativeSelect>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-4 pt-4">
+            <Field className="gap-2">
+              <FieldLabel htmlFor={`${formId}-category`} className={LABEL}>Category</FieldLabel>
+              <NativeSelect
+                id={`${formId}-category`}
+                className="w-full"
+                value={newCatId}
+                onChange={e => setNewCatId(e.target.value)}
+              >
+                <NativeSelectOption value="">Select a category…</NativeSelectOption>
+                {unbudgeted.map(c => <NativeSelectOption key={c.id} value={c.id}>{c.name}</NativeSelectOption>)}
+              </NativeSelect>
+            </Field>
+            <Field className="gap-2">
+              <FieldLabel htmlFor={`${formId}-amount`} className={LABEL}>Monthly limit ({currencySymbol(primary)})</FieldLabel>
               <Input
+                id={`${formId}-amount`}
                 aria-label="Monthly amount"
                 inputMode="decimal"
-                placeholder={`Monthly limit (${currencySymbol(primary)})`}
-                className="min-h-11 flex-1"
                 value={newAmount}
                 onChange={e => setNewAmount(e.target.value)}
               />
-              <Button
-                variant="secondary"
-                size="lg"
-                aria-label="Save budget"
-                className="bg-accent-2/20 text-accent-2 hover:bg-accent-2/30"
-                disabled={!newCatId || !newAmount}
-                onClick={submitNew}
-              >
-                Save
-              </Button>
-            </div>
+            </Field>
+            <Button
+              aria-label="Save budget"
+              className="self-start"
+              disabled={!newCatId || !newAmount}
+              onClick={submitNew}
+            >
+              Save
+            </Button>
           </div>
         </CollapsibleContent>
       </Collapsible>
-    </Card>
+    </section>
   )
 }

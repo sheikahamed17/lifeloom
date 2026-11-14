@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Image from 'next/image'
-import { ArrowDownLeft, ArrowUpRight, BookOpen, CalendarDays, CheckSquare, ChevronDown, NotebookPen, Plus, Split, Users, X } from 'lucide-react'
+import { CalendarDays, ChevronDown, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -33,17 +33,28 @@ import type { LearningPayload } from '@/lib/op-schemas/learning'
 import type { NotePayload } from '@/lib/op-schemas/note'
 import type { CategoryRow } from '@/lib/dexie'
 
-// One vocabulary for every chip: editable values are pills, extra actions are cyan pills.
-const FIELD_PILL = 'h-10 px-3 font-normal'
-const ACTION_PILL = 'h-10 border-accent-2/40 bg-transparent px-3 font-normal text-accent-2 hover:bg-accent-2/10'
-const CHIP_LINK = 'h-10 px-2 font-normal text-muted-foreground hover:text-foreground'
-// A shadcn NativeSelect dressed as a field pill (the wrapper takes the class, the select is targeted).
-const SELECT_PILL = 'w-fit [&_select]:h-10 [&_select]:border-border [&_select]:bg-muted [&_select]:pl-3 [&_select]:pr-9 [&_select]:hover:bg-accent'
-const SELECT_ROW = 'min-w-0 flex-1 [&_select]:h-10 [&_select]:border-border [&_select]:bg-muted'
-// A tag chip: a pill label with a remove button.
-const TAG_CHIP = 'h-10 gap-1 border-border bg-muted pr-0 pl-3 text-sm font-normal text-foreground'
+// One vocabulary for every chip. An editor is a form on the page ground: a ruled heading,
+// white fields, one primary action. Editable values look like the white fields they open.
+const FIELD_PILL = 'h-12 max-w-full rounded-[14px] border-transparent bg-card px-4 font-medium hover:bg-accent'
+// Extra actions (split, share, add a row, flip direction) are underlined ink links.
+const ACTION_PILL = 'h-12 border-transparent bg-transparent px-2 font-medium underline underline-offset-4 hover:bg-transparent'
+const CHIP_LINK = 'h-11 px-2 font-medium underline underline-offset-4 hover:bg-transparent'
+// A shadcn NativeSelect sized to its content (the wrapper takes the class; the white field is its own).
+const SELECT_PILL = 'w-fit max-w-full'
+const SELECT_ROW = 'min-w-0 flex-1'
+// A tag chip: a label with a remove button.
+const TAG_CHIP = 'h-11 gap-0 rounded-[14px] border-transparent bg-muted pr-0 pl-3.5 text-sm font-medium text-foreground'
 // A click-to-edit text block (the display state of an inline field).
-const EDIT_BLOCK = 'h-auto min-h-11 w-full justify-start whitespace-pre-wrap px-2 py-2 text-left font-normal'
+const EDIT_BLOCK = 'h-auto min-h-12 w-full justify-start whitespace-pre-wrap rounded-[14px] border-transparent bg-card px-4 py-3 text-left font-normal hover:bg-accent'
+// The ruled heading every editor starts with.
+const CHIP_HEAD = 'mb-4 flex min-h-11 items-end justify-between gap-2 border-b border-border pb-2.5'
+const CHIP_TITLE = 'text-[19px] font-bold tracking-[-0.02em] lg:text-[22px]'
+// A sub-section inside an editor (split parts, shared with): ruled, not boxed.
+const CHIP_SUB = 'mb-3 flex flex-col gap-2 border-t border-border pt-3'
+const SUB_TITLE = 'text-[15px] font-semibold'
+const SUB_LINK = 'h-11 px-2 text-[13px] font-medium underline underline-offset-4 hover:bg-transparent'
+// A switch row (repeat): a ruled row, label left, switch right.
+const SWITCH_ROW = 'min-h-[52px] justify-between border-t border-border text-[15px] font-medium text-foreground'
 
 export type ChipDraft =
   | (MoneyPayload & { kind: 'money'; draftCategoryName?: string; receiptPreviewUrl?: string; draftId?: string; merchant?: string | null; tags?: string[]; account_id?: string | null; shared_with?: ShareDraftRow[] })
@@ -175,15 +186,12 @@ function ConfirmationChipMoney({
   }
 
   return (
-    <div className="glass rounded-xl p-4 sm:p-5" role="group" aria-label={isEdit ? 'Edit entry' : 'New entry'}>
-      <div className="mb-2 flex items-center justify-between">
-        <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', d.direction === 'out' ? 'text-destructive' : 'text-income')}>
-          {d.direction === 'out' ? <ArrowUpRight className="size-4" aria-hidden /> : <ArrowDownLeft className="size-4" aria-hidden />}
-          {d.direction === 'out' ? 'Spend' : 'Income'}
-        </span>
+    <div role="group" aria-label={isEdit ? 'Edit entry' : 'New entry'}>
+      <div className={cn(CHIP_HEAD, 'pb-0')}>
+        <h2 className={cn(CHIP_TITLE, 'pb-2.5')}>{d.direction === 'out' ? 'Spend' : 'Income'}</h2>
         <Button
           variant="ghost"
-          className={CHIP_LINK}
+          className={cn(CHIP_LINK, '-mr-2')}
           onClick={() => setD(s => ({ ...s, direction: s.direction === 'out' ? 'in' : 'out' }))}
         >
           {d.direction === 'out' ? 'It’s income' : 'It’s a spend'}
@@ -191,7 +199,7 @@ function ConfirmationChipMoney({
       </div>
 
       {d.receiptPreviewUrl && (
-        <div className="relative mb-3 h-40 w-full overflow-hidden rounded-lg">
+        <div className="relative mb-3 h-40 w-full overflow-hidden rounded-2xl bg-card">
           <Image
             src={d.receiptPreviewUrl}
             alt="receipt"
@@ -210,20 +218,20 @@ function ConfirmationChipMoney({
           placeholder="0"
           onChange={(e) => { const amt = parseAmountInput(e.currentTarget.value) ?? 0; setD(s => ({ ...s, amount: amt })) }}
           onBlur={() => setEditingField(null)}
-          className="mb-3 tabular-nums text-3xl font-semibold"
+          className="mb-3 h-16 text-3xl font-semibold tabular-nums md:text-3xl"
         />
       ) : (
         <Button
           variant="ghost"
           onClick={() => setEditingField('amount')}
           aria-label={`Amount ${symbol}${major}, edit`}
-          className="mb-3 h-auto min-h-11 px-2 tabular-nums text-3xl font-semibold tabular-nums"
+          className="-ml-2 mb-3 h-auto min-h-13 px-2 text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums"
         >
           {symbol}{major}
         </Button>
       )}
 
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         {!splitMode && (
           <>
             <Button
@@ -232,16 +240,16 @@ function ConfirmationChipMoney({
               aria-expanded={editingField === 'category'}
               className={cn(FIELD_PILL, !cat && 'text-muted-foreground')}
             >
-              {cat ? <>{cat.icon && <span aria-hidden="true">{cat.icon}</span>}{cat.name}</> : 'Pick a category'}
+              {cat ? cat.name : 'Pick a category'}
             </Button>
             {shareRows.length === 0 && (
               <Button variant="outline" onClick={enterSplit} className={ACTION_PILL}>
-                <Split className="size-3.5" aria-hidden /> Split
+                Split
               </Button>
             )}
             {d.direction === 'out' && shareRows.length === 0 && (
               <Button variant="outline" onClick={addShareRow} className={ACTION_PILL}>
-                <Users className="size-3.5" aria-hidden /> Share with…
+                Share with…
               </Button>
             )}
           </>
@@ -284,7 +292,7 @@ function ConfirmationChipMoney({
       </div>
 
       {editingField === 'category' && (
-        <div className="glass-soft mb-3 rounded-xl p-2">
+        <div className="mb-3">
           <CategoryPicker
             userId={userId}
             kind={d.direction === 'out' ? 'spend' : 'income'}
@@ -295,15 +303,15 @@ function ConfirmationChipMoney({
       )}
 
       {splitMode && (
-        <div className="glass-soft mb-3 flex flex-col gap-2 rounded-xl p-3">
+        <div className={CHIP_SUB}>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Split across categories</span>
-            <Button variant="ghost" size="sm" onClick={() => setSplitMode(false)} className="h-10 px-2 text-xs font-normal text-muted-foreground hover:text-foreground">
+            <span className={SUB_TITLE}>Split across categories</span>
+            <Button variant="ghost" size="sm" onClick={() => setSplitMode(false)} className={cn(SUB_LINK, '-mr-2')}>
               Cancel split
             </Button>
           </div>
           {splitRows.map((row, i) => (
-            <div key={row.key} className="flex items-center gap-1.5">
+            <div key={row.key} className="flex items-center gap-2">
               <NativeSelect
                 value={row.category_id ?? ''}
                 onChange={e => { const v = e.target.value || null; setSplitRows(prev => prev.map((r, j) => (j === i ? { ...r, category_id: v } : r))) }}
@@ -321,7 +329,7 @@ function ConfirmationChipMoney({
                 onChange={e => { const v = e.currentTarget.value; setSplitRows(prev => prev.map((r, j) => (j === i ? { ...r, amountText: v } : r))) }}
                 placeholder="0"
                 aria-label={`Amount for split part ${i + 1}`}
-                className="w-20"
+                className="w-24 px-3 text-right"
               />
               {splitRows.length > 2 && (
                 <Button
@@ -339,35 +347,35 @@ function ConfirmationChipMoney({
           <Button
             variant="ghost"
             onClick={() => setSplitRows(prev => [...prev, { key: splitKey.current++, category_id: null, amountText: '' }])}
-            className={cn(CHIP_LINK, 'self-start text-accent-2 hover:text-accent-2')}
+            className={cn(CHIP_LINK, '-ml-2 self-start')}
           >
             <Plus className="size-3.5" aria-hidden /> Add category
           </Button>
-          <div className={cn('text-xs tabular-nums', remaining === 0 ? 'text-muted-foreground' : 'text-destructive')}>
+          <div className={cn('text-[13px] tabular-nums', remaining === 0 ? 'text-muted-foreground' : 'text-destructive')}>
             Remaining: {symbol}{(remaining / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
       )}
 
       {sharesActive && (
-        <div className="glass-soft mb-3 flex flex-col gap-2 rounded-xl p-3" role="group" aria-label="Shared with">
+        <div className={CHIP_SUB} role="group" aria-label="Shared with">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Shared with</span>
+            <span className={SUB_TITLE}>Shared with</span>
             {!shareRows.some(r => r.settled) && (
-              <Button variant="ghost" size="sm" onClick={() => setShareRows([])} className="h-10 px-2 text-xs font-normal text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="sm" onClick={() => setShareRows([])} className={cn(SUB_LINK, '-mr-2')}>
                 Not shared
               </Button>
             )}
           </div>
           {shareRows.map((row, i) => row.settled ? (
-            <div key={row.key} className="flex items-center justify-between gap-1.5 text-xs text-muted-foreground">
+            <div key={row.key} className="flex min-h-11 items-center justify-between gap-2 text-[13px] text-muted-foreground">
               <span>{row.name}</span>
               <span className="tabular-nums">{symbol}{((parseAmountInput(row.amountText) ?? 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} · paid</span>
             </div>
           ) : (
-            <div key={row.key} className="flex items-center gap-1.5">
+            <div key={row.key} className="flex items-center gap-2">
               {row.shareId ? (
-                <span className="min-w-0 flex-1 truncate text-xs" title={row.name}>{row.name}</span>
+                <span className="min-w-0 flex-1 truncate text-[15px] font-medium" title={row.name}>{row.name}</span>
               ) : (
               <NativeSelect
                 value={row.personId ?? '__new__'}
@@ -393,7 +401,7 @@ function ConfirmationChipMoney({
                   onChange={e => { const v = e.currentTarget.value; setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, name: v } : r))) }}
                   placeholder="Name"
                   aria-label={`Name of person ${i + 1}`}
-                  className="w-24"
+                  className="w-28 px-3"
                 />
               )}
               <Input
@@ -402,7 +410,7 @@ function ConfirmationChipMoney({
                 onChange={e => { const v = e.currentTarget.value; setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, amountText: v } : r))) }}
                 placeholder="0"
                 aria-label={`Amount owed by person ${i + 1}`}
-                className="w-20"
+                className="w-24 px-3 text-right"
               />
               <Button
                 variant="ghost"
@@ -418,11 +426,11 @@ function ConfirmationChipMoney({
           <Button
             variant="ghost"
             onClick={addShareRow}
-            className={cn(CHIP_LINK, 'self-start text-accent-2 hover:text-accent-2')}
+            className={cn(CHIP_LINK, '-ml-2 self-start')}
           >
             <Plus className="size-3.5" aria-hidden /> Add person
           </Button>
-          <div className={cn('text-xs tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
+          <div className={cn('text-[13px] tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
             {sharesTotalMinor <= d.amount
               ? `Your share: ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
               : `Shares exceed the amount by ${symbol}${((sharesTotalMinor - d.amount) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
@@ -432,16 +440,16 @@ function ConfirmationChipMoney({
 
       <Collapsible open={moreOpen} onOpenChange={setMoreOpen}>
       <CollapsibleTrigger
-        render={<Button variant="ghost" className="mb-3 h-11 w-full justify-start gap-2 rounded-none border-x-0 border-b-0 border-t border-border px-0 text-left font-normal hover:bg-transparent aria-expanded:bg-transparent" />}
+        render={<Button variant="ghost" className="mb-3 h-13 w-full justify-start gap-2 rounded-none border-x-0 border-b-0 border-t border-border px-0 text-left text-[15px] font-normal hover:bg-transparent aria-expanded:bg-transparent" />}
       >
-        <span className="font-medium">More details</span>
+        <span className="font-semibold">More details</span>
         <span className="min-w-0 flex-1 truncate text-muted-foreground">{moreSummary}</span>
         <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none', moreOpen && 'rotate-180')} aria-hidden />
       </CollapsibleTrigger>
 
       <CollapsibleContent>
         <div id="chip-more" className="mb-3 flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
             {editingField === 'merchant' ? (
               <Input
                 autoFocus
@@ -481,7 +489,7 @@ function ConfirmationChipMoney({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Tags">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Tags">
             {(d.tags ?? []).map(tag => (
               <Badge key={tag} variant="outline" className={TAG_CHIP}>
                 {tag}
@@ -498,7 +506,7 @@ function ConfirmationChipMoney({
 
           {!isEdit && !splitMode && !sharesActive && (
             <div className="flex flex-col gap-2">
-              <Label className="glass-soft min-h-11 justify-between rounded-lg px-3 text-sm font-normal text-foreground">
+              <Label className={SWITCH_ROW}>
                 <span>Repeat this entry</span>
                 <Switch checked={makeRecurring} onCheckedChange={setMakeRecurring} />
               </Label>
@@ -585,11 +593,9 @@ function ConfirmationChipTask({
     : 'no due date'
 
   return (
-    <div className="glass rounded-xl p-5">
-      <div className="mb-3 flex items-center justify-between text-xs">
-        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-          <CheckSquare className="size-4" aria-hidden /> Task
-        </span>
+    <div role="group" aria-label={isEdit ? 'Edit task' : 'New task'}>
+      <div className={CHIP_HEAD}>
+        <h2 className={CHIP_TITLE}>Task</h2>
       </div>
 
       {editingTitle ? (
@@ -601,19 +607,19 @@ function ConfirmationChipTask({
             if (v) setD(s => ({ ...s, title: v }))
             setEditingTitle(false)
           }}
-          className="mb-3 tabular-nums text-2xl font-semibold"
+          className="mb-3 h-14 text-2xl font-semibold md:text-2xl"
         />
       ) : (
         <Button
           variant="ghost"
           onClick={() => setEditingTitle(true)}
-          className="mb-3 h-auto min-h-11 justify-start whitespace-normal px-2 text-left tabular-nums text-2xl font-semibold"
+          className="-ml-2 mb-3 h-auto min-h-11 justify-start whitespace-normal px-2 text-left text-2xl font-semibold tracking-[-0.02em]"
         >
           {d.title}
         </Button>
       )}
 
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         {editingDue ? (
           <Input
             autoFocus
@@ -648,7 +654,7 @@ function ConfirmationChipTask({
         </NativeSelect>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
+      <div className="mb-3 flex flex-wrap items-start gap-2" role="group" aria-label="Tags">
         {(d.tags ?? []).map(tag => (
           <Badge key={tag} variant="outline" className={TAG_CHIP}>
             <span>{tag}</span>
@@ -668,7 +674,7 @@ function ConfirmationChipTask({
 
       {!isEdit && (
         <div className="mb-3 flex flex-col gap-2">
-          <Label className="glass-soft min-h-11 justify-between rounded-lg px-3 text-sm font-normal text-foreground">
+          <Label className={SWITCH_ROW}>
             <span>Repeat after it’s done</span>
             <Switch checked={makeRecurring} onCheckedChange={setMakeRecurring} />
           </Label>
@@ -732,11 +738,9 @@ function ConfirmationChipLearning({
   }
 
   return (
-    <div className="glass rounded-xl p-5">
-      <div className="mb-3 flex items-center justify-between text-xs">
-        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-2">
-          <BookOpen className="size-4" aria-hidden /> Learning
-        </span>
+    <div role="group" aria-label={isEdit ? 'Edit learning' : 'New learning'}>
+      <div className={CHIP_HEAD}>
+        <h2 className={CHIP_TITLE}>Learning</h2>
       </div>
 
       {editingText ? (
@@ -748,7 +752,7 @@ function ConfirmationChipLearning({
             if (v) setD(s => ({ ...s, text: v }))
             setEditingText(false)
           }}
-          className="mb-3 resize-none tabular-nums text-sm"
+          className="mb-3 resize-none text-base md:text-[15px]"
           rows={3}
           aria-label="What you learned"
         />
@@ -756,13 +760,13 @@ function ConfirmationChipLearning({
         <Button
           variant="ghost"
           onClick={() => setEditingText(true)}
-          className={cn(EDIT_BLOCK, 'mb-3 tabular-nums text-sm')}
+          className={cn(EDIT_BLOCK, 'mb-3 text-[15px]')}
         >
           {d.text}
         </Button>
       )}
 
-      <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
+      <div className="mb-3 flex flex-wrap items-start gap-2" role="group" aria-label="Tags">
         {d.tags.map((tag) => (
           <Badge key={tag} variant="outline" className={TAG_CHIP}>
             <span>{tag}</span>
@@ -822,7 +826,7 @@ function ConfirmationChipLearning({
           variant="outline"
           onClick={() => setEditingAttribution(true)}
           aria-label="Edit source or attribution"
-          className={cn(EDIT_BLOCK, 'mb-3 text-xs text-muted-foreground')}
+          className={cn(EDIT_BLOCK, 'mb-3 text-sm text-muted-foreground')}
         >
           {d.attribution || '+ source / attribution'}
         </Button>
@@ -878,11 +882,9 @@ function ConfirmationChipNote({
   }
 
   return (
-    <div className="glass rounded-xl p-5">
-      <div className="mb-3 flex items-center justify-between text-xs">
-        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-warning">
-          <NotebookPen className="size-4" aria-hidden /> Note
-        </span>
+    <div role="group" aria-label={isEdit ? 'Edit note' : 'New note'}>
+      <div className={CHIP_HEAD}>
+        <h2 className={CHIP_TITLE}>Note</h2>
       </div>
 
       {editingBody ? (
@@ -894,7 +896,7 @@ function ConfirmationChipNote({
             if (v) setD(s => ({ ...s, body: v }))
             setEditingBody(false)
           }}
-          className="mb-3 resize-none tabular-nums text-sm"
+          className="mb-3 resize-none text-base md:text-[15px]"
           rows={3}
           aria-label="Note body"
         />
@@ -902,7 +904,7 @@ function ConfirmationChipNote({
         <Button
           variant="ghost"
           onClick={() => setEditingBody(true)}
-          className={cn(EDIT_BLOCK, 'mb-3 tabular-nums text-sm')}
+          className={cn(EDIT_BLOCK, 'mb-3 text-[15px]')}
           aria-label="Edit note body"
         >
           {d.body}
@@ -920,7 +922,7 @@ function ConfirmationChipNote({
           }}
           placeholder="title (optional)…"
           aria-label="Note title"
-          className="mb-3 tabular-nums text-sm"
+          className="mb-3"
         />
       ) : (
         <Button
@@ -933,7 +935,7 @@ function ConfirmationChipNote({
         </Button>
       )}
 
-      <div className="mb-3 flex flex-wrap gap-1.5 items-start" role="group" aria-label="Tags">
+      <div className="mb-3 flex flex-wrap items-start gap-2" role="group" aria-label="Tags">
         {d.tags.map((tag) => (
           <Badge key={tag} variant="outline" className={TAG_CHIP}>
             <span>{tag}</span>
@@ -1007,26 +1009,26 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
   }
 
   return (
-    <div className="glass rounded-xl p-4 flex flex-col gap-3">
-      <div className="inline-flex items-center gap-1.5 text-sm font-medium text-income"><Users className="size-4" aria-hidden /> Paid back</div>
-      <p className="text-sm">
-        <span className="font-medium">{draft.person_name}</span> paid{' '}
+    <div className="flex flex-col gap-3 rounded-2xl bg-card p-4" role="group" aria-label="Paid back">
+      <h2 className="text-[15px] font-semibold">Paid back</h2>
+      <p className="text-[15px]">
+        <span className="font-semibold">{draft.person_name}</span> paid{' '}
         <span className="tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
         {' '}for {draft.summary} ({draft.share_ids.length} {draft.share_ids.length === 1 ? 'share' : 'shares'}).
       </p>
-      <Label className="flex-wrap text-xs">
+      <Label className="flex-wrap text-[13px] font-semibold">
         <span>Paid into</span>
         <NativeSelect
           value={receiveInto ?? ''}
           onChange={e => { setTouched(true); setAccountId(e.target.value || null) }}
-          className={SELECT_PILL}
+          className={cn(SELECT_PILL, '[&_select]:bg-background')}
           aria-label="Account the repayment landed in"
         >
           <NativeSelectOption value="">No account</NativeSelectOption>
           {accounts.map(acc => <NativeSelectOption key={acc.id} value={acc.id}>{acc.name}</NativeSelectOption>)}
         </NativeSelect>
       </Label>
-      <p className="text-xs text-muted-foreground">This clears the debt and tops up the account. It isn’t counted as income.</p>
+      <p className="text-[13px] text-muted-foreground">This clears the debt and tops up the account. It isn’t counted as income.</p>
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
         <Button className="flex-[2]" onClick={handleConfirm} disabled={busy}>
@@ -1054,14 +1056,14 @@ function ConfirmationChipBudget({ draft, onConfirm, onCancel }: {
   }
 
   return (
-    <div className="glass-soft rounded-xl p-3 flex items-center justify-between gap-3">
-      <span className="text-sm">
-        Budget · <span className="font-medium">{draft.category_name}</span> ·{' '}
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl bg-card py-2.5 pl-4 pr-2.5">
+      <span className="text-[15px]">
+        Budget · <span className="font-semibold">{draft.category_name}</span> ·{' '}
         <span className="tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>/mo
       </span>
       <span className="flex items-center gap-2">
-        <Button variant="secondary" aria-label="Confirm budget" className="h-11 bg-accent-2/20 px-3 text-accent-2 hover:bg-accent-2/30" onClick={handleConfirm} disabled={busy}>Set</Button>
-        <Button variant="ghost" aria-label="Cancel" className="h-11 px-3 text-muted-foreground" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button variant="ghost" aria-label="Cancel" className="px-3 font-medium" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button aria-label="Confirm budget" className="px-5" onClick={handleConfirm} disabled={busy}>Set</Button>
       </span>
     </div>
   )

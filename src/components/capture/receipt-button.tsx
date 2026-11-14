@@ -73,7 +73,7 @@ export function ReceiptButton({ disabled, onParsed }: Props) {
           : <Camera className="size-5" aria-hidden />}
       </Button>
       {status && (
-        <span role="status" className={cn('min-w-0 truncate text-xs', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>{status}</span>
+        <span role="status" className={cn('min-w-0 truncate text-[13px]', state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>{status}</span>
       )}
     </div>
   )

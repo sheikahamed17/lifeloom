@@ -184,49 +184,48 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
 
   const divisor = prefs.primary_currency === 'JPY' ? 1 : 100
 
+  const fmt = (minor: number) =>
+    `${currencySymbol(prefs.primary_currency)}${(minor / divisor).toLocaleString(undefined, { maximumFractionDigits: prefs.primary_currency === 'JPY' ? 0 : 2 })}`
+
+  const entriesToggle = (what: string) => (
+    <>
+      <Button
+        variant="outline"
+        className="self-start"
+        onClick={() => setShowEntries(!showEntries)}
+        aria-label={showEntries ? `Hide entries for ${what} answer` : `Show entries for ${what} answer`}
+      >
+        {showEntries ? 'Hide entries' : 'Show entries'}
+      </Button>
+      {showEntries && <FilteredMoneyList entries={filteredEntries} categories={categories} prefs={prefs} rates={rates} />}
+    </>
+  )
+
   if (plan.mode === 'total') {
     const { amount, count, multiCurrency } = modeData.total
-    const major = (amount / divisor).toLocaleString(undefined, { maximumFractionDigits: prefs.primary_currency === 'JPY' ? 0 : 2 })
 
     return (
-      <div className="glass rounded-xl p-5">
-        <div className="mb-2 flex items-center justify-between text-xs">
-          <span className="text-sm font-semibold text-accent-2">{headerText}</span>
-        </div>
+      <AnswerShell title={headerText} dismissLabel="Dismiss money answer" onDismiss={onDismiss}>
+        <p className={FIGURE}>{fmt(amount)}</p>
 
-        <div className="mb-2 text-4xl font-semibold tabular-nums text-accent-2">
-          {currencySymbol(prefs.primary_currency)}{major}
-        </div>
-
-        <p className="mb-3 text-xs text-muted-foreground">
+        <p className={NOTE}>
           Based on {count} {count === 1 ? 'entry' : 'entries'}
         </p>
 
         {plan.category_name && !targetCategoryId && (
-          <p className="mb-3 text-xs text-destructive">
-            Category &quot;{plan.category_name}&quot; not found — showing all categories instead.
+          <p className="text-[13px] font-medium text-warning">
+            Category &quot;{plan.category_name}&quot; not found. Showing all categories instead.
           </p>
         )}
 
         {multiCurrency && rates.length > 0 && (
-          <p className="mb-3 text-xs text-muted-foreground">
+          <p className={NOTE}>
             *Converted from multiple currencies via ECB {rates[0]?.date}
           </p>
         )}
 
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onDismiss} aria-label="Dismiss money answer">Dismiss</Button>
-          <Button className="flex-[2]" onClick={() => setShowEntries(!showEntries)} aria-label={showEntries ? 'Hide entries for money answer' : 'Show entries for money answer'}>
-            {showEntries ? 'Hide entries' : 'Show entries'}
-          </Button>
-        </div>
-
-        {showEntries && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <FilteredMoneyList entries={filteredEntries} categories={categories} prefs={prefs} rates={rates} />
-          </div>
-        )}
-      </div>
+        {entriesToggle('money')}
+      </AnswerShell>
     )
   }
 
@@ -235,93 +234,61 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
     const max = Math.max(1, ...breakdown.map(b => b.amount))
 
     return (
-      <div className="glass rounded-xl p-5">
-        <div className="mb-2 text-sm font-semibold text-accent-2">{headerText}</div>
-
+      <AnswerShell title={headerText} dismissLabel="Dismiss breakdown answer" onDismiss={onDismiss}>
         {breakdown.length === 0 ? (
-          <p className="mb-3 text-xs text-muted-foreground">No entries found.</p>
+          <p className={NOTE}>No entries found.</p>
         ) : (
-          <ul className="mb-3 flex flex-col gap-2">
+          <ul className="-mt-3 flex flex-col divide-y divide-border">
             {breakdown.map((item, idx) => {
-              const amount = (item.amount / divisor).toLocaleString(undefined, { maximumFractionDigits: prefs.primary_currency === 'JPY' ? 0 : 2 })
+              const amount = fmt(item.amount)
               const barWidth = (item.amount / max) * 100
               return (
-                <li key={idx} className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium">{item.categoryName ?? 'Uncategorized'}</span>
-                    <span className="tabular-nums">{currencySymbol(prefs.primary_currency)}{amount}</span>
-                  </div>
-                  <div className="relative h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`${item.categoryName ?? 'Uncategorized'}: ${currencySymbol(prefs.primary_currency)}${amount}`} aria-valuenow={barWidth} aria-valuemin={0} aria-valuemax={100}>
+                <li key={idx} className="flex min-h-11 items-center gap-3 py-2 text-sm">
+                  <span className="w-24 shrink-0 truncate font-medium">{item.categoryName ?? 'Uncategorized'}</span>
+                  <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`${item.categoryName ?? 'Uncategorized'}: ${amount}`} aria-valuenow={barWidth} aria-valuemin={0} aria-valuemax={100}>
                     <div
-                      className="absolute inset-y-0 left-0 bg-accent-2"
+                      className="absolute inset-y-0 left-0 rounded-full bg-foreground"
                       style={{ width: `${barWidth}%` }}
                     />
                   </div>
+                  <span className="shrink-0 text-right font-semibold tabular-nums">{amount}</span>
                 </li>
               )
             })}
           </ul>
         )}
 
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onDismiss} aria-label="Dismiss breakdown answer">Dismiss</Button>
-          <Button className="flex-[2]" onClick={() => setShowEntries(!showEntries)} aria-label={showEntries ? 'Hide entries for breakdown answer' : 'Show entries for breakdown answer'}>
-            {showEntries ? 'Hide entries' : 'Show entries'}
-          </Button>
-        </div>
-
-        {showEntries && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <FilteredMoneyList entries={filteredEntries} categories={categories} prefs={prefs} rates={rates} />
-          </div>
-        )}
-      </div>
+        {entriesToggle('breakdown')}
+      </AnswerShell>
     )
   }
 
   if (plan.mode === 'delta') {
     const { current, previous, deltaPct } = modeData.delta
-    const currentMajor = (current / divisor).toLocaleString(undefined, { maximumFractionDigits: prefs.primary_currency === 'JPY' ? 0 : 2 })
-    const previousMajor = (previous / divisor).toLocaleString(undefined, { maximumFractionDigits: prefs.primary_currency === 'JPY' ? 0 : 2 })
 
     return (
-      <div className="glass rounded-xl p-5">
-        <div className="mb-3 text-sm font-semibold text-accent-2">{headerText}</div>
-
-        <div className="mb-4 flex items-baseline justify-between gap-2">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Current period</p>
-            <div className="text-3xl font-semibold tabular-nums text-accent-2">
-              {currencySymbol(prefs.primary_currency)}{currentMajor}
-            </div>
+      <AnswerShell title={headerText} dismissLabel="Dismiss delta answer" onDismiss={onDismiss}>
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <p className={NOTE}>Current period</p>
+            <p className={FIGURE}>{fmt(current)}</p>
           </div>
           {deltaPct !== null && (
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground mb-1">Change</p>
-              <div className={`text-2xl font-semibold tabular-nums ${deltaPct > 0 ? 'text-destructive' : 'text-income'}`}>
+            <div className="flex flex-col gap-1 text-right">
+              <p className={NOTE}>Change</p>
+              <p className="text-[19px] font-semibold tabular-nums">
                 {deltaPct > 0 ? '↑' : '↓'}{Math.abs(deltaPct).toFixed(1)}%
-              </div>
+              </p>
             </div>
           )}
         </div>
 
-        <p className="mb-3 text-xs text-muted-foreground">
-          vs previous period: {currencySymbol(prefs.primary_currency)}{previousMajor}
+        <p className={NOTE}>
+          vs previous period: {fmt(previous)}
         </p>
 
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onDismiss} aria-label="Dismiss delta answer">Dismiss</Button>
-          <Button className="flex-[2]" onClick={() => setShowEntries(!showEntries)} aria-label={showEntries ? 'Hide entries for delta answer' : 'Show entries for delta answer'}>
-            {showEntries ? 'Hide entries' : 'Show entries'}
-          </Button>
-        </div>
-
-        {showEntries && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <FilteredMoneyList entries={filteredEntries} categories={categories} prefs={prefs} rates={rates} />
-          </div>
-        )}
-      </div>
+        {entriesToggle('delta')}
+      </AnswerShell>
     )
   }
 
@@ -329,36 +296,44 @@ export function QueryAnswerCard({ userId, plan, onDismiss, onResult }: Props) {
     const { series } = modeData
 
     return (
-      <div className="glass rounded-xl p-5">
-        <div className="mb-3 text-sm font-semibold text-accent-2">{headerText}</div>
-
+      <AnswerShell title={headerText} dismissLabel="Dismiss series answer" onDismiss={onDismiss}>
         {series.length > 0 && (
-          <div className="mb-4">
-            <Sparkline points={series.map(d => d.amount)} width={100} height={48} label={`Spending trend over ${series.length} periods`} />
-          </div>
+          <Sparkline points={series.map(d => d.amount)} width={100} height={48} label={`Spending trend over ${series.length} periods`} />
         )}
 
-        <p className="mb-3 text-xs text-muted-foreground">
+        <p className={NOTE}>
           {series.filter(d => d.amount > 0).length} buckets with activity
         </p>
 
-        <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onDismiss} aria-label="Dismiss series answer">Dismiss</Button>
-          <Button className="flex-[2]" onClick={() => setShowEntries(!showEntries)} aria-label={showEntries ? 'Hide entries for series answer' : 'Show entries for series answer'}>
-            {showEntries ? 'Hide entries' : 'Show entries'}
-          </Button>
-        </div>
-
-        {showEntries && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <FilteredMoneyList entries={filteredEntries} categories={categories} prefs={prefs} rates={rates} />
-          </div>
-        )}
-      </div>
+        {entriesToggle('series')}
+      </AnswerShell>
     )
   }
 
   return null
+}
+
+const FIGURE = 'text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums'
+const NOTE = 'text-[13px] text-muted-foreground'
+
+/** An answer is something to read, not act on: a ruled section on the page ground with a quiet Dismiss. */
+function AnswerShell({ title, dismissLabel, onDismiss, children }: { title: string; dismissLabel: string; onDismiss: () => void; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-end justify-between gap-3 border-b border-border">
+        <h2 className="pb-2.5 text-[19px] font-bold tracking-[-0.02em] lg:text-[22px]">{title}</h2>
+        <Button
+          variant="ghost"
+          className="-mr-2 h-11 shrink-0 px-2 font-medium underline underline-offset-4 hover:bg-transparent"
+          onClick={onDismiss}
+          aria-label={dismissLabel}
+        >
+          Dismiss
+        </Button>
+      </div>
+      {children}
+    </section>
+  )
 }
 
 function FilteredMoneyList({
@@ -379,57 +354,45 @@ function FilteredMoneyList({
   const [expandedFx, setExpandedFx] = useState<string | null>(null)
 
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col divide-y divide-border border-t border-border">
       {entries.length === 0 ? (
-        <li className="p-4 text-sm text-muted-foreground">No entries in this query.</li>
+        <li className="py-4 text-sm text-muted-foreground">No entries in this query.</li>
       ) : (
         entries.map(e => {
           const cat = e.category_id ? categoryById.get(e.category_id) : undefined
           return (
             <li
               key={e.id}
-              className="glass-soft relative flex items-start justify-between gap-3 rounded-xl p-3 text-sm"
+              className="flex min-h-[52px] items-center justify-between gap-3 py-2"
             >
-              <div className="flex flex-col flex-1 min-w-0">
-                {cat && (
-                  <div className="mb-1.5 inline-flex w-fit items-center gap-1 rounded-lg bg-muted px-2 py-1 text-xs">
-                    {cat.icon && <span aria-hidden="true">{cat.icon}</span>}
-                    <span className="text-muted-foreground">{cat.name}</span>
-                  </div>
-                )}
-                <div className="text-sm font-medium text-foreground">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="truncate text-[15px] font-medium">
                   {e.description ? e.description : (cat ? cat.name : 'Uncategorized')}
                 </div>
                 {e.description && cat && (
-                  <span className="text-xs text-muted-foreground">{cat.name}</span>
+                  <span className="text-[13px] text-muted-foreground">{cat.name}</span>
                 )}
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  {e.currency !== prefs.primary_currency && (
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className="h-10 px-2 font-normal text-muted-foreground hover:text-accent-2"
-                      onClick={(ev) => { ev.stopPropagation(); setExpandedFx(expandedFx === e.id ? null : e.id) }}
-                      aria-label={expandedFx === e.id ? `Hide currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}` : `Show currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}`}
-                    >
-                      {expandedFx === e.id ? (() => {
-                        const conv = convertViaRates(e.amount, e.currency, prefs.primary_currency, e.occurred_at, rates, prefs.fx_overrides ?? {})
-                        return conv
-                          ? `≈ ${currencySymbol(prefs.primary_currency)}${(conv.amount / (prefs.primary_currency === 'JPY' ? 1 : 100)).toFixed(2)} at ${conv.rateDate}`
-                          : 'No FX rate yet for this date'
-                      })() : '≈ convert'}
-                    </Button>
-                  )}
-                </div>
+                {e.currency !== prefs.primary_currency && (
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="-ml-2 h-10 w-fit px-2 text-[13px] font-normal text-muted-foreground hover:text-foreground"
+                    onClick={(ev) => { ev.stopPropagation(); setExpandedFx(expandedFx === e.id ? null : e.id) }}
+                    aria-label={expandedFx === e.id ? `Hide currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}` : `Show currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}`}
+                  >
+                    {expandedFx === e.id ? (() => {
+                      const conv = convertViaRates(e.amount, e.currency, prefs.primary_currency, e.occurred_at, rates, prefs.fx_overrides ?? {})
+                      return conv
+                        ? `≈ ${currencySymbol(prefs.primary_currency)}${(conv.amount / (prefs.primary_currency === 'JPY' ? 1 : 100)).toFixed(2)} at ${conv.rateDate}`
+                        : 'No FX rate yet for this date'
+                    })() : '≈ convert'}
+                  </Button>
+                )}
               </div>
 
-              <div className="flex flex-col items-end gap-2">
-                <span className={`tabular-nums text-sm font-medium whitespace-nowrap ${
-                  e.direction === 'out' ? 'text-destructive' : 'text-income'
-                }`}>
-                  {formatAmount(e)}
-                </span>
-              </div>
+              <span className={`whitespace-nowrap text-base font-semibold tabular-nums ${e.direction === 'out' ? '' : 'text-income'}`}>
+                {formatAmount(e)}
+              </span>
             </li>
           )
         })
@@ -461,16 +424,9 @@ function Sparkline({ points, width = 80, height = 48, label }: { points: number[
   const areaPath = `M${padding},${height - padding} ${pathPoints} L${width - padding},${height - padding}`
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label={label || 'Spending sparkline'}>
-      <defs>
-        <linearGradient id="sparkGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style={{ stopColor: 'rgb(37 99 235)', stopOpacity: 0.3 }} />
-          <stop offset="100%" style={{ stopColor: 'rgb(37 99 235)', stopOpacity: 0.05 }} />
-        </linearGradient>
-      </defs>
-      <polyline points={pathPoints} fill="none" stroke="rgb(37 99 235)" strokeWidth="1.5" />
-      <path d={areaPath} fill="url(#sparkGradient)" />
-      <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="2.5" fill="rgb(37 99 235)" />
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-16 w-full text-foreground" role="img" aria-label={label || 'Spending sparkline'}>
+      <path d={areaPath} fill="currentColor" fillOpacity="0.08" />
+      <polyline points={pathPoints} fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }

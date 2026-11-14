@@ -92,7 +92,7 @@ export function SwipeRow({ onDelete, onTap, onLongPress, deleteLabel, isOpen, on
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl focus-within:ring-2 focus-within:ring-accent-2">
+    <div className="relative overflow-hidden focus-within:ring-2 focus-within:ring-ring/50">
       {state.translateX < 0 && (
         <Button
           variant="destructive"
@@ -100,7 +100,7 @@ export function SwipeRow({ onDelete, onTap, onLongPress, deleteLabel, isOpen, on
           tabIndex={isOpen ? 0 : -1}
           onClick={onDelete}
           style={{ width: REVEAL_WIDTH }}
-          className="absolute inset-y-0 right-0 h-auto rounded-none bg-destructive text-background hover:bg-destructive/90"
+          className="absolute inset-y-0 right-0 h-auto rounded-none border-0 bg-destructive text-background hover:bg-destructive/90"
         >
           <Trash2 className="size-5" aria-hidden />
         </Button>

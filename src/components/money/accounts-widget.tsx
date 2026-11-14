@@ -1,14 +1,8 @@
 'use client'
 
-import { ChevronRight, Landmark, CreditCard } from 'lucide-react'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import Link from 'next/link'
-import { IconTile } from '@/components/shared/icon-tile'
-import { buttonVariants } from '@/components/ui/button'
-import { Empty, EmptyContent, EmptyDescription } from '@/components/ui/empty'
-import { Item, ItemContent, ItemTitle } from '@/components/ui/item'
-import { Separator } from '@/components/ui/separator'
-import { cn } from '@/lib/utils'
+import { EMPTY_NOTE, FOOT_LINK, HEAD_LINK, SectionHeading } from '@/components/money/section-heading'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useExpenseShares } from '@/hooks/use-expense-shares'
@@ -21,11 +15,10 @@ import { currencySymbol } from '@/lib/currency'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { netWorth, type AccountLike } from '@/lib/accounts'
 
-const LINK = cn(buttonVariants({ variant: 'link' }), 'h-11 px-0')
-
 type Props = { userId: string }
 
 export function AccountsWidget({ userId }: Props) {
+  const headingId = useId()
   const accounts = useAccounts(userId)
   const entriesRaw = useMoneyEntries(userId)
   const shares = useExpenseShares(userId)
@@ -85,15 +78,11 @@ export function AccountsWidget({ userId }: Props) {
 
   if (accounts.length === 0) {
     return (
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold">Accounts</h2>
-        <Empty className="p-2">
-          <EmptyDescription>Add your bank accounts and cards to see balances and net worth.</EmptyDescription>
-          <EmptyContent>
-            <Link href="/settings/accounts" className={LINK}>Add an account<ChevronRight className="size-4" aria-hidden /></Link>
-          </EmptyContent>
-        </Empty>
-      </div>
+      <section aria-labelledby={headingId} className="flex flex-col">
+        <SectionHeading id={headingId}>Accounts</SectionHeading>
+        <p className={EMPTY_NOTE}>Add your bank accounts and cards to see balances and net worth.</p>
+        <Link href="/settings/accounts" className={FOOT_LINK}>Add an account</Link>
+      </section>
     )
   }
 
@@ -103,67 +92,50 @@ export function AccountsWidget({ userId }: Props) {
   // Per-account rows are in each account's OWN currency (netWorth keeps them
   // unconverted); format with that account's symbol/divisor, not the primary's.
   const fmtIn = (amt: number, cur: string) =>
-    `${currencySymbol(cur)}${(amt / (cur === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    `${amt < 0 ? '−' : ''}${currencySymbol(cur)}${(Math.abs(amt) / (cur === 'JPY' ? 1 : 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+
+  const ROW = 'flex min-h-12 items-center justify-between gap-4 border-b border-border py-2 text-[15px]'
+  const assets = nw.perAccount.filter(a => a.type === 'asset')
+  const liabilities = nw.perAccount.filter(a => a.type === 'liability')
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Net worth headline */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-semibold">Net worth</h2>
-        <div className="tabular-nums text-2xl font-semibold tabular-nums">
-          {nw.net < 0 ? '−' : ''}{symbol}{fmt(Math.abs(nw.net))}
-        </div>
-      </div>
+    <section aria-labelledby={headingId} className="flex flex-col">
+      <SectionHeading id={headingId} aside={<Link href="/settings/accounts" className={HEAD_LINK}>Manage</Link>}>
+        Accounts
+      </SectionHeading>
 
-      {/* Per-account list */}
-      <div className="flex flex-col gap-2">
-        {/* Assets section */}
-        {nw.perAccount
-          .filter(a => a.type === 'asset')
-          .map(acct => (
-            <Item key={acct.id} size="xs" className="flex-nowrap justify-between p-0">
-              <ItemContent className="min-w-0 flex-row items-center gap-3">
-                <IconTile emoji={acct.icon} icon={Landmark} size="sm" />
-                <ItemTitle className="min-w-0 font-normal"><span className="truncate">{acct.name}</span></ItemTitle>
-              </ItemContent>
-              <span className="tabular-nums text-sm tabular-nums">
-                {fmtIn(acct.balance, acct.currency)}
-              </span>
-            </Item>
-          ))}
+      <ul className="flex flex-col">
+        {assets.map(acct => (
+          <li key={acct.id} className={ROW}>
+            <span className="min-w-0 truncate font-medium">{acct.name}</span>
+            <span className="shrink-0 font-semibold tabular-nums">{fmtIn(acct.balance, acct.currency)}</span>
+          </li>
+        ))}
+      </ul>
 
-        {/* Liabilities section */}
-        {nw.perAccount
-          .filter(a => a.type === 'liability')
-          .length > 0 && (
-          <div className="flex flex-col gap-2">
-            <Separator />
-            <h3 className="text-xs text-muted-foreground">Cards and loans</h3>
-            {nw.perAccount
-              .filter(a => a.type === 'liability')
-              .map(acct => (
-                <Item key={acct.id} size="xs" className="flex-nowrap justify-between p-0">
-                  <ItemContent className="min-w-0 flex-row items-center gap-3">
-                    <IconTile emoji={acct.icon} icon={CreditCard} size="sm" />
-                    <ItemTitle className="min-w-0 font-normal"><span className="truncate">{acct.name}</span></ItemTitle>
-                  </ItemContent>
-                  <span className="tabular-nums text-sm tabular-nums text-destructive">
-                    {fmtIn(acct.balance, acct.currency)}
-                  </span>
-                </Item>
-              ))}
-          </div>
-        )}
-      </div>
-
-      {accounts.length > 0 && (
-        <div className="flex flex-col">
-          <Separator />
-          <Link href="/settings/transfers" className={LINK}>
-            Move money between accounts<ChevronRight className="size-4" aria-hidden />
-          </Link>
-        </div>
+      {liabilities.length > 0 && (
+        <>
+          <h3 className="pb-1 pt-3.5 text-xs font-semibold text-muted-foreground">Cards and loans</h3>
+          <ul className="flex flex-col border-t border-border">
+            {liabilities.map(acct => (
+              <li key={acct.id} className={ROW}>
+                <span className="min-w-0 truncate font-medium">{acct.name}</span>
+                {/* What is owed counts against net worth, so it reads as a minus. */}
+                <span className="shrink-0 font-semibold tabular-nums">{fmtIn(-acct.balance, acct.currency)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
-    </div>
+
+      <div className={ROW}>
+        <span className="font-semibold">Net worth</span>
+        <span className="shrink-0 text-base font-bold tabular-nums">
+          {nw.net < 0 ? '−' : ''}{symbol}{fmt(Math.abs(nw.net))}
+        </span>
+      </div>
+
+      <Link href="/settings/transfers" className={FOOT_LINK}>Move money between accounts</Link>
+    </section>
   )
 }

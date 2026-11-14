@@ -2,10 +2,7 @@
 
 import { useMemo } from 'react'
 import { useLearnings } from '@/hooks/use-learnings'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Item, ItemGroup, ItemTitle } from '@/components/ui/item'
-import { Separator } from '@/components/ui/separator'
+import { PanelStat, SummaryPanel } from '@/components/shared/summary-panel'
 
 type Props = { userId: string }
 
@@ -36,39 +33,17 @@ export function LearningSummary({ userId }: Props) {
     return { thisWeek, topTags }
   }, [learnings])
 
-  const rows = [
-    { label: 'This week', value: thisWeek },
-    { label: 'Total', value: learnings.length },
-  ]
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold">Learnings</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        <ItemGroup className="gap-0">
-          {rows.map(r => (
-            <Item key={r.label} role="listitem" size="xs" className="flex-nowrap justify-between py-1.5">
-              <ItemTitle className="font-normal">{r.label}</ItemTitle>
-              <span className="tabular-nums">{r.value}</span>
-            </Item>
-          ))}
-        </ItemGroup>
-        {topTags.length > 0 && (
-          <>
-            <Separator />
-            <div className="flex flex-col gap-1.5 text-xs">
-              <span className="text-muted-foreground">Top tags</span>
-              <div className="flex flex-wrap gap-1">
-                {topTags.map(tag => (
-                  <Badge key={tag} variant="secondary" className="text-muted-foreground">{tag}</Badge>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+    <SummaryPanel
+      eyebrow="This week"
+      value={thisWeek}
+      unit={thisWeek === 1 ? 'thing learned' : 'things learned'}
+      stats={
+        <>
+          <PanelStat label="Total" value={learnings.length} />
+          {topTags.length > 0 && <PanelStat label="Top tags" value={topTags.join(', ')} />}
+        </>
+      }
+    />
   )
 }

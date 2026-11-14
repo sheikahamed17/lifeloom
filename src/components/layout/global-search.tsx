@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Wallet, CheckCircle2, BookOpen, NotebookPen, type LucideIcon } from 'lucide-react'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useTasks } from '@/hooks/use-tasks'
 import { useLearnings } from '@/hooks/use-learnings'
@@ -11,8 +10,6 @@ import { searchAll } from '@/lib/search-all'
 import { Command, CommandDialog, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ui/command'
 import { Kbd } from '@/components/ui/kbd'
 import type { Tab } from '@/hooks/use-tab-state'
-
-const ICON: Record<Tab, LucideIcon> = { money: Wallet, tasks: CheckCircle2, learning: BookOpen, notes: NotebookPen }
 
 export function GlobalSearch({ userId, onClose, onSelect }: { userId: string; onClose: () => void; onSelect: (kind: Tab, id: string) => void }) {
   const [q, setQ] = useState('')
@@ -51,26 +48,22 @@ export function GlobalSearch({ userId, onClose, onSelect }: { userId: string; on
           {q.trim() && groups.length === 0 && (
             <p role="status" className="py-6 text-center text-sm text-muted-foreground">No matches for “{q.trim()}”.</p>
           )}
-          {groups.map(g => {
-            const Icon = ICON[g.kind]
-            return (
+          {groups.map(g => (
               <CommandGroup key={g.kind} heading={g.heading}>
                 {g.items.map(it => (
                   <CommandItem
                     key={it.id}
                     value={`${it.kind}-${it.id}`}
                     onSelect={() => onSelect(it.kind, it.id)}
-                    className="min-h-11"
+                    className="min-h-11 text-[15px]"
                   >
-                    <Icon className="text-muted-foreground" aria-hidden />
-                    <span className="flex-1 truncate">{it.label}</span>
-                    {it.snippet && <CommandShortcut className="tabular-nums tracking-normal">{it.snippet}</CommandShortcut>}
+                    <span className="flex-1 truncate font-medium">{it.label}</span>
+                    {it.snippet && <CommandShortcut className="text-[13px] tabular-nums tracking-normal">{it.snippet}</CommandShortcut>}
                   </CommandItem>
                 ))}
-                {g.truncated && <p className="px-2 pt-1 text-xs text-muted-foreground">More matches — refine your search.</p>}
+                {g.truncated && <p className="px-2 pt-1 text-xs text-muted-foreground">More matches. Refine your search.</p>}
               </CommandGroup>
-            )
-          })}
+          ))}
         </CommandList>
         <p className="flex items-center justify-end gap-1.5 px-2 pb-1 pt-2 text-xs text-muted-foreground">
           <Kbd>Esc</Kbd> to close

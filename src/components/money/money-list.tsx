@@ -3,12 +3,9 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronDown, Mail, MessageSquare, Paperclip, Pencil, Repeat, Split, Trash2, Users } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { ChevronDown, Pencil, Repeat, Split, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Empty, EmptyDescription } from '@/components/ui/empty'
-import { Separator } from '@/components/ui/separator'
 import { SwipeRow } from '@/components/shared/swipe-row'
 import { RowMenu } from '@/components/shared/row-menu'
 import { IconTile } from '@/components/shared/icon-tile'
@@ -27,6 +24,7 @@ import { currencySymbol, formatMinor } from '@/lib/currency'
 import { convertViaRates } from '@/lib/fx'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { EntryTimestamp } from '@/components/money/entry-timestamp'
+import { dayHeading, makeDayKeyer } from '@/components/money/month-days'
 import { filterSortMoney } from '@/lib/money-filter-sort'
 import { makeCategoryResolver } from '@/lib/category-resolve'
 import { groupBySplit } from '@/lib/split-group'
@@ -38,8 +36,10 @@ import type { MoneyFilter, MoneySort } from '@/lib/money-filter-sort'
 
 type Props = { userId: string; onEdit?: (row: MoneyEntryRow) => void; filter?: MoneyFilter; sort?: MoneySort }
 
-// Small metadata chips under an entry: one shape, one size (12 px), Lucide icons only.
-const META = 'h-auto min-h-6 overflow-visible border-border px-2 font-normal text-muted-foreground'
+// Quiet facts under an entry (source, tags, links): one line of small muted text, no pills.
+const META = 'flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground'
+// A link or button inside that line. The pseudo-element keeps a 44px touch target.
+const META_LINK = 'relative underline underline-offset-2 outline-none before:absolute before:-inset-y-3.5 before:inset-x-0 hover:text-foreground focus-visible:text-foreground'
 
 /** "−₹120" / "+₹85,000" (JPY whole), the same signed form the save toast uses. */
 function formatAmount(e: MoneyEntryRow): string {
@@ -78,6 +78,23 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
   // Collapse split parts (shared split_group_id) into one expandable row.
   const groups = useMemo(() => groupBySplit(shown), [shown])
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set())
+
+  // Sorted by date, the list reads as a ledger: one small date heading per day.
+  // Sorted by amount there are no days to group by, so each row carries its own time.
+  const byDay = !sort || sort === 'date-desc' || sort === 'date-asc'
+  const todayKey = useMemo(() => makeDayKeyer(prefs.tz)(new Date().toISOString()), [prefs.tz])
+  const sections = useMemo(() => {
+    if (!byDay) return [{ key: 'all', label: null as string | null, groups }]
+    const dayKey = makeDayKeyer(prefs.tz)
+    const out: { key: string; label: string | null; groups: typeof groups }[] = []
+    for (const g of groups) {
+      const key = dayKey(g.kind === 'split' ? g.parts[0].occurred_at : g.entry.occurred_at)
+      const last = out[out.length - 1]
+      if (last && last.key === key) last.groups.push(g)
+      else out.push({ key, label: dayHeading(key, todayKey), groups: [g] })
+    }
+    return out
+  }, [byDay, groups, prefs.tz, todayKey])
   function toggleGroup(id: string) {
     setExpandedGroups(prev => {
       const n = new Set(prev)
@@ -112,196 +129,191 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
 
   if (groups.length === 0) {
     return (
-      <Empty className="glass-soft p-4">
-        <EmptyDescription>
-          {filtered
-            ? 'No entries match these filters.'
-            : 'No money entries yet. Type “spent 80 on chai” above, or connect bank emails in Settings → Auto-import.'}
-        </EmptyDescription>
-      </Empty>
+      <p className="py-3 text-sm text-muted-foreground">
+        {filtered
+          ? 'No entries match these filters.'
+          : 'No money entries yet. Type “spent 80 on chai” above, or connect bank emails in Settings → Auto-import.'}
+      </p>
+    )
+  }
+
+  const renderGroup = (g: typeof groups[number]) => {
+    if (g.kind === 'split') {
+      const open = expandedGroups.has(g.groupId)
+      const first = g.parts[0]
+      const splitTitle = first.description || first.merchant || 'Split payment'
+      return (
+        <li key={g.groupId} id={`pulse-row-${g.groupId}`} className="border-b border-border py-3">
+          <Collapsible open={open} onOpenChange={() => toggleGroup(g.groupId)}>
+            <div className="flex items-center gap-3">
+              <IconTile name={first.merchant || first.description} icon={Split} tone={first.direction === 'in' ? 'income' : 'default'} />
+              <CollapsibleTrigger
+                render={<Button variant="ghost" />}
+                className="h-auto min-w-0 flex-1 flex-col items-start justify-start gap-0.5 whitespace-normal rounded-lg px-0 py-0 text-left font-normal hover:bg-transparent"
+              >
+                <span className="text-[15px] font-medium leading-snug">{splitTitle}</span>
+                <span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
+                  Split {g.parts.length} ways
+                  <ChevronDown className={cn('size-3.5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
+                </span>
+                {!byDay && <EntryTimestamp occurredAt={first.occurred_at} />}
+              </CollapsibleTrigger>
+              <span className={cn('shrink-0 whitespace-nowrap text-base font-semibold tabular-nums', first.direction === 'in' && 'text-income')}>
+                {signedAmount(g.total, first.currency, first.direction)}
+              </span>
+              <div className="-mr-3">
+                <RowMenu
+                  label={`Actions for ${g.parts.length}-way split`}
+                  open={menuFor === g.groupId}
+                  onOpenChange={o => setMenuFor(o ? g.groupId : null)}
+                  items={[{ label: `Delete split (${g.parts.length} parts)`, icon: Trash2, destructive: true, onSelect: () => deleteGroup(g.parts) }]}
+                />
+              </div>
+            </div>
+            <CollapsibleContent>
+              <ul className="mt-3 flex flex-col border-t border-border pl-13" aria-label="Split parts">
+                {g.parts.map(p => {
+                  const pc = resolve(p.category_id)
+                  return (
+                    <li key={p.id} className="flex min-h-11 items-center justify-between gap-2 border-b border-border text-sm last:border-b-0">
+                      <span className="min-w-0 truncate text-muted-foreground">{pc?.name ?? 'Uncategorized'}</span>
+                      <span className="flex shrink-0 items-center">
+                        <span className="font-medium tabular-nums">{formatMinor(p.amount, p.currency)}</span>
+                        {onEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon-lg"
+                            aria-label={`Edit ${pc?.name ?? 'split part'}`}
+                            onClick={() => onEdit(p)}
+                            className="-mr-3 text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil className="size-4" aria-hidden />
+                          </Button>
+                        )}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
+        </li>
+      )
+    }
+    const e = g.entry
+    const cat = resolve(e.category_id)
+    const acc = e.account_id ? accountById.get(e.account_id) : undefined
+    const mine = sharesFor.get(e.id)
+    const shared = !!mine && mine.length > 0 && e.direction === 'out'
+    const title = e.description || e.merchant || cat?.name || 'Uncategorized'
+    // "Food, HDFC card": category, then the merchant when the title is something else, then the account.
+    const facts = [
+      cat ? (cat.name !== title ? cat.name : null) : (title !== 'Uncategorized' ? 'Uncategorized' : null),
+      e.merchant && e.merchant !== title ? e.merchant : null,
+      acc ? acc.name : e.account_id ? 'Unknown account' : null,
+    ].filter(Boolean).join(', ')
+    const foreign = e.currency !== prefs.primary_currency
+    const hasMeta = !byDay || (e.tags?.length ?? 0) > 0 || e.source === 'email' || e.source === 'sms' || !!e.recurring_rule_id || foreign || shared || !!e.receipt_key
+    return (
+      <li key={e.id} id={`pulse-row-${e.id}`} className="border-b border-border">
+        <SwipeRow
+          isOpen={openId === e.id}
+          onOpenChange={o => setOpenId(o ? e.id : null)}
+          onTap={onEdit ? () => onEdit(e) : undefined}
+          onLongPress={() => setMenuFor(e.id)}
+          onDelete={() => deleteEntry(e)}
+          deleteLabel={`Delete ${title} ${formatAmount(e)}`}
+          className="flex items-center gap-3 bg-background py-3"
+        >
+          <IconTile name={e.merchant || e.description || cat?.name} tone={e.direction === 'in' ? 'income' : 'default'} />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className="text-[15px] font-medium leading-snug text-foreground">{title}</p>
+            {facts && <p className="text-[13px] text-muted-foreground">{facts}</p>}
+            {hasMeta && (
+              <div className={cn(META, 'pt-0.5')}>
+                {!byDay && <EntryTimestamp occurredAt={e.occurred_at} />}
+                {e.source === 'email' && <span>From email</span>}
+                {e.source === 'sms' && <span>From SMS</span>}
+                {e.recurring_rule_id && <span>Recurring</span>}
+                {(e.tags ?? []).map(tag => <span key={tag}>#{tag}</span>)}
+                {foreign && (
+                  <Button
+                    variant="link"
+                    size="xs"
+                    className={cn(META_LINK, 'h-auto whitespace-normal p-0 text-left text-xs font-normal text-muted-foreground')}
+                    aria-expanded={expandedFx === e.id}
+                    onClick={() => setExpandedFx(expandedFx === e.id ? null : e.id)}
+                  >
+                    {expandedFx === e.id ? (() => {
+                      const conv = convertViaRates(e.amount, e.currency, prefs.primary_currency, e.occurred_at, rates, prefs.fx_overrides ?? {})
+                      return conv
+                        ? `≈ ${formatMinor(conv.amount, prefs.primary_currency)} at the ${formatDay(conv.rateDate)} rate`
+                        : 'No exchange rate for this date yet'
+                    })() : `In ${currencySymbol(prefs.primary_currency)}`}
+                  </Button>
+                )}
+                {shared && mine!.map(s => (
+                  <Link
+                    key={s.id}
+                    href={`/settings/people#${s.person_id}`}
+                    className={cn(META_LINK, !s.settled_at && 'font-medium text-foreground')}
+                  >
+                    {personName.get(s.person_id) ?? 'Someone'} {s.settled_at ? 'paid' : `owes ${formatMinor(s.amount, e.currency)}`}
+                  </Link>
+                ))}
+                {e.receipt_key && (
+                  <a href={`/api/receipt/${e.receipt_key}`} target="_blank" rel="noopener" className={META_LINK}>Receipt</a>
+                )}
+              </div>
+            )}
+          </div>
+
+          {shared ? (
+            <span className="flex shrink-0 flex-col items-end" title={`Full payment ${formatAmount(e)}; the rest is owed to you`}>
+              <span className="whitespace-nowrap text-base font-semibold tabular-nums">
+                you {signedAmount(yourShare(e, mine), e.currency, 'out')}
+              </span>
+              <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">of {formatAmount(e)}</span>
+            </span>
+          ) : (
+            <span className={cn('shrink-0 whitespace-nowrap text-base font-semibold tabular-nums', e.direction === 'in' && 'text-income')}>
+              {formatAmount(e)}
+            </span>
+          )}
+          <div className="-ml-1 -mr-3">
+            <RowMenu
+              label={`Actions for ${title} ${formatAmount(e)}`}
+              open={menuFor === e.id}
+              onOpenChange={o => setMenuFor(o ? e.id : null)}
+              items={[
+                ...(onEdit ? [{ label: 'Edit', icon: Pencil, onSelect: () => onEdit(e) }] : []),
+                ...(e.recurring_rule_id ? [{ label: 'Edit recurring rule', icon: Repeat, onSelect: () => router.push('/settings/recurring') }] : []),
+                { label: 'Delete', icon: Trash2, destructive: true, onSelect: () => deleteEntry(e) },
+              ]}
+            />
+          </div>
+        </SwipeRow>
+      </li>
     )
   }
 
   return (
-    <ul className="glass flex flex-col divide-y divide-border overflow-hidden rounded-xl" aria-labelledby="entries-heading">
-      {groups.map(g => {
-        if (g.kind === 'split') {
-          const open = expandedGroups.has(g.groupId)
-          const first = g.parts[0]
-          return (
-            <li key={g.groupId} id={`pulse-row-${g.groupId}`} className="px-4 py-3.5 text-sm">
-              <Collapsible open={open} onOpenChange={() => toggleGroup(g.groupId)}>
-                <div className="flex items-start gap-3">
-                  <IconTile icon={Split} />
-                  <CollapsibleTrigger
-                    render={<Button variant="ghost" />}
-                    className="h-auto min-w-0 flex-1 flex-col items-start justify-start gap-1 whitespace-normal px-0 py-0 text-left font-normal hover:bg-transparent"
-                  >
-                    <span className="text-base font-medium leading-tight">{first.description || first.merchant || 'Split payment'}</span>
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      <Split className="size-3.5" aria-hidden />
-                      Split {g.parts.length} ways
-                      <ChevronDown className={cn('size-3.5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
-                    </span>
-                    <EntryTimestamp occurredAt={first.occurred_at} />
-                  </CollapsibleTrigger>
-                  <div className="flex flex-col items-end">
-                    <span className={cn('whitespace-nowrap tabular-nums text-base font-semibold', first.direction === 'out' ? 'text-destructive' : 'text-income')}>
-                      {signedAmount(g.total, first.currency, first.direction)}
-                    </span>
-                    <div className="-mb-2 -mr-2">
-                      <RowMenu
-                        label={`Actions for ${g.parts.length}-way split`}
-                        open={menuFor === g.groupId}
-                        onOpenChange={o => setMenuFor(o ? g.groupId : null)}
-                        items={[{ label: `Delete split (${g.parts.length} parts)`, icon: Trash2, destructive: true, onSelect: () => deleteGroup(g.parts) }]}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <CollapsibleContent>
-                  <Separator className="mt-2" />
-                  <ul className="flex flex-col pt-1" aria-label="Split parts">
-                    {g.parts.map(p => {
-                      const pc = resolve(p.category_id)
-                      return (
-                        <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
-                          <span className="flex min-w-0 items-center gap-1.5">
-                            {pc?.icon && <span aria-hidden="true">{pc.icon}</span>}
-                            <span className="truncate text-muted-foreground">{pc?.name ?? 'Uncategorized'}</span>
-                          </span>
-                          <span className="flex items-center">
-                            <span className="tabular-nums">{formatMinor(p.amount, p.currency)}</span>
-                            {onEdit && (
-                              <Button
-                                variant="ghost"
-                                size="icon-lg"
-                                aria-label={`Edit ${pc?.name ?? 'split part'}`}
-                                onClick={() => onEdit(p)}
-                                className="text-muted-foreground hover:text-accent-2"
-                              >
-                                <Pencil className="size-4" aria-hidden />
-                              </Button>
-                            )}
-                          </span>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </CollapsibleContent>
-              </Collapsible>
-            </li>
-          )
-        }
-        const e = g.entry
-        const cat = resolve(e.category_id)
-        const acc = e.account_id ? accountById.get(e.account_id) : undefined
-        const mine = sharesFor.get(e.id)
-        const shared = !!mine && mine.length > 0 && e.direction === 'out'
-        const title = e.description || e.merchant || cat?.name || 'Uncategorized'
-        return (
-          <li key={e.id} id={`pulse-row-${e.id}`}>
-            <SwipeRow
-              isOpen={openId === e.id}
-              onOpenChange={o => setOpenId(o ? e.id : null)}
-              onTap={onEdit ? () => onEdit(e) : undefined}
-              onLongPress={() => setMenuFor(e.id)}
-              onDelete={() => deleteEntry(e)}
-              deleteLabel={`Delete ${title} ${formatAmount(e)}`}
-              className="flex items-start gap-3 bg-card px-4 py-3.5 text-sm transition-colors hover:bg-accent"
-            >
-              <IconTile emoji={cat?.icon} />
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <p className="text-base font-medium leading-tight text-foreground">{title}</p>
-                <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-                  {cat && <span>{cat.name}</span>}
-                  {e.merchant && e.merchant !== title && <span>· {e.merchant}</span>}
-                  {acc && <span>· {acc.name}</span>}
-                  {!acc && e.account_id && <span>· Unknown account</span>}
-                </p>
-                {(e.tags?.length ?? 0) > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {(e.tags ?? []).map(tag => <Badge key={tag} variant="outline" className={META}>{tag}</Badge>)}
-                  </div>
-                )}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <EntryTimestamp occurredAt={e.occurred_at} />
-                  {e.source === 'email' && <Badge variant="outline" className={META}><Mail aria-hidden />Email</Badge>}
-                  {e.source === 'sms' && <Badge variant="outline" className={META}><MessageSquare aria-hidden />SMS</Badge>}
-                  {e.recurring_rule_id && <Badge variant="outline" className={META}><Repeat aria-hidden />Recurring</Badge>}
-                  {e.currency !== prefs.primary_currency && (
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      className={cn(META, 'relative rounded-full bg-transparent before:absolute before:-inset-y-2.5 before:inset-x-0 hover:bg-transparent hover:text-accent-2')}
-                      aria-expanded={expandedFx === e.id}
-                      onClick={() => setExpandedFx(expandedFx === e.id ? null : e.id)}
-                    >
-                      {expandedFx === e.id ? (() => {
-                        const conv = convertViaRates(e.amount, e.currency, prefs.primary_currency, e.occurred_at, rates, prefs.fx_overrides ?? {})
-                        return conv
-                          ? `≈ ${formatMinor(conv.amount, prefs.primary_currency)} at the ${formatDay(conv.rateDate)} rate`
-                          : 'No exchange rate for this date yet'
-                      })() : `In ${currencySymbol(prefs.primary_currency)}`}
-                    </Button>
-                  )}
-                  {shared && mine!.map(s => (
-                    <Badge
-                      key={s.id}
-                      variant="outline"
-                      render={<Link href={`/settings/people#${s.person_id}`} />}
-                      className={cn(
-                        META,
-                        'relative before:absolute before:-inset-y-2.5 before:inset-x-0',
-                        !s.settled_at && 'border-accent-2/40 text-accent-2 hover:bg-accent-2/10',
-                      )}
-                    >
-                      <Users aria-hidden />
-                      {personName.get(s.person_id) ?? 'Someone'} {s.settled_at ? 'paid' : `owes ${formatMinor(s.amount, e.currency)}`}
-                    </Badge>
-                  ))}
-                  {e.receipt_key && (
-                    <Badge
-                      variant="outline"
-                      render={<a href={`/api/receipt/${e.receipt_key}`} target="_blank" rel="noopener" />}
-                      className={cn(META, 'relative before:absolute before:-inset-y-2.5 before:inset-x-0 hover:text-accent-2')}
-                    >
-                      <Paperclip aria-hidden />Receipt
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end">
-                {shared ? (
-                  <span className="flex flex-col items-end" title={`Full payment ${formatAmount(e)}; the rest is owed to you`}>
-                    <span className="whitespace-nowrap tabular-nums text-base font-semibold text-destructive">
-                      you {signedAmount(yourShare(e, mine), e.currency, 'out')}
-                    </span>
-                    <span className="whitespace-nowrap tabular-nums text-xs tabular-nums text-muted-foreground">of {formatAmount(e)}</span>
-                  </span>
-                ) : (
-                  <span className={cn('whitespace-nowrap tabular-nums text-base font-semibold', e.direction === 'out' ? 'text-destructive' : 'text-income')}>
-                    {formatAmount(e)}
-                  </span>
-                )}
-                <div className="-mb-2 -mr-2">
-                  <RowMenu
-                    label={`Actions for ${title} ${formatAmount(e)}`}
-                    open={menuFor === e.id}
-                    onOpenChange={o => setMenuFor(o ? e.id : null)}
-                    items={[
-                      ...(onEdit ? [{ label: 'Edit', icon: Pencil, onSelect: () => onEdit(e) }] : []),
-                      ...(e.recurring_rule_id ? [{ label: 'Edit recurring rule', icon: Repeat, onSelect: () => router.push('/settings/recurring') }] : []),
-                      { label: 'Delete', icon: Trash2, destructive: true, onSelect: () => deleteEntry(e) },
-                    ]}
-                  />
-                </div>
-              </div>
-            </SwipeRow>
-          </li>
-        )
-      })}
-    </ul>
+    <div className="-mt-3 flex flex-col">
+      {sections.map(section => (
+        <div key={section.key} className="flex flex-col">
+          {section.label && (
+            <h3 id={`entries-day-${section.key}`} className="pb-1 pt-4 text-xs font-semibold text-muted-foreground lg:text-[13px]">
+              {section.label}
+            </h3>
+          )}
+          <ul
+            className="flex flex-col"
+            aria-labelledby={section.label ? `entries-day-${section.key}` : 'entries-heading'}
+          >
+            {section.groups.map(renderGroup)}
+          </ul>
+        </div>
+      ))}
+    </div>
   )
 }

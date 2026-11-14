@@ -1,7 +1,7 @@
 // Shared brand mark: the Lifeloom weave (3×3 interlace, see public/logo.svg for
 // the annotated SVG). Rendered at most once per page (header on /app, logo on
-// /login), so the fixed gradient/mask ids do not collide. No halo: glow is
-// reserved for the one primary action on a screen (UX pass, 13 Nov 2026).
+// /login), so the fixed mask ids do not collide. Drawn in the current ink colour:
+// no gradient, no halo.
 // Pass title="" when a visible name sits beside the mark: it is then decorative.
 export function PulseLogo({ className, title = 'Lifeloom' }: { className?: string; title?: string }) {
   return (
@@ -11,10 +11,6 @@ export function PulseLogo({ className, title = 'Lifeloom' }: { className?: strin
       {...(title ? { role: 'img', 'aria-label': title } : { 'aria-hidden': true })}
     >
       <defs>
-        <linearGradient id="llLogoGrad" gradientUnits="userSpaceOnUse" x1="14" y1="14" x2="86" y2="86">
-          <stop offset="0" stopColor="#6f7bff" />
-          <stop offset="1" stopColor="#34e6ff" />
-        </linearGradient>
         <mask id="llLogoWarpMask">
           <rect width="100" height="100" fill="#fff" />
           <rect x="43.5" y="22" width="13" height="14" fill="#000" />
@@ -31,7 +27,7 @@ export function PulseLogo({ className, title = 'Lifeloom' }: { className?: strin
           <rect x="64" y="64.5" width="14" height="13" fill="#000" />
         </mask>
       </defs>
-      <g fill="none" stroke="url(#llLogoGrad)" strokeWidth="9" strokeLinecap="round">
+      <g fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="round">
         <g mask="url(#llLogoWarpMask)" opacity="0.9">
           <line x1="29" y1="18" x2="29" y2="82" />
           <line x1="50" y1="18" x2="50" y2="82" />

@@ -56,8 +56,8 @@ export function isEmailConfigured(env: { RESEND_API_KEY?: string | null; EMAIL_F
 /** The message the Create-account step shows after requesting a magic link. */
 export function magicLinkSentMessage(emailConfigured: boolean): string {
   return emailConfigured
-    ? 'Magic link sent — check your inbox (and spam) for the sign-in link.'
-    : "Email isn't configured yet — check your deploy logs for the magic link (it's printed to the console when Resend isn't set up)."
+    ? 'Magic link sent. Check your inbox (and spam) for the sign-in link.'
+    : "Email isn't configured yet. Check your deploy logs for the magic link (it's printed to the console when Resend isn't set up)."
 }
 
 export type AiCheckResult = { ok: true } | { ok: false; error: string }

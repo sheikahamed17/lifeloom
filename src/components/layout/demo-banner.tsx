@@ -17,10 +17,10 @@ export function DemoBanner() {
   if (!demoMode || dismissed) return null
 
   return (
-    <Alert role="status" className="glass rounded-none border-x-0 border-t-0 py-2 pr-14 text-foreground">
+    <Alert role="status" className="rounded-none border-x-0 border-t-0 border-b border-border bg-card px-5 py-2 pr-14 text-foreground lg:px-8">
       <Info aria-hidden />
       <AlertDescription className="text-foreground">
-        You&apos;re viewing a live demo — data resets every {resetHours ?? 4} hours.{' '}
+        You&apos;re viewing a live demo. Data resets every {resetHours ?? 4} hours.{' '}
         <Button
           variant="link"
           className="h-auto min-h-10 p-0 font-medium"

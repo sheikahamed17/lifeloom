@@ -115,6 +115,20 @@ function AppPageInner() {
   const [captureNotice, setCaptureNotice] = useState<null | 'unplaced' | 'unreachable'>(null)
   const undo = useUndo()
   const captureInputRef = useRef<HTMLInputElement>(null)
+  // Phone: while the capture field is focused the keyboard is up. The dock would ride up with it and
+  // crowd the field, so it is hidden and the field sits on the bottom edge (just above the keyboard).
+  // Leaving is delayed a moment so a tap on Send or + lands before the layout moves back.
+  const [captureTyping, setCaptureTyping] = useState(false)
+  const captureBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (captureBlurTimer.current) clearTimeout(captureBlurTimer.current) }, [])
+  function onCaptureFocus() {
+    if (captureBlurTimer.current) clearTimeout(captureBlurTimer.current)
+    setCaptureTyping(true)
+  }
+  function onCaptureBlur() {
+    if (captureBlurTimer.current) clearTimeout(captureBlurTimer.current)
+    captureBlurTimer.current = setTimeout(() => setCaptureTyping(false), 200)
+  }
   const captureResultRef = useRef<HTMLDivElement>(null)
 
   // "/" jumps to the capture field from anywhere on the page (frequent-user shortcut).
@@ -877,7 +891,10 @@ function AppPageInner() {
                 "by hand" and help are a quiet row under it (behind the + button on the phone). */}
             <form
               onSubmit={(e) => { e.preventDefault(); parseText() }}
-              className={cn('z-30 bg-background max-lg:fixed max-lg:inset-x-0 max-lg:px-3 max-lg:pt-3', ABOVE_DOCK)}
+              className={cn(
+                'z-30 bg-background max-lg:fixed max-lg:inset-x-0 max-lg:px-3 max-lg:pt-3',
+                captureTyping ? 'max-lg:bottom-0 max-lg:pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]' : ABOVE_DOCK,
+              )}
             >
               <div className="mx-auto flex w-full max-w-xl flex-col gap-2 lg:max-w-none lg:gap-2.5">
                 <h2 className="hidden text-[17px] font-bold lg:block">Add something</h2>
@@ -889,6 +906,8 @@ function AppPageInner() {
                       ref={captureInputRef}
                       value={text}
                       onChange={e => { setText(e.target.value); if (captureNotice) setCaptureNotice(null) }}
+                      onFocus={onCaptureFocus}
+                      onBlur={onCaptureBlur}
                       placeholder="A note, task or expense"
                       autoComplete="off"
                       enterKeyHint="send"
@@ -1041,7 +1060,7 @@ function AppPageInner() {
 
       {/* Phone + tablet dock (desktop has the same tabs in the header). */}
       <div className="lg:hidden">
-        <TabBar variant="dock" taskBadgeCount={taskBadgeCount} />
+        <TabBar variant="dock" taskBadgeCount={taskBadgeCount} hidden={captureTyping} />
       </div>
       </Tabs>
 

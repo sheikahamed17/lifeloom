@@ -8,6 +8,8 @@ type Props = {
   taskBadgeCount?: number      // overdue + open count; undefined = no badge
   /** `inline`: desktop text tabs in the header bar. `dock`: the phone's floating bottom dock. */
   variant: 'inline' | 'dock'
+  /** Dock only: hide it while the capture field is being typed in (the on-screen keyboard is up). */
+  hidden?: boolean
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -34,7 +36,7 @@ export const DOCK_CLEARANCE = 'pb-[calc(11rem_+_env(safe-area-inset-bottom))]'
  * `<TabsContent>` panels live in the page (`app/app/page.tsx`), so the desktop list and
  * the phone dock are two views of one tab set and every tab is wired to its panel.
  */
-export function TabBar({ taskBadgeCount, variant }: Props) {
+export function TabBar({ taskBadgeCount, variant, hidden }: Props) {
   const badge = taskBadgeCount !== undefined && taskBadgeCount > 0 ? (taskBadgeCount > 9 ? '9+' : String(taskBadgeCount)) : null
   const dock = variant === 'dock'
 
@@ -81,7 +83,7 @@ export function TabBar({ taskBadgeCount, variant }: Props) {
 
   if (!dock) return list
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 bg-background px-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] pt-2.5">
+    <div className={cn('fixed inset-x-0 bottom-0 z-40 bg-background px-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] pt-2.5', hidden && 'hidden')}>
       <div className="mx-auto w-full max-w-xl">{list}</div>
     </div>
   )

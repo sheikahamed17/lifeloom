@@ -53,8 +53,15 @@ overrides:
   # vite (5 alerts) is fixed by declaring it as a direct devDependency (^8.3.5): it is
   # only a PEER of vitest, and overrides don't reach auto-installed peers. Don't add
   # a bare `vite:` override back — same specifier-rewrite trap as zod above.
-  # Not fixable by override (no patched release on the line in use) — build/lint
-  # tooling only, never shipped in the Worker: minimatch 10.x (GHSA-g3hv-75wg-m249,
-  # via @ts-morph/common and @typescript-eslint; fix is 11.x only, a major that
-  # typescript-eslint doesn't support), deepmerge (fix 4.3.2 is unpublished).
-  # Revisit when those parents move up.
+  # 2026-11-16 — the last three open alerts:
+  # minimatch 10.x (GHSA-g3hv-75wg-m249, med) is fixed only in 11.x. Its 10.x users are
+  # @typescript-eslint/typescript-estree (lint only) and, before shadcn left the tree,
+  # @ts-morph/common; both only call minimatch(path, pattern, opts), and 11 dropped
+  # only the AST and makeRe exports. Major-scoped key (zod trap above).
+  'minimatch@10': '^11.0.3'
+  # fast-xml-parser <=5.11.2 (low, quadratic CPU on unterminated stop-node tags) via
+  # OpenNext's @aws-sdk/xml-builder; same major, so version-scoped like zod.
+  'fast-xml-parser@<5.12.0': '^5.12.1'
+  # deepmerge (low, no patched release) came only from the shadcn CLI's registry code.
+  # The app needed just shadcn's stylesheet, now vendored as src/app/shadcn-tailwind.css,
+  # so `shadcn` is no longer a dependency; run it with `pnpm dlx shadcn@4 add <name>`.

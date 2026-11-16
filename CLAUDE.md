@@ -59,7 +59,7 @@ Walk them through the steps below. **The canonical, always-up-to-date reference 
 - `src/app/` — App Router routes, API handlers, and pages (`/app`, `/analytics`, `/insights`, `/settings/*`).
 - `src/lib/` — sync engine, agents, ingest, auth/email, and pure helpers (unit-tested).
 - `src/components/` — UI, one folder per area. **Put every new `.tsx` component in the matching folder** (import it as `@/components/<folder>/<file>`; no files directly in `src/components/`):
-  - `ui/` — shadcn primitives only (Button, Input, Select, Dialog, Table…). Added with `shadcn add`; every control in the app must come from here (ESLint bans raw `<button>`, `<input>`, `<select>`, `<table>`…).
+  - `ui/` — shadcn primitives only (Button, Input, Select, Dialog, Table…). Added with `pnpm dlx shadcn@4 add <name>` (the CLI is deliberately not a dependency; its stylesheet is vendored as `src/app/shadcn-tailwind.css`); every control in the app must come from here (ESLint bans raw `<button>`, `<input>`, `<select>`, `<table>`…).
   - `layout/` — app chrome: header, page shell, tab bar, global search, demo banner, lock screen, today nudge.
   - `providers/` — non-visual runtime: background sync, service-worker registrar, undo provider.
   - `capture/` — the capture box and its results: confirmation chip, voice/receipt buttons, query answer cards.

@@ -36,7 +36,16 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: better-auth
         update-types: [version-update:semver-major]
+      # A new TypeScript major is a planned compiler upgrade, not a weekly PR.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # Types must match the Node line the app runs on (Node 22 in CI and in the
+      # docs), or they'd offer APIs the runtime doesn't have.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
 
+  # Third-party actions are pinned to a commit SHA with the version in a comment
+  # (CodeQL actions/unpinned-tag); Dependabot updates the SHA and the comment together.
   - package-ecosystem: github-actions
     directory: /
     schedule:

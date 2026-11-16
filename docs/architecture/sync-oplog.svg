@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" role="img" aria-labelledby="t d">
+  <title id="t">Sync: an op-log with per-field last-writer-wins</title>
+  <desc id="d">Two devices each write ops stamped with a hybrid logical clock. They push and pull them through /api/sync in bounded batches. The server appends every op to the op_log, the source of truth, and materializes projection tables from it, where for each field the op with the highest clock wins. Both devices converge on the same value.</desc>
+  <style>
+    svg{--bg:#F2F3EE;--surface:#FFFFFF;--ink:#13251F;--muted:#5B6660;--line:#C5CBC0;--frame:#E7EAE2;--panel:#13251F;--panel-ink:#F2F3EE;--panel-muted:#B9C4BC;--win:#2F5FD0}
+    @media (prefers-color-scheme: dark){svg{--bg:#0E1512;--surface:#17211D;--ink:#E7ECE6;--muted:#9AA69F;--line:#3A4842;--frame:#131C18;--panel:#26392F;--panel-ink:#EEF2EC;--panel-muted:#B2C0B7;--win:#8FB0F5}}
+    text{font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+    .bg{fill:var(--bg)} .frame{fill:var(--frame)} .box{fill:var(--surface);stroke:var(--line)} .panel{fill:var(--panel)}
+    .h{fill:var(--ink);font-size:20px;font-weight:700} .sub{fill:var(--muted);font-size:13px}
+    .t{fill:var(--ink);font-size:14px;font-weight:600} .s{fill:var(--muted);font-size:12px} .r{fill:var(--ink);font-size:12.5px}
+    .pt{fill:var(--panel-ink);font-size:15px;font-weight:700} .ps{fill:var(--panel-muted);font-size:12px} .pr{fill:var(--panel-ink);font-size:12.5px}
+    .win{fill:var(--win);font-weight:700} .lbl{fill:var(--muted);font-size:11.5px}
+    .ar{stroke:var(--muted);stroke-width:1.5;fill:none} .ah{fill:var(--muted)}
+    .rule{stroke:var(--line)} .prule{stroke:var(--panel-muted);opacity:.35}
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+  </defs>
+
+  <rect class="bg" width="960" height="470"/>
+  <text class="h" x="32" y="40">Sync: an op-log with per-field last-writer-wins</text>
+  <text class="sub" x="32" y="61">Every change is an append-only op stamped with a hybrid logical clock (HLC). The clock, not arrival order, decides.</text>
+
+  <!-- Devices -->
+  <rect class="box" x="32" y="92" width="272" height="124" rx="12"/>
+  <text class="t" x="48" y="117">Phone, offline on the train</text>
+  <text class="s" x="48" y="136">writes to Dexie, queues the op</text>
+  <line class="rule" x1="48" y1="152" x2="288" y2="152"/>
+  <text class="r" x="48" y="176">hlc 12 · money/a1 · category = Food</text>
+  <text class="s" x="48" y="198">pushes when it's back online</text>
+
+  <rect class="box" x="32" y="260" width="272" height="124" rx="12"/>
+  <text class="t" x="48" y="285">Laptop, a minute later</text>
+  <text class="s" x="48" y="304">edits the same entry</text>
+  <line class="rule" x1="48" y1="320" x2="288" y2="320"/>
+  <text class="r" x="48" y="344">hlc 15 · money/a1 · category = Dining</text>
+  <text class="s" x="48" y="366">pushes straight away</text>
+
+  <!-- Sync endpoint -->
+  <rect class="box" x="372" y="166" width="196" height="144" rx="12"/>
+  <text class="t" x="388" y="192">/api/sync</text>
+  <text class="s" x="388" y="216">push: my new ops</text>
+  <text class="s" x="388" y="236">pull: ops since my cursor</text>
+  <text class="s" x="388" y="256">bounded batches,</text>
+  <text class="s" x="388" y="274">applied in HLC order</text>
+  <text class="s" x="388" y="294">idempotent per op id</text>
+
+  <path class="ar" d="M306,170 C340,170 340,212 370,212" marker-start="url(#a)" marker-end="url(#a)"/>
+  <path class="ar" d="M306,322 C340,322 340,268 370,268" marker-start="url(#a)" marker-end="url(#a)"/>
+
+  <!-- op_log -->
+  <rect class="panel" x="632" y="92" width="296" height="156" rx="12"/>
+  <text class="pt" x="648" y="118">op_log — the source of truth</text>
+  <text class="ps" x="648" y="137">append-only; every op from every device</text>
+  <line class="prule" x1="648" y1="154" x2="912" y2="154"/>
+  <text class="pr" x="648" y="176">hlc 12 · money/a1 · category = Food</text>
+  <text class="pr" x="648" y="198">hlc 15 · money/a1 · category = Dining</text>
+  <text class="pr" x="648" y="220">hlc 16 · money/a1 · amount = 24000</text>
+  <text class="ps" x="648" y="240">amounts in minor units (₹240.00)</text>
+
+  <path class="ar" d="M570,238 H630" marker-end="url(#a)"/>
+  <text class="lbl" x="600" y="230" text-anchor="middle">append</text>
+
+  <!-- Projection -->
+  <rect class="box" x="632" y="288" width="296" height="120" rx="12"/>
+  <text class="t" x="648" y="313">Projection: money row a1</text>
+  <text class="s" x="648" y="332">built by materializeRow; rebuildable any time</text>
+  <line class="rule" x1="648" y1="348" x2="912" y2="348"/>
+  <text class="r" x="648" y="372">category = <tspan class="win">Dining</tspan>  (hlc 15 beats 12)</text>
+  <text class="r" x="648" y="394">amount = 24000  (hlc 16, a different field)</text>
+
+  <path class="ar" d="M780,250 V286" marker-end="url(#a)"/>
+  <text class="lbl" x="790" y="273">per field, highest HLC wins</text>
+
+  <text class="sub" x="32" y="434">Both devices pull the ops they missed, apply the same rule locally, and land on Dining too.</text>
+  <text class="sub" x="32" y="453">Edits to different fields of one row both survive (the amount at hlc 16). The op_log is kept; tables are rebuilt from it.</text>
+</svg>

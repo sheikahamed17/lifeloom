@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="960" height="520" role="img" aria-labelledby="t d">
+  <title id="t">From one line to a saved entry</title>
+  <desc id="d">Three paths. Capture: your text or voice goes to a Groq router, then a domain agent, then a confirmation chip, and is saved as an op in Dexie and synced. Ask: the router hands a question to a query agent that returns a plan, which runs over Dexie in your browser. Import: a forwarded bank alert is parsed on the server, matched to an account, written to the op-log, and shows under Needs you if anything is missing.</desc>
+  <style>
+    svg{--bg:#F2F3EE;--surface:#FFFFFF;--ink:#13251F;--muted:#5B6660;--line:#C5CBC0;--frame:#E7EAE2;--panel:#13251F;--panel-ink:#F2F3EE;--panel-muted:#B9C4BC}
+    @media (prefers-color-scheme: dark){svg{--bg:#0E1512;--surface:#17211D;--ink:#E7ECE6;--muted:#9AA69F;--line:#3A4842;--frame:#131C18;--panel:#26392F;--panel-ink:#EEF2EC;--panel-muted:#B2C0B7}}
+    text{font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+    .bg{fill:var(--bg)} .frame{fill:var(--frame)} .box{fill:var(--surface);stroke:var(--line)} .panel{fill:var(--panel)}
+    .h{fill:var(--ink);font-size:20px;font-weight:700} .sub{fill:var(--muted);font-size:13px}
+    .g{fill:var(--ink);font-size:13px;font-weight:700} .gs{fill:var(--muted);font-size:12px}
+    .t{fill:var(--ink);font-size:13.5px;font-weight:600} .s{fill:var(--muted);font-size:11.5px}
+    .pt{fill:var(--panel-ink);font-size:13.5px;font-weight:700} .ps{fill:var(--panel-muted);font-size:11.5px}
+    .ar{stroke:var(--muted);stroke-width:1.5;fill:none} .ah{fill:var(--muted)}
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+  </defs>
+
+  <rect class="bg" width="960" height="520"/>
+  <text class="h" x="32" y="40">From one line to a saved entry</text>
+  <text class="sub" x="32" y="61">A small router picks what you meant; a per-domain agent fills the fields; you confirm before anything is saved.</text>
+
+  <!-- Row 1: capture -->
+  <rect class="frame" x="16" y="80" width="928" height="128" rx="14"/>
+  <text class="g" x="32" y="104">Capture</text>
+  <text class="gs" x="96" y="104">“lunch 240” · “finish the deck by friday” · a voice note · a receipt photo</text>
+
+  <rect class="box" x="32" y="120" width="128" height="72" rx="10"/>
+  <text class="t" x="44" y="143">You type or say</text>
+  <text class="s" x="44" y="161">text, voice or receipt;</text>
+  <text class="s" x="44" y="177">voice → Whisper first</text>
+
+  <rect class="box" x="185" y="120" width="128" height="72" rx="10"/>
+  <text class="t" x="197" y="143">Router</text>
+  <text class="s" x="197" y="161">small Groq model</text>
+  <text class="s" x="197" y="177">picks the intent</text>
+
+  <rect class="box" x="338" y="120" width="128" height="72" rx="10"/>
+  <text class="t" x="350" y="143">Domain agent</text>
+  <text class="s" x="350" y="161">money, task, note…</text>
+  <text class="s" x="350" y="177">extracts the fields</text>
+
+  <rect class="box" x="491" y="120" width="128" height="72" rx="10"/>
+  <text class="t" x="503" y="143">Confirm chip</text>
+  <text class="s" x="503" y="161">edit, Split,</text>
+  <text class="s" x="503" y="177">Share with…</text>
+
+  <rect class="box" x="644" y="120" width="128" height="72" rx="10"/>
+  <text class="t" x="656" y="143">Op → Dexie</text>
+  <text class="s" x="656" y="161">saved instantly,</text>
+  <text class="s" x="656" y="177">offline; Undo</text>
+
+  <rect class="box" x="797" y="120" width="131" height="72" rx="10"/>
+  <text class="t" x="809" y="143">Synced to D1</text>
+  <text class="s" x="809" y="161">in the background,</text>
+  <text class="s" x="809" y="177">every device</text>
+
+  <path class="ar" d="M161,156 H183" marker-end="url(#a)"/>
+  <path class="ar" d="M314,156 H336" marker-end="url(#a)"/>
+  <path class="ar" d="M467,156 H489" marker-end="url(#a)"/>
+  <path class="ar" d="M620,156 H642" marker-end="url(#a)"/>
+  <path class="ar" d="M773,156 H795" marker-end="url(#a)"/>
+
+  <!-- Row 2: ask -->
+  <rect class="frame" x="16" y="224" width="928" height="128" rx="14"/>
+  <text class="g" x="32" y="248">Ask</text>
+  <text class="gs" x="32" y="268">“how much did I</text>
+  <text class="gs" x="32" y="284">spend on food</text>
+  <text class="gs" x="32" y="300">this month?”</text>
+  <text class="gs" x="32" y="324">same router →</text>
+
+  <path class="ar" d="M249,194 V262" marker-end="url(#a)"/>
+
+  <rect class="box" x="185" y="264" width="128" height="72" rx="10"/>
+  <text class="t" x="197" y="287">Query agent</text>
+  <text class="s" x="197" y="305">returns a plan,</text>
+  <text class="s" x="197" y="321">not an answer</text>
+
+  <rect class="box" x="338" y="264" width="128" height="72" rx="10"/>
+  <text class="t" x="350" y="287">Plan runs locally</text>
+  <text class="s" x="350" y="305">over Dexie in</text>
+  <text class="s" x="350" y="321">your browser</text>
+
+  <rect class="box" x="491" y="264" width="128" height="72" rx="10"/>
+  <text class="t" x="503" y="287">Answer card</text>
+  <text class="s" x="503" y="305">plus a spoken</text>
+  <text class="s" x="503" y="321">summary</text>
+
+  <rect class="panel" x="644" y="264" width="284" height="72" rx="10"/>
+  <text class="pt" x="660" y="291">The model sees your question,</text>
+  <text class="pt" x="660" y="310">never your entries.</text>
+  <text class="ps" x="660" y="327">Totals and breakdowns are worked out on-device.</text>
+
+  <path class="ar" d="M314,300 H336" marker-end="url(#a)"/>
+  <path class="ar" d="M467,300 H489" marker-end="url(#a)"/>
+
+  <!-- Row 3: import -->
+  <rect class="frame" x="16" y="368" width="928" height="128" rx="14"/>
+  <text class="g" x="32" y="392">Import</text>
+  <text class="gs" x="88" y="392">your bank's alert emails and SMS, hands-free</text>
+
+  <rect class="box" x="32" y="408" width="128" height="72" rx="10"/>
+  <text class="t" x="44" y="431">Bank alert</text>
+  <text class="s" x="44" y="449">forwarded by Apps</text>
+  <text class="s" x="44" y="465">Script or a Shortcut</text>
+
+  <rect class="box" x="185" y="408" width="128" height="72" rx="10"/>
+  <text class="t" x="197" y="431">/api/ingest</text>
+  <text class="s" x="197" y="449">checks your</text>
+  <text class="s" x="197" y="465">ingest token</text>
+
+  <rect class="box" x="338" y="408" width="128" height="72" rx="10"/>
+  <text class="t" x="350" y="431">Alert agent</text>
+  <text class="s" x="350" y="449">amount, merchant,</text>
+  <text class="s" x="350" y="465">card digits</text>
+
+  <rect class="box" x="491" y="408" width="128" height="72" rx="10"/>
+  <text class="t" x="503" y="431">Account match</text>
+  <text class="s" x="503" y="449">last-4 in the name</text>
+  <text class="s" x="503" y="465">or a hint; no guessing</text>
+
+  <rect class="box" x="644" y="408" width="128" height="72" rx="10"/>
+  <text class="t" x="656" y="431">Op in the op-log</text>
+  <text class="s" x="656" y="449">on the server,</text>
+  <text class="s" x="656" y="465">pulled to Dexie</text>
+
+  <rect class="box" x="797" y="408" width="131" height="72" rx="10"/>
+  <text class="t" x="809" y="431">Needs you</text>
+  <text class="s" x="809" y="449">if a category or</text>
+  <text class="s" x="809" y="465">account is missing</text>
+
+  <path class="ar" d="M161,444 H183" marker-end="url(#a)"/>
+  <path class="ar" d="M314,444 H336" marker-end="url(#a)"/>
+  <path class="ar" d="M467,444 H489" marker-end="url(#a)"/>
+  <path class="ar" d="M620,444 H642" marker-end="url(#a)"/>
+  <path class="ar" d="M773,444 H795" marker-end="url(#a)"/>
+</svg>

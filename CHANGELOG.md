@@ -9,6 +9,19 @@ Each release is also published with notes on
 
 ## [Unreleased]
 
+### Added
+- **Architecture diagrams in the README.** Three SVGs in `docs/architecture/` replace the ASCII sketch: how the pieces fit together, the capture / ask / import paths, and how op-log sync with per-field last-writer-wins converges. They follow the app's palette and switch to a dark version with your system theme.
+- **`SECURITY.md` and private vulnerability reporting.** Reports go through the repository's Security tab as a private advisory instead of a public issue; the policy lists what's in scope and response times.
+- **Security audit workflow.** `.github/workflows/security-audit.yml` runs `pnpm audit` on every PR that changes dependencies and every Monday, and fails on any moderate or higher advisory. It never gates Deploy.
+- **Dependabot version updates.** `.github/dependabot.yml` opens a few grouped PRs a week (dev and production minor/patch bumps, plus monthly GitHub Actions updates); majors of Next.js, React and Better Auth are left for planned upgrades. Never auto-merged, because merging deploys.
+
+### Security
+- **Cleared the last three Dependabot alerts; `pnpm audit` reports no known vulnerabilities.**
+  - `minimatch` 10.x (moderate, denial of service through glob-part amplification; fixed only in 11.x) is moved onto 11.0.3 by a major-scoped override. Its only 10.x users, typescript-eslint and ts-morph, call just `minimatch()`; 11 removed only the `AST` and `makeRe` exports.
+  - `fast-xml-parser` (low, quadratic CPU on unterminated stop-node tags) moves to 5.12.1, in OpenNext's AWS SDK, through a version-scoped override.
+  - `deepmerge` (low, prototype poisoning, no patched release) is gone. It came only from the `shadcn` CLI, which the app installed for a single stylesheet; that stylesheet is now vendored as `src/app/shadcn-tailwind.css` and the CLI runs on demand with `pnpm dlx shadcn@4 add <name>`. This drops about 1,000 lines from the lockfile.
+- **Secret scanning with push protection is on**, alongside GitGuardian: a push that contains a recognised API key is blocked before it reaches GitHub. CodeQL now runs the extended security query suite.
+
 ## [1.4.0] — 2026-11-16
 
 Pulse is now **Lifeloom**, with **shared expenses** (your share vs. what others

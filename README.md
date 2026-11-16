@@ -130,15 +130,15 @@ Lifeloom uses a light, calm look we call the **"quiet ledger"**. It's set in Sch
 
 ## How it works
 
-```
-                    ┌─────────────────────────── your device ───────────────────────────┐
-  voice / text ──▶  │  Router (Groq)  ──▶  domain agent  ──▶  op written to Dexie (local) │
-                    │                                                    │                │
-                    │            UI reads Dexie live (offline-first)     │  op-log sync   │
-                    └────────────────────────────────────────────────────┼───────────────┘
-                                                                          ▼
-                                          Cloudflare Worker  ──▶  D1 (op-log + projections) · R2 (files)
-```
+<p align="center"><img src="docs/architecture/system-overview.svg" alt="Architecture: your devices keep data in Dexie (IndexedDB) and sync an op-log with a Cloudflare Worker in your own Cloudflare account, which stores it in D1 and receipts in R2 and runs five cron triggers. The only outside services are Groq (text only), Resend for the sign-in email, your bank's forwarded alerts, and the web push service." width="100%" /></p>
+
+**Capture, ask and import.** Every line you type or say goes through the same router; questions come back as a plan that runs on your device, and bank alerts arrive on their own.
+
+<p align="center"><img src="docs/architecture/capture-flow.svg" alt="Three paths. Capture: text or voice, then the Groq router, a domain agent, the confirmation chip, an op saved to Dexie, and background sync to D1. Ask: the router hands the question to a query agent that returns a plan, which runs over Dexie and shows an answer card; the model never sees your entries. Import: a forwarded bank alert goes to /api/ingest, is parsed, matched to an account, written to the op-log, and waits under Needs you if a category or account is missing." width="100%" /></p>
+
+**Sync.** Two devices can edit offline and still agree, because each field takes the value with the highest clock.
+
+<p align="center"><img src="docs/architecture/sync-oplog.svg" alt="Sync: a phone writes category Food at hlc 12 while offline and a laptop writes category Dining at hlc 15. Both push and pull through /api/sync in bounded batches, applied in HLC order. The server appends every op to the op_log, the source of truth, and materializeRow builds the projection where Dining wins because hlc 15 beats 12, while an amount edit at hlc 16 on a different field also survives." width="100%" /></p>
 
 - **Local-first storage.** The UI reads and writes **Dexie** (IndexedDB) directly, so it's instant and fully functional offline.
 - **Sync = an op-log with per-field HLC last-writer-wins.** Every change is an append-only operation stamped with a hybrid logical clock. Sync is incremental (bounded per request), so it scales as history grows and converges deterministically across devices — no "who won?" ambiguity.
@@ -218,6 +218,7 @@ src/
 migrations/       # D1 schema, applied in order 0001 → 0030
 scripts/          # icon generation, service-worker build, router eval, VAPID keygen
 tests/            # vitest suites (agents, api routes, sync, lib)
+docs/architecture/ # the three README diagrams (SVG, light and dark)
 docs/superpowers/ # design specs and implementation plans
 ```
 
@@ -237,5 +238,7 @@ The suite covers the sync engine's convergence invariants, the agent/query pipel
 Lifeloom is an actively developed **personal project**, deployed to production and used daily. It ships behind a CI + Cloudflare deploy pipeline on every push to `main`; changes are recorded in the [changelog](./CHANGELOG.md) and cut as [tagged releases](https://github.com/sheikahamed17/lifeloom/releases) (semver from `v1.0.0`).
 
 > **Formerly Pulse.** The project was called Pulse until November 2026. The dated design docs under `docs/superpowers/`, this repo's Cloudflare resource names (`pulse`, `pulse-receipts`, `pulse-demo`) and the production URL still carry the old name (the old GitHub URL redirects here); nothing about your data or sign-in changed.
+
+**Found a security issue?** Please report it privately through the repo's [Security tab](https://github.com/sheikahamed17/lifeloom/security/advisories/new), not in a public issue. See [SECURITY.md](./SECURITY.md) for what's in scope and how the repo watches its own dependencies.
 
 No formal open-source license is attached yet — if you'd like to reuse the code, please ask. You're welcome to self-host your own copy for personal use.

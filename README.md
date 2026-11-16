@@ -12,7 +12,7 @@ Ask *"how much did I spend on food this month?"* out loud and hear the answer. S
 [![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%C2%B7%20D1%20%C2%B7%20R2-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)](#install-it)
-[![Tests](https://img.shields.io/badge/tests-1259%20passing-3FB950)](#testing)
+[![Tests](https://img.shields.io/badge/tests-1491%20passing-3FB950)](#testing)
 [![Release](https://img.shields.io/github/v/release/sheikahamed17/lifeloom?color=6E7BFF&label=release)](https://github.com/sheikahamed17/lifeloom/releases)
 
 <br/>
@@ -40,16 +40,19 @@ Most life-trackers make you fill in forms. Lifeloom flips it: you **say or type 
 
 <table>
   <tr>
-    <td align="center" width="25%"><img src="docs/screenshots/capture.jpg" alt="Voice & natural-language capture" width="200" /><br/><sub><b>Capture</b> — one line, any domain</sub></td>
-    <td align="center" width="25%"><img src="docs/screenshots/money.jpg" alt="Money tab: spend breakdown & filters" width="200" /><br/><sub><b>Money</b> — spend, budgets & filters</sub></td>
-    <td align="center" width="25%"><img src="docs/screenshots/tasks.jpg" alt="Tasks with projects and sub-tasks" width="200" /><br/><sub><b>Tasks</b> — projects & sub-tasks</sub></td>
-    <td align="center" width="25%"><img src="docs/screenshots/learn.jpg" alt="Learning notes with tags" width="200" /><br/><sub><b>Learn</b> — tagged learnings</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/capture.jpg" alt="Money home: the month's spend in a green summary panel, Get started and Needs you, with the capture field above the tab dock" width="200" /><br/><sub><b>Capture</b> — one line, any domain</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/money.jpg" alt="Money tab: where the month's spend went, upcoming payments and accounts as ruled lists" width="200" /><br/><sub><b>Money</b> — where it went, what's coming</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/people.jpg" alt="Settings, People: who owes you from shared expenses, with Mark paid" width="200" /><br/><sub><b>People</b> — shared expenses & who owes you</sub></td>
   </tr>
   <tr>
+    <td align="center"><img src="docs/screenshots/tasks.jpg" alt="Tasks with projects, due dates and nested sub-tasks" width="200" /><br/><sub><b>Tasks</b> — projects & sub-tasks</sub></td>
+    <td align="center"><img src="docs/screenshots/learn.jpg" alt="Learning log with tagged entries grouped by week" width="200" /><br/><sub><b>Learn</b> — tagged learnings</sub></td>
     <td align="center"><img src="docs/screenshots/notes.jpg" alt="Notes with search and tags" width="200" /><br/><sub><b>Notes</b> — search & tags</sub></td>
-    <td align="center"><img src="docs/screenshots/habits.jpg" alt="Habits with streaks" width="200" /><br/><sub><b>Habits</b> — streaks & schedules</sub></td>
-    <td align="center"><img src="docs/screenshots/analytics.jpg" alt="Analytics: net worth & unusual spending" width="200" /><br/><sub><b>Analytics</b> — net worth & anomalies</sub></td>
-    <td align="center"><img src="docs/screenshots/assistant.jpg" alt="AI assistant: ask your data" width="200" /><br/><sub><b>Assistant</b> — ask your data</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/habits.jpg" alt="Habits with streaks and schedules" width="200" /><br/><sub><b>Habits</b> — streaks & schedules</sub></td>
+    <td align="center"><img src="docs/screenshots/analytics.jpg" alt="Analytics: net worth over time and unusual spending" width="200" /><br/><sub><b>Analytics</b> — net worth & anomalies</sub></td>
+    <td align="center"><img src="docs/screenshots/assistant.jpg" alt="AI assistant: the ask-your-data prompt with example questions" width="200" /><br/><sub><b>Assistant</b> — ask your data</sub></td>
   </tr>
 </table>
 
@@ -59,11 +62,12 @@ Most life-trackers make you fill in forms. Lifeloom flips it: you **say or type 
 - 💬 **Ask your data** — read-only natural-language questions across all four domains (*"total spend last week"*, *"what's overdue?"*), answered by voice or text — or kept going as a conversation with the AI assistant.
 - 💰 **Accounts & net worth** — balances across your accounts (assets and debts), a derived net-worth figure, and how it's moved over time.
 - 📴 **Local-first & offline** — every entry is written to on-device storage first, then synced. No spinner waiting on the network.
-- 🔐 **Passkey (Face ID) sign-in** — plus a local PIN lock and a durable session; magic-link fallback.
+- 🔐 **Passkey (Face ID) sign-in, owner only** — plus a local PIN lock and a durable session; magic-link fallback. Your instance has exactly one account (the one the setup wizard creates); nobody else can request a sign-in link or create a second user.
+- ↩️ **Every capture confirms, with Undo** — "Saved −₹120 · Dining" with one-tap Undo, and the new row flashes into view; anything the AI can't place stays in the field instead of vanishing.
 - 📈 **Weekly AI digests** — a browsable history of auto-generated summaries of your week.
 - 🏦 **Bank-transaction auto-import** — forward your bank's alert emails and they land as categorized entries on the right card or account, hands-free.
 - 📊 **Spending trends** — a dedicated analytics view: spend / income / net over time, top movers, and per-category small multiples.
-- 🧩 **Split transactions** — allocate one payment across several categories, so budgets and analytics stay accurate.
+- 🧩 **Split transactions** — allocate one payment across several categories, so budgets and analytics stay accurate — at capture time or later, on an entry you've already saved.
 - 👥 **Shared expenses** — pay the rent or dinner in full, say who owes what, and spend only counts *your* share; repayments settle the debt and are never income.
 - 📲 **Installable PWA** — add to home screen; push notifications for budget alerts and follow-ups.
 - 🚀 **One-click deploy** — the *Deploy to Cloudflare* button stands up your own isolated instance (database, storage, and schema migrations) on the free tier in a single click.
@@ -88,7 +92,7 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 - **Savings goals.** Target amounts — linked to an account or tracked manually — with progress bars on Money home.
 - **Transfers.** Move money between your own accounts (Bank → Savings, or paying down a card) without it distorting your spend/income totals.
 - **Recurring transfers.** Schedule those moves — a monthly card payment or savings sweep that posts itself.
-- **Split transactions.** Allocate one payment across several categories; each part flows into budgets and analytics as a normal entry.
+- **Split transactions.** Allocate one payment across several categories; each part flows into budgets and analytics as a normal entry. Split works on a new capture or on an entry you've already saved (open it, then *Split*): the saved entry becomes the first part and keeps its receipt and history.
 - **Shared expenses.** Share an entry with named people ("rent 20000 split with Arun"); spend, budgets, analytics and the digest count your share while balances keep the full payment. Settings → People shows who owes you; "Arun paid me 10000" or *Mark paid* tops up an account without recording income.
 - **Cards & debts.** A per-card view: what's owed now, this month's spend charged to it, and the last payment made.
 - **Salary reminder.** An opt-in monthly nudge on the last working day to log income that arrives with no email trail.
@@ -103,6 +107,8 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 
 ### Capture & auto-import
 - **Manual add** on any tab, with back-dating for money entries.
+- **Confirm, then undo.** Every save says what it did and offers Undo; the confirmation chip lets you fix amount, category, description and account before saving, and *Share with…* or *Split* from the same chip.
+- **Needs you first.** Imported entries that still need a category or an account wait at the top of Money home, with *Set category* or *Which account?* right there in the row.
 - **Categorize-on-ingest.** Auto-imported transactions arrive with a one-tap category picker and a push notification.
 - **Email auto-ingest.** A Gmail filter + a tiny Google Apps Script forwards bank alerts to your instance — the only truly hands-off path on iOS.
 - **Auto-detect the account.** An imported alert is tagged to the right account from the card or account number it mentions — name an account with its last 4 digits (*"Rewards Card 7392"*) and it just works, or add extra numbers/keywords as hints (e.g. a bank account's debit-card digits). Only a real card/account reference counts (`ending 7392`, `A/c XX4821`, `**6604`), never an amount or a UPI ref, and an ambiguous alert is left for you rather than guessed.
@@ -114,9 +120,13 @@ Plus two non-finance domains that round out daily self-tracking: 🔥 **Habits &
 - **Category management.** Rename, set icons, archive/restore, and **merge duplicates** (reassigning their entries) in Settings → Categories.
 - **Filter, sort & timestamps.** Every list filters and sorts (money by category / source / direction / date range, or by amount); every entry shows when it's from.
 - **Analytics** (`/analytics`). Spend trend, income vs spend + net, top movers, per-category small multiples, **net worth over time**, and **unusual-spending** detection — inline SVG on a colorblind-validated palette.
-- **Global search.** One 🔍 searches all four domains at once and jumps to — and flashes — the matching row.
+- **Global search.** The search icon in the header searches all four domains at once and jumps to — and flashes — the matching row.
 - **Backup & restore.** Export your full history (plus money as CSV) and re-import it into any instance — a non-destructive, on-device merge.
 - **Money home.** One screen for the month: what you've spent, what needs you, where it went, what's coming up, accounts and goals, plus a Getting Started checklist that guides a fresh instance through setup and hides itself once you're rolling.
+
+## Design
+
+Lifeloom uses a light, calm look we call the **"quiet ledger"**. It's set in Schibsted Grotesk on an off-white ground with green-black ink. Sections are ruled lists rather than boxed cards. Each screen gets at most one green summary panel for its headline number, and only things waiting on you sit on a raised white row. Orange marks only what needs attention (overdue, due soon, open counts), blue marks money coming in, and spend is plain ink, never red. Categories and accounts show a letter square instead of an emoji. On a phone the sections sit in a dark floating tab dock with the capture field fixed above it. Every control is a shadcn/ui component, and every inner page shares one page shell.
 
 ## How it works
 
@@ -188,6 +198,7 @@ Once deployed, open your instance on your phone and **Add to Home Screen** to in
 ```bash
 pnpm install
 pnpm dev          # http://localhost:3000  (magic-link prints to the console when email is unconfigured)
+pnpm dev:demo     # same, in demo mode: local D1 migrated + seeded with sample data, no sign-in
 pnpm test         # vitest
 pnpm typecheck    # tsc --noEmit
 pnpm lint         # eslint
@@ -203,8 +214,8 @@ pnpm cf:preview   # build + run the Worker locally
 src/
   app/            # Next App Router — routes, API handlers, pages (/app, /analytics, /insights, /settings/*)
   lib/            # sync engine, agents, ingest, auth/email, pure helpers (unit-tested)
-  components/     # UI: capture chips, domain lists, answer cards, charts
-migrations/       # D1 schema, applied in order 0001 → 0029
+  components/     # UI in feature folders: ui (shadcn), layout, capture, money, tasks, learning, notes, insights, charts, shared…
+migrations/       # D1 schema, applied in order 0001 → 0030
 scripts/          # icon generation, service-worker build, router eval, VAPID keygen
 tests/            # vitest suites (agents, api routes, sync, lib)
 docs/superpowers/ # design specs and implementation plans

@@ -9,6 +9,7 @@ a file in place to refresh that tile, no README edit needed:
 |---|---|
 | `capture.jpg` | Home / **Money** — the month panel, "Needs you", and the capture field above the tab dock |
 | `money.jpg` | **Money** tab — where it went, coming up, accounts |
+| `people.jpg` | **Settings → People** — shared expenses: who owes you, *Paid into*, and *Mark paid* |
 | `tasks.jpg` | **Tasks** — projects, due dates, and nested sub-tasks |
 | `learn.jpg` | **Learn** — tagged learnings grouped by week |
 | `notes.jpg` | **Notes** — search and tagged notes |
@@ -18,7 +19,7 @@ a file in place to refresh that tile, no README edit needed:
 
 ## How these were made
 
-The current set (15 November 2026, the "quiet ledger" look) was captured headlessly from the live demo with Playwright: Chromium mobile emulation, 390×844 viewport at 2× (780×1688 px), JPEG quality 85. Phone screenshots as described below work just as well; keep the filenames.
+The current set (15 November 2026, the "quiet ledger" look) was captured headlessly from the live demo with Playwright: Chromium mobile emulation, 390×844 viewport at 2× (780×1688 px), JPEG quality 85. `people.jpg` was added on 16 November 2026 the same way, with the demo banner dismissed. Phone screenshots as described below work just as well; keep the filenames.
 
 ## How to refresh (iOS PWA)
 

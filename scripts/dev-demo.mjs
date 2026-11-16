@@ -9,19 +9,25 @@
 //
 // Use `npm run dev` instead for your own (non-demo) config.
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 
 const PORT = 3000
 const STATE = '.wrangler/state'
 const hex = n => randomBytes(n).toString('hex')
 
-if (!existsSync('.dev.vars')) {
+// Create .dev.vars only if it doesn't exist, in one step: the 'wx' flag fails with
+// EEXIST instead of checking first and writing later, so there's no window in which
+// a file that appeared in between gets overwritten.
+try {
   writeFileSync(
     '.dev.vars',
     `CRON_SECRET=${hex(24)}\nBETTER_AUTH_SECRET=${hex(24)}\nBETTER_AUTH_URL=http://localhost:${PORT}\n`,
+    { flag: 'wx' },
   )
   console.log('[dev:demo] wrote .dev.vars with random local secrets (git-ignored)')
+} catch (err) {
+  if (err.code !== 'EEXIST') throw err
 }
 const cronSecret = /^CRON_SECRET=(.+)$/m.exec(readFileSync('.dev.vars', 'utf8'))?.[1]?.trim()
 if (!cronSecret) {

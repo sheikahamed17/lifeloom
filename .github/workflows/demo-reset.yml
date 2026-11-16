@@ -10,6 +10,10 @@ on:
     - cron: '0 */4 * * *'
   workflow_dispatch:
 
+# The job only curls the demo with a repo secret; it never touches the repo, so the
+# GITHUB_TOKEN gets no permissions at all.
+permissions: {}
+
 jobs:
   reset:
     runs-on: ubuntu-latest

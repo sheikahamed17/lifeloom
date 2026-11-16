@@ -1,0 +1,40 @@
+name: Security audit
+# Catches a known-vulnerable dependency before someone else finds it:
+#  - on every PR that touches dependencies, so a new advisory can't be merged in;
+#  - every Monday, so an advisory published against a package already in the lockfile
+#    shows up as a failed run (GitHub emails the repo owner) even with no PR open;
+#  - on demand from the Actions tab.
+# It never gates Deploy: a fresh advisory on main shouldn't block an unrelated fix.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/security-audit.yml
+  schedule:
+    - cron: "30 1 * * 1" # Mondays 01:30 UTC (07:00 IST)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # `pnpm audit` reads the lockfile and the registry advisory feed; no install needed.
+      # Fails on moderate or higher. Low advisories are printed but don't fail the run.
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=moderate

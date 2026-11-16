@@ -1,0 +1,48 @@
+# Dependabot version updates. Security-fix PRs are separate and immediate (enabled
+# in Settings → Code security); this file adds a calm weekly sweep so packages don't
+# drift far enough behind that the next security fix becomes a risky major jump.
+#
+# Merging any PR to main auto-deploys to production, so these are grouped into a
+# few PRs a week and never auto-merged: review, let CI pass, then merge.
+version: 2
+updates:
+  - package-ecosystem: npm # reads pnpm-lock.yaml and the overrides in pnpm-workspace.yaml
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build(deps)"
+    groups:
+      # One PR for all minor and patch bumps of dev tooling (lint, test, types, build).
+      dev-minor-patch:
+        dependency-type: development
+        update-types: [minor, patch]
+      # One PR for minor and patch bumps of what ships in the app.
+      prod-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+    ignore:
+      # Majors of the framework stack are planned upgrades (read the Next.js / React
+      # guides first, see AGENTS.md), not a weekly PR.
+      - dependency-name: next
+        update-types: [version-update:semver-major]
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+      - dependency-name: better-auth
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        patterns: ["*"]

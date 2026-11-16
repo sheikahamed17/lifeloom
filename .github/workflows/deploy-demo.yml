@@ -21,13 +21,13 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'pnpm'
@@ -43,20 +43,20 @@ jobs:
         run: pnpm cf:build
 
       - name: Create demo R2 bucket (idempotent)
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: r2 bucket create pulse-demo-receipts
         continue-on-error: true
 
       - name: Apply D1 migrations to the DEMO database
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: d1 migrations apply DB --remote --config wrangler.demo.toml
 
       - name: Deploy the demo Worker
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy --config wrangler.demo.toml

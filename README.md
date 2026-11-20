@@ -12,7 +12,7 @@ Ask *"how much did I spend on food this month?"* out loud and hear the answer. S
 [![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%C2%B7%20D1%20%C2%B7%20R2-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)](#install-it)
-[![Tests](https://img.shields.io/badge/tests-1491%20passing-3FB950)](#testing)
+[![Tests](https://img.shields.io/badge/tests-1525%20passing-3FB950)](#testing)
 [![Release](https://img.shields.io/github/v/release/sheikahamed17/lifeloom?color=6E7BFF&label=release)](https://github.com/sheikahamed17/lifeloom/releases)
 
 <br/>
@@ -215,7 +215,7 @@ src/
   app/            # Next App Router — routes, API handlers, pages (/app, /analytics, /insights, /settings/*)
   lib/            # sync engine, agents, ingest, auth/email, pure helpers (unit-tested)
   components/     # UI in feature folders: ui (shadcn), layout, capture, money, tasks, learning, notes, insights, charts, shared…
-migrations/       # D1 schema, applied in order 0001 → 0030
+migrations/       # D1 schema, applied in order 0001 → 0031
 scripts/          # icon generation, service-worker build, router eval, VAPID keygen
 tests/            # vitest suites (agents, api routes, sync, lib)
 docs/architecture/ # the three README diagrams (SVG, light and dark)

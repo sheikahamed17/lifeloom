@@ -11,6 +11,7 @@ Each release is also published with notes on
 
 ### Fixed
 - **Yen amounts on the capture and edit card.** JPY has no minor unit, but the card treated every currency as having two decimals: a ¥1,500 entry showed as ¥15, and typing 1500 saved ¥150,000. The amount, split parts, shared-with amounts, "your share", "remaining" and the confirm button now all read and write whole yen. Amount text goes through new `amountText` / `parseAmountFor` / `formatMajor` helpers in `src/lib/currency.ts`, which "I paid this for someone" and "Record a payment" now share.
+- **Yen amounts in Settings and in answers.** Adding or editing an account's opening balance, a goal's target or saved amount, or a transfer now reads typed yen as whole yen (it used to multiply by 100, so editing a ¥1,500 balance and saving it again made it ¥150,000). The answer cards for questions about your money show yen entries at their real amount instead of a hundredth of it.
 
 ## [1.5.0] — 2026-11-20
 

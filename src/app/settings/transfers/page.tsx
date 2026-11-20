@@ -9,9 +9,8 @@ import { useAllAccounts } from '@/hooks/use-all-accounts'
 import { useTransfers } from '@/hooks/use-transfers'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
-import { parseAmountInput } from '@/lib/parse-amount'
 import { computeNextDue } from '@/lib/recurring'
-import { formatMinor } from '@/lib/currency'
+import { formatMinor, parseAmountFor } from '@/lib/currency'
 import { formatDay } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,9 +81,10 @@ function TransfersPageInner() {
 
   async function addTransfer() {
     if (!userId || !fromAccountId || !toAccountId || !amount.trim() || !occurredAt.trim()) return
-    const amountMinor = parseAmountInput(amount)
-    if (amountMinor === null || amountMinor <= 0) return
     if (!fromAccount) return
+    // Read in the account's currency (JPY is whole yen); both accounts share it.
+    const amountMinor = parseAmountFor(amount, fromAccount.currency)
+    if (amountMinor === null || amountMinor <= 0) return
 
     const op = await generateOp({
       entity_kind: 'transfer',
@@ -162,7 +162,8 @@ function TransfersPageInner() {
     )
   }
 
-  const canSubmit = fromAccountId && toAccountId && amount.trim() && parseAmountInput(amount) !== null && parseAmountInput(amount)! > 0
+  const typedMinor = fromAccount ? parseAmountFor(amount, fromAccount.currency) : null
+  const canSubmit = fromAccountId && toAccountId && amount.trim() && typedMinor !== null && typedMinor > 0
 
   return (
     <PageShell title="Transfers" back={BACK} description={DESCRIPTION}>

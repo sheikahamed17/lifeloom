@@ -8,9 +8,8 @@ import { useGoals } from '@/hooks/use-goals'
 import { useArchivedGoals } from '@/hooks/use-archived-goals'
 import { useAccounts } from '@/hooks/use-accounts'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
-import { parseAmountInput } from '@/lib/parse-amount'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
-import { formatMinor } from '@/lib/currency'
+import { formatMajor, formatMinor, parseAmountFor } from '@/lib/currency'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
@@ -58,12 +57,12 @@ function GoalsPageInner() {
 
   async function addGoal() {
     if (!userId || !newName.trim() || !newTargetAmount.trim()) return
-    const targetMinor = parseAmountInput(newTargetAmount)
-    if (targetMinor === null) return
-
     const linkedAccount = newAccountId ? accounts.find(a => a.id === newAccountId) : null
     const currency = linkedAccount ? linkedAccount.currency : newCurrency
-    const savedMinor = linkedAccount ? 0 : (parseAmountInput(newSavedAmount) ?? 0)
+    // Typed amounts are read in the goal's currency (JPY is whole yen).
+    const targetMinor = parseAmountFor(newTargetAmount, currency)
+    if (targetMinor === null) return
+    const savedMinor = linkedAccount ? 0 : (parseAmountFor(newSavedAmount, currency) ?? 0)
 
     const op = await generateOp({
       entity_kind: 'goal',
@@ -239,20 +238,19 @@ function GoalRowItem({
   const [editSavedAmount, setEditSavedAmount] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const divisor = goal.currency === 'JPY' ? 1 : 100
   const linkedAccount = goal.account_id ? accounts.find(a => a.id === goal.account_id) : null
 
   function startEdit(g: GoalRow) {
     setEditingId(g.id)
     setEditName(g.name)
-    setEditTargetAmount((g.target_amount / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 }))
-    setEditSavedAmount((g.saved_amount / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 }))
+    setEditTargetAmount(formatMajor(g.target_amount, g.currency))
+    setEditSavedAmount(formatMajor(g.saved_amount, g.currency))
   }
 
   async function saveEdit(id: string) {
     const trimmed = editName.trim()
     if (!trimmed || !editTargetAmount.trim()) return
-    const targetMinor = parseAmountInput(editTargetAmount)
+    const targetMinor = parseAmountFor(editTargetAmount, goal.currency)
     if (targetMinor === null) return
 
     const payload: Record<string, string | number | null> = {
@@ -265,7 +263,7 @@ function GoalRowItem({
     // Only update saved_amount if goal is not linked to an account
     if (!goal.account_id) {
       if (editSavedAmount.trim()) {
-        const savedMinor = parseAmountInput(editSavedAmount)
+        const savedMinor = parseAmountFor(editSavedAmount, goal.currency)
         if (savedMinor !== null) {
           payload.saved_amount = savedMinor
         }

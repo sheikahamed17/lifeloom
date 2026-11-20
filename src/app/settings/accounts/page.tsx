@@ -11,8 +11,7 @@ import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { planAccountBackfill } from '@/lib/account-match'
 import { tagEntries } from '@/lib/account-autotag'
 import { defaultToggleUpdates, pickDefaultAccountId } from '@/lib/default-account'
-import { parseAmountInput } from '@/lib/parse-amount'
-import { formatMinor } from '@/lib/currency'
+import { formatMajor, formatMinor, parseAmountFor } from '@/lib/currency'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -90,7 +89,7 @@ function AccountsPageInner() {
 
   async function addAccount() {
     if (!userId || !newName.trim() || !newOpeningBalance.trim()) return
-    const openingBalanceMinor = parseAmountInput(newOpeningBalance)
+    const openingBalanceMinor = parseAmountFor(newOpeningBalance, newCurrency)
     if (openingBalanceMinor === null) return
 
     const op = await generateOp({
@@ -290,19 +289,17 @@ function AccountRowItem({
   const [editMatchHints, setEditMatchHints] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const divisor = account.currency === 'JPY' ? 1 : 100
-
   function startEdit(a: AccountRow) {
     setEditingId(a.id)
     setEditName(a.name)
-    setEditOpeningBalance((a.opening_balance / divisor).toLocaleString(undefined, { maximumFractionDigits: 2 }))
+    setEditOpeningBalance(formatMajor(a.opening_balance, a.currency))
     setEditMatchHints(a.match_hints ?? '')
   }
 
   async function saveEdit(id: string) {
     const trimmed = editName.trim()
     if (!trimmed || !editOpeningBalance.trim()) return
-    const openingBalanceMinor = parseAmountInput(editOpeningBalance)
+    const openingBalanceMinor = parseAmountFor(editOpeningBalance, account.currency)
     if (openingBalanceMinor === null) return
     await onUpdate(id, {
       name: trimmed,

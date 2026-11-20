@@ -10,7 +10,7 @@ import { useFxRates } from '@/hooks/use-fx-rates'
 import { useCategories } from '@/hooks/use-categories'
 import { useAllCategories } from '@/hooks/use-all-categories'
 import { convertViaRates } from '@/lib/fx'
-import { currencySymbol } from '@/lib/currency'
+import { currencySymbol, formatMajor, formatMinor } from '@/lib/currency'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { makeCategoryResolver } from '@/lib/category-resolve'
 import {
@@ -378,7 +378,7 @@ function FilteredMoneyList({
                     size="xs"
                     className="-ml-2 h-10 w-fit px-2 text-[13px] font-normal text-muted-foreground hover:text-foreground"
                     onClick={(ev) => { ev.stopPropagation(); setExpandedFx(expandedFx === e.id ? null : e.id) }}
-                    aria-label={expandedFx === e.id ? `Hide currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}` : `Show currency conversion for ${currencySymbol(e.currency)}${(e.amount / 100).toFixed(2)}`}
+                    aria-label={expandedFx === e.id ? `Hide currency conversion for ${formatMinor(e.amount, e.currency)}` : `Show currency conversion for ${formatMinor(e.amount, e.currency)}`}
                   >
                     {expandedFx === e.id ? (() => {
                       const conv = convertViaRates(e.amount, e.currency, prefs.primary_currency, e.occurred_at, rates, prefs.fx_overrides ?? {})
@@ -402,7 +402,7 @@ function FilteredMoneyList({
 }
 
 function formatAmount(e: MoneyEntryRow): string {
-  const major = (e.amount / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  const major = formatMajor(e.amount, e.currency)
   return `${e.direction === 'out' ? '-' : '+'}${currencySymbol(e.currency)}${major}`
 }
 

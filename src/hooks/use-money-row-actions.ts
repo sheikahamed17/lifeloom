@@ -11,6 +11,8 @@ import { db, type AccountRow, type MoneyEntryRow } from '@/lib/dexie'
 import { applyShareRows } from '@/lib/share-apply'
 import { formatMinor } from '@/lib/currency'
 import type { ShareDraftRow } from '@/lib/share-edit'
+import { withMatchName } from '@/lib/people-match'
+import { resurrectPayload } from '@/lib/undo-delete'
 
 /**
  * The fixes an imported entry can need, shared by the Needs-you queue and
@@ -108,5 +110,53 @@ export function useMoneyRowActions(userId: string) {
     }
   }, [userId, undo])
 
-  return { setCategory, linkCard, paidFor, activeAccounts }
+  // A repayment: money in from `who` (or, on an `out` entry, their money given
+  // back). Tags the entry, creates the person when new, and optionally remembers
+  // the bank's wording of their name so the next credit is suggested exactly.
+  // Undo untags the entry and restores the remembered names.
+  const markRepayment = useCallback(async (e: MoneyEntryRow, who: RepaymentPick) => {
+    try {
+      let personId = who.personId
+      const name = who.name.trim()
+      if (!personId) {
+        personId = crypto.randomUUID()
+        await applyLocalOp(await generateOp({ entity_kind: 'person', entity_id: personId, op_type: 'create', payload: { name, is_archived: 0 }, user_id: userId }))
+      }
+      const person = await db.people.get(personId)
+      const before = person?.match_names ?? null
+      const learned = who.remember ? withMatchName(before, who.remember) : null
+      if (learned) {
+        await applyLocalOp(await generateOp({ entity_kind: 'person', entity_id: personId, op_type: 'update', payload: { match_names: learned }, user_id: userId }))
+      }
+      const previous = e.settles_person_id ?? null
+      await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: e.id, op_type: 'update', payload: { settles_person_id: personId }, user_id: userId }))
+      // The same money recorded by hand earlier: this bank entry replaces it.
+      const found = who.replaces ? await db.money_entries.get(who.replaces) : undefined
+      const twin = found && !found.deleted_at ? found : undefined
+      if (twin) await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: twin.id, op_type: 'delete', payload: {}, user_id: userId }))
+      pushPullOnce({ userId }).catch(err => console.error('sync', err))
+      const amount = formatMinor(e.amount, e.currency)
+      const id = personId
+      undo.push(e.direction === 'in' ? `${amount} from ${name} · counted as paying you back` : `${amount} back to ${name}`, async () => {
+        await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: e.id, op_type: 'update', payload: { settles_person_id: previous }, user_id: userId }))
+        if (twin) await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: twin.id, op_type: 'update', payload: resurrectPayload('money', twin), user_id: userId }))
+        if (learned && (await db.people.get(id))?.match_names === learned) {
+          await applyLocalOp(await generateOp({ entity_kind: 'person', entity_id: id, op_type: 'update', payload: { match_names: before }, user_id: userId }))
+        }
+        pushPullOnce({ userId }).catch(err => console.error('sync', err))
+      })
+    } catch (err) {
+      console.error('mark repayment', err)
+      undo.push('Couldn’t save the repayment. Try again.')
+    }
+  }, [userId, undo])
+
+  return { setCategory, linkCard, paidFor, markRepayment, activeAccounts }
 }
+
+/**
+ * Who a repayment is with. `personId` null = a new person named `name`;
+ * `remember` = the bank's wording to learn; `replaces` = a by-hand repayment of
+ * the same money that this bank entry takes the place of (it's removed).
+ */
+export type RepaymentPick = { personId: string | null; name: string; remember: string | null; replaces?: string | null }

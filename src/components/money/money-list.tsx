@@ -208,12 +208,13 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
     const title = e.description || e.merchant || cat?.name || 'Uncategorized'
     // "Food, HDFC card": category, then the merchant when the title is something else, then the account.
     const facts = [
-      cat ? (cat.name !== title ? cat.name : null) : (title !== 'Uncategorized' ? 'Uncategorized' : null),
+      cat ? (cat.name !== title ? cat.name : null) : (title !== 'Uncategorized' && !e.settles_person_id ? 'Uncategorized' : null),
       e.merchant && e.merchant !== title ? e.merchant : null,
       acc ? acc.name : e.account_id ? 'Unknown account' : null,
     ].filter(Boolean).join(', ')
     const foreign = e.currency !== prefs.primary_currency
-    const hasMeta = !byDay || (e.tags?.length ?? 0) > 0 || e.source === 'email' || e.source === 'sms' || !!e.recurring_rule_id || foreign || shared || !!e.receipt_key
+    const repaidBy = e.settles_person_id ?? null
+    const hasMeta = !byDay || (e.tags?.length ?? 0) > 0 || e.source === 'email' || e.source === 'sms' || !!e.recurring_rule_id || foreign || shared || !!e.receipt_key || !!repaidBy
     return (
       <li key={e.id} id={`pulse-row-${e.id}`} className="border-b border-border">
         <SwipeRow
@@ -261,6 +262,11 @@ export function MoneyList({ userId, onEdit, filter, sort }: Props) {
                     {personName.get(s.person_id) ?? 'Someone'} {s.settled_at ? 'paid' : `owes ${formatMinor(s.amount, e.currency)}`}
                   </Link>
                 ))}
+                {repaidBy && (
+                  <Link href={`/settings/people#${repaidBy}`} className={cn(META_LINK, 'font-medium text-foreground')}>
+                    {e.direction === 'in' ? 'Repayment from' : 'Given back to'} {personName.get(repaidBy) ?? 'someone'}
+                  </Link>
+                )}
                 {e.receipt_key && (
                   <a href={`/api/receipt/${e.receipt_key}`} target="_blank" rel="noopener" className={META_LINK}>Receipt</a>
                 )}

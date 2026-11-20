@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import type { MoneyEntryRow } from '@/lib/dexie'
 import {
   yourShare, withYourShare, settlementEntries, withSettlements, owedByPerson, owedTotal,
-  equalShares, isSharesValid, planSettlement, sharesByEntry, SETTLEMENT_ID_PREFIX, type ShareLike,
+  equalShares, isSharesValid, sharesByEntry, SETTLEMENT_ID_PREFIX, type ShareLike,
+  isRepayment, owesAndHolds, repaymentCandidates, recordedTwin, createdAsRepayment,
 } from './shares'
 import { computeSpendBreakdown } from './spend-breakdown'
 import { accountBalance, netWorthSeries } from './accounts'
@@ -188,20 +189,127 @@ describe('equalShares / isSharesValid', () => {
   })
 })
 
-describe('planSettlement (FIFO, whole shares, exact match only)', () => {
-  const arun = [{ shareId: 'a', amount: 1000000 }, { shareId: 'b', amount: 80000 }, { shareId: 'c', amount: 20000 }]
-  it('settles the oldest share when the amount matches it exactly', () => {
-    expect(planSettlement(arun, 1000000)).toEqual(['a'])
+// Repayments are real money entries tagged with the person (settles_person_id):
+// `in` = they paid you, `out` = you gave their money back.
+describe('repayments (bank credits tagged to a person)', () => {
+  const tickets = row({ id: 'm-tickets', amount: 60000, description: 'movie tickets', occurred_at: '2026-11-06T10:00:00.000Z' })
+  const ticketShare = share({ id: 's-tickets', money_entry_id: 'm-tickets', amount: 60000 })
+  const credit = (o: Partial<MoneyEntryRow>) => row({ direction: 'in', source: 'email', settles_person_id: 'p-arun', ...o })
+
+  it('isRepayment is true only for tagged entries', () => {
+    expect(isRepayment(credit({ id: 'c' }))).toBe(true)
+    expect(isRepayment(salary)).toBe(false)
   })
-  it('settles a prefix when the amount matches the running total', () => {
-    expect(planSettlement(arun, 1080000)).toEqual(['a', 'b'])
-    expect(planSettlement(arun, 1100000)).toEqual(['a', 'b', 'c'])
+
+  it('spend view drops repayments in both directions, so they are never income or spending', () => {
+    const back = credit({ id: 'c-back', amount: 30000 })
+    const returned = row({ id: 'r-out', amount: 5000, settles_person_id: 'p-arun' })
+    const view = withYourShare([coffee, salary, back, returned], [])
+    expect(view.map(e => e.id)).toEqual(['m-coffee', 'm-salary'])
   })
-  it('refuses partial or out-of-order matches rather than guessing', () => {
-    expect(planSettlement(arun, 500000)).toBeNull()      // half the rent
-    expect(planSettlement(arun, 80000)).toBeNull()       // the dinner, but rent is older
-    expect(planSettlement(arun, 2000000)).toBeNull()     // more than owed
-    expect(planSettlement([], 100)).toBeNull()
-    expect(planSettlement(arun, 0)).toBeNull()
+
+  it('spend view without shares or repayments is the same array (screens unchanged)', () => {
+    const list = [coffee, salary]
+    expect(withYourShare(list, [])).toBe(list)
+  })
+
+  it('a partial repayment lowers what they owe and marks the oldest share part-paid', () => {
+    const rows = owedByPerson([rent, tickets, credit({ id: 'c1', amount: 300000, occurred_at: '2026-11-07T10:00:00.000Z' })],
+      [share({ id: 's-rent', money_entry_id: 'm-rent', amount: 1000000 }), ticketShare], people)
+    expect(rows[0].byCurrency).toEqual({ INR: 1000000 + 60000 - 300000 })
+    expect(rows[0].shares.map(s => [s.shareId, s.paid])).toEqual([['s-rent', 300000], ['s-tickets', 0]])
+    expect(rows[0].repayments.map(r => r.entryId)).toEqual(['c1'])
+  })
+
+  it('a repayment that covers whole shares removes them from the outstanding list', () => {
+    const rows = owedByPerson([tickets, credit({ id: 'c1', amount: 60000 })], [ticketShare], people)
+    expect(rows).toEqual([])   // settled up: nothing owed either way
+  })
+
+  it('an advance (paid you before you paid) means you hold their money, until the spend arrives', () => {
+    const advance = credit({ id: 'c-adv', amount: 60000, occurred_at: '2026-11-01T10:00:00.000Z' })
+    const before = owedByPerson([advance], [], people)
+    expect(before[0].byCurrency).toEqual({ INR: -60000 })
+    expect(owesAndHolds(before[0])).toEqual({ owes: [], holds: [['INR', 60000]] })
+    // The tickets cost 550, so you still hold 50 of Arun's…
+    const cheaper = row({ id: 'm-tickets', amount: 55000, occurred_at: '2026-11-06T10:00:00.000Z' })
+    const after = owedByPerson([advance, cheaper], [share({ id: 's-t', money_entry_id: 'm-tickets', amount: 55000 })], people)
+    expect(after[0].byCurrency).toEqual({ INR: -5000 })
+    // …until you give it back.
+    const gaveBack = row({ id: 'r-out', amount: 5000, settles_person_id: 'p-arun' })
+    expect(owedByPerson([advance, cheaper, gaveBack], [share({ id: 's-t', money_entry_id: 'm-tickets', amount: 55000 })], people)).toEqual([])
+  })
+
+  it('repayments only offset debts in the same currency', () => {
+    const usd = row({ id: 'm-usd', amount: 5000, currency: 'USD' })
+    const rows = owedByPerson([usd, credit({ id: 'c-inr', amount: 1000 })], [share({ id: 's-usd', money_entry_id: 'm-usd', amount: 5000 })], people)
+    expect(rows[0].byCurrency).toEqual({ USD: 5000, INR: -1000 })
+  })
+
+  it('deleted repayments are ignored', () => {
+    const gone = credit({ id: 'c-gone', amount: 60000, deleted_at: 'x' })
+    expect(owedByPerson([tickets, gone], [ticketShare], people)[0].byCurrency).toEqual({ INR: 60000 })
+  })
+
+  it('a repayment entry is never itself treated as a shared spend', () => {
+    const odd = row({ id: 'm-odd', amount: 1000, settles_person_id: 'p-arun' })
+    const rows = owedByPerson([odd], [share({ id: 's-odd', money_entry_id: 'm-odd', amount: 1000 })], people)
+    expect(rows[0].shares).toEqual([])
+    expect(rows[0].byCurrency).toEqual({ INR: 1000 })   // only the "gave back" counts
+  })
+
+  it('owedTotal counts only what people owe you, not money you hold for them', () => {
+    const rows = owedByPerson([rent, credit({ id: 'c-priya', amount: 5000, settles_person_id: 'p-priya' })],
+      [share({ id: 's-rent', money_entry_id: 'm-rent', amount: 1000000 })], people)
+    expect(owedTotal(rows, amt => amt).total).toBe(1000000)
+  })
+
+  it('repaymentCandidates: untagged money in, same currency, last 60 days, closest amount first', () => {
+    const now = '2026-11-20T00:00:00.000Z'
+    const list = [
+      row({ id: 'a', direction: 'in', amount: 30000, occurred_at: '2026-11-18T00:00:00.000Z' }),
+      row({ id: 'b', direction: 'in', amount: 60000, occurred_at: '2026-11-10T00:00:00.000Z' }),
+      row({ id: 'c', direction: 'in', amount: 60000, occurred_at: '2026-08-01T00:00:00.000Z' }),          // too old
+      row({ id: 'd', direction: 'in', amount: 60000, currency: 'USD', occurred_at: '2026-11-15T00:00:00.000Z' }), // other currency
+      row({ id: 'e', direction: 'in', amount: 60000, settles_person_id: 'p-priya', occurred_at: '2026-11-15T00:00:00.000Z' }), // already a repayment
+      row({ id: 'f', direction: 'out', amount: 60000, occurred_at: '2026-11-15T00:00:00.000Z' }),
+      row({ id: 'g', direction: 'in', amount: 60000, deleted_at: 'x', occurred_at: '2026-11-15T00:00:00.000Z' }),
+    ]
+    expect(repaymentCandidates(list, 'INR', 60000, now).map(e => e.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('recordedTwin (a by-hand repayment the bank alert duplicates)', () => {
+  const alert = row({ id: 'bank', direction: 'in', amount: 30000, source: 'email', occurred_at: '2026-11-12T10:00:00.000Z' })
+  const byHand = (o: Partial<MoneyEntryRow>) => row({ id: 'hand', direction: 'in', amount: 30000, source: 'manual', settles_person_id: 'p-arun', occurred_at: '2026-11-11T10:00:00.000Z', ...o })
+
+  it('finds a manual or voice repayment of the same amount and currency within 10 days', () => {
+    expect(recordedTwin(alert, [alert, byHand({})])?.id).toBe('hand')
+    expect(recordedTwin(alert, [alert, byHand({ source: 'voice', occurred_at: '2026-11-20T10:00:00.000Z' })])?.id).toBe('hand')
+  })
+
+  it('ignores other amounts, currencies, directions, imported or untagged entries, deleted ones, and anything over 10 days away', () => {
+    for (const o of [
+      { amount: 30001 }, { currency: 'USD' }, { direction: 'out' as const }, { source: 'sms' as const },
+      { settles_person_id: null }, { deleted_at: 'x' }, { occurred_at: '2026-10-31T09:00:00.000Z' },
+    ]) expect(recordedTwin(alert, [alert, byHand(o)])).toBeNull()
+  })
+
+  it('picks the closest in time when there are several', () => {
+    const far = byHand({ id: 'far', occurred_at: '2026-11-05T10:00:00.000Z' })
+    const near = byHand({ id: 'near', occurred_at: '2026-11-12T08:00:00.000Z' })
+    expect(recordedTwin(alert, [far, near])?.id).toBe('near')
+  })
+})
+
+describe('createdAsRepayment', () => {
+  it('is true when the tag came with the create (same HLC as source)', () => {
+    expect(createdAsRepayment({ settles_person_id: 'p', field_hlcs: { source: 'h1', amount: 'h1', settles_person_id: 'h1' } })).toBe(true)
+  })
+
+  it('is false for an entry tagged later, an untagged one, or one with no clocks', () => {
+    expect(createdAsRepayment({ settles_person_id: 'p', field_hlcs: { source: 'h1', settles_person_id: 'h2' } })).toBe(false)
+    expect(createdAsRepayment({ settles_person_id: null, field_hlcs: { source: 'h1', settles_person_id: 'h1' } })).toBe(false)
+    expect(createdAsRepayment({ settles_person_id: 'p' })).toBe(false)
   })
 })

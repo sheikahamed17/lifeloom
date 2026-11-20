@@ -6,6 +6,8 @@ import { z } from 'zod'
 export const PersonPayloadSchema = z.object({
   name: z.string().min(1).max(60),
   is_archived: z.literal(0).or(z.literal(1)).optional(),   // never null: NOT NULL DEFAULT 0 column
+  // JSON array of the names this person's bank alerts use ("ARUN KUMAR S").
+  match_names: z.string().max(600).nullable().optional(),
 })
 
 export type PersonPayload = z.infer<typeof PersonPayloadSchema>

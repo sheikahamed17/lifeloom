@@ -16,7 +16,7 @@ import { PeriodPicker, type Period } from '@/components/shared/period-picker'
 import { ProjectPicker } from '@/components/tasks/project-picker'
 import { addTag } from '@/lib/task-org'
 import { cn } from '@/lib/utils'
-import { currencySymbol } from '@/lib/currency'
+import { currencySymbol, formatMinor } from '@/lib/currency'
 import { formatDay, formatLocalDateTime } from '@/lib/format'
 import { parseAmountInput } from '@/lib/parse-amount'
 import { type Allocation, isSplitValid, splitRemaining } from '@/lib/split-transaction'
@@ -62,7 +62,8 @@ export type ChipDraft =
   | (LearningPayload & { kind: 'learning' })
   | (NotePayload & { kind: 'note' })
   | { kind: 'budget'; category_id: string; category_name: string; amount: number; currency: string }
-  | { kind: 'settle'; person_id: string; person_name: string; share_ids: string[]; amount: number; currency: string; summary: string; account_id?: string | null }
+  // "Arun paid me 300": `owed` = what Arun owed in this currency before it (negative = you already held his money).
+  | { kind: 'settle'; person_id: string; person_name: string; amount: number; currency: string; owed: number; account_id?: string | null }
 
 type Props = {
   userId: string
@@ -1007,7 +1008,7 @@ function ConfirmationChipNote({
   )
 }
 
-/** "Arun paid me ₹10,000": settle the matched shares into an account. Not a money entry — never income. */
+/** "Arun paid me ₹300": a repayment into an account, of any amount. Recorded as money in tagged to Arun, never income. */
 function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
   userId: string
   draft: Extract<ChipDraft, { kind: 'settle' }>
@@ -1020,6 +1021,14 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
   const [accountId, setAccountId] = useState<string | null>(null)
   const receiveInto = touched ? accountId : pickDefaultAccountId(accounts)
   const major = draft.amount / (draft.currency === 'JPY' ? 1 : 100)
+  const left = draft.owed - draft.amount
+  const effect = draft.owed <= 0
+    ? `${draft.person_name} didn’t owe you anything, so you’ll hold ${formatMinor(draft.amount - draft.owed, draft.currency)} of theirs.`
+    : left > 0
+      ? `${draft.person_name} owed ${formatMinor(draft.owed, draft.currency)}; ${formatMinor(left, draft.currency)} will be left.`
+      : left === 0
+        ? `That settles what ${draft.person_name} owed.`
+        : `That’s ${formatMinor(-left, draft.currency)} more than ${draft.person_name} owed; you’ll hold it for them.`
 
   async function handleConfirm() {
     setBusy(true)
@@ -1029,11 +1038,11 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl bg-card p-4" role="group" aria-label="Paid back">
-      <h2 className="text-[15px] font-semibold">Paid back</h2>
+      <h2 className="text-[15px] font-semibold">{draft.owed > 0 ? 'Paid back' : `Money from ${draft.person_name}`}</h2>
       <p className="text-[15px]">
         <span className="font-semibold">{draft.person_name}</span> paid{' '}
-        <span className="tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-        {' '}for {draft.summary} ({draft.share_ids.length} {draft.share_ids.length === 1 ? 'share' : 'shares'}).
+        <span className="tabular-nums">{currencySymbol(draft.currency)}{major.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>.
+        {' '}{effect}
       </p>
       <Label className="flex-wrap text-[13px] font-semibold">
         <span>Paid into</span>
@@ -1047,11 +1056,11 @@ function ConfirmationChipSettle({ userId, draft, onConfirm, onCancel }: {
           {accounts.map(acc => <NativeSelectOption key={acc.id} value={acc.id}>{acc.name}</NativeSelectOption>)}
         </NativeSelect>
       </Label>
-      <p className="text-[13px] text-muted-foreground">This clears the debt and tops up the account. It isn’t counted as income.</p>
+      <p className="text-[13px] text-muted-foreground">It tops up the account and isn’t counted as income. If a bank alert for it arrives later, Needs you will match it to this, so it counts once.</p>
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
         <Button className="flex-[2]" onClick={handleConfirm} disabled={busy}>
-          Mark paid
+          Save repayment
         </Button>
       </div>
     </div>

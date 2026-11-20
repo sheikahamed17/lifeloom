@@ -148,14 +148,15 @@ export default function AnalyticsPage() {
     }))
   }, [periods, entries, toPrimary])
 
+  // Spend view: repayments from people are left out, so they never show as income.
   const incomeSeries = useMemo(() => {
     return periods.map(p => ({
       label: p.label,
-      amount: entriesRaw
+      amount: entries
         .filter(e => e.direction === 'in' && e.occurred_at >= p.from && e.occurred_at < p.to && !e.deleted_at)
         .reduce((sum, e) => sum + toPrimary(e), 0),
     }))
-  }, [periods, entriesRaw, toPrimary])
+  }, [periods, entries, toPrimary])
 
   // Compute movers (current vs previous period)
   const movers = useMemo(() => {

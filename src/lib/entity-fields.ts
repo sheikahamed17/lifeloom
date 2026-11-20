@@ -1,7 +1,7 @@
 export const MONEY_FIELDS = [
   'amount', 'currency', 'direction', 'category_id', 'description',
   'occurred_at', 'source', 'receipt_key', 'raw_input', 'recurring_rule_id',
-  'merchant', 'tags', 'account_id', 'split_group_id',
+  'merchant', 'tags', 'account_id', 'split_group_id', 'settles_person_id',
 ] as const
 
 export const RECURRING_FIELDS = [
@@ -67,7 +67,7 @@ export const JOURNAL_FIELDS = [
 ] as const
 
 export const PERSON_FIELDS = [
-  'name', 'is_archived',
+  'name', 'is_archived', 'match_names',
 ] as const
 
 export const EXPENSE_SHARE_FIELDS = [

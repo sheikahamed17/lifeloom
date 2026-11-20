@@ -353,6 +353,45 @@ describe('/api/sync — Phase 1 entity kinds', () => {
     })
   })
 
+  it('round-trips settles_person_id on a money entry, and untagging leaves the other fields alone', async () => {
+    await withTestUser(async ({ userId, callSync, testDb }) => {
+      const create = {
+        id: 'op-rep-1', hlc: '0000000000000001-000000-d1', device_id: 'd1', user_id: userId,
+        entity_kind: 'money', entity_id: 'mr1', op_type: 'create' as const,
+        payload: {
+          amount: 300000, currency: 'INR', direction: 'in' as const, occurred_at: '2026-11-18T10:00:00Z',
+          source: 'email' as const, description: 'ARUN KUMAR S', tags: ['upi'], settles_person_id: 'p-arun',
+        },
+        schema_version: 1,
+      }
+      await callSync({ device_id: 'd1', new_ops: [create] })
+      const pull = await callSync({ device_id: 'd2', new_ops: [] })
+      expect(pull.new_ops_from_server[0].payload.settles_person_id).toBe('p-arun')
+      let rows = await testDb.selectFrom('money_entries').where('user_id', '=', userId).selectAll().execute()
+      expect(rows[0].settles_person_id).toBe('p-arun')
+
+      const untag = { ...create, id: 'op-rep-2', hlc: '0000000000000002-000000-d1', op_type: 'update' as const, payload: { settles_person_id: null } }
+      await callSync({ device_id: 'd1', new_ops: [untag] })
+      rows = await testDb.selectFrom('money_entries').where('user_id', '=', userId).selectAll().execute()
+      expect(rows[0].settles_person_id).toBeNull()
+      expect(rows[0].amount).toBe(300000)
+      expect(rows[0].description).toBe('ARUN KUMAR S')
+      expect(JSON.parse(rows[0].tags as string)).toEqual(['upi'])
+    })
+  })
+
+  it('round-trips match_names on a person without touching name or is_archived', async () => {
+    await withTestUser(async ({ userId, callSync, testDb }) => {
+      const base = { device_id: 'd1', user_id: userId, entity_kind: 'person', entity_id: 'p-arun', schema_version: 1 }
+      await callSync({ device_id: 'd1', new_ops: [{ ...base, id: 'op-p-1', hlc: '0000000000000001-000000-d1', op_type: 'create' as const, payload: { name: 'Arun', is_archived: 0 } }] })
+      await callSync({ device_id: 'd1', new_ops: [{ ...base, id: 'op-p-2', hlc: '0000000000000002-000000-d1', op_type: 'update' as const, payload: { match_names: '["ARUN KUMAR S"]' } }] })
+      const rows = await testDb.selectFrom('people').where('user_id', '=', userId).selectAll().execute()
+      expect(rows[0].match_names).toBe('["ARUN KUMAR S"]')
+      expect(rows[0].name).toBe('Arun')
+      expect(rows[0].is_archived).toBe(0)
+    })
+  })
+
   it('persists a category entry', async () => {
     await withTestUser(async ({ userId, callSync, testDb }) => {
       const op = {

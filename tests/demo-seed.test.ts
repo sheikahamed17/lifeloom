@@ -6,7 +6,7 @@ import { MoneyPayloadSchema } from '@/lib/op-schemas/money'
 import { AccountPayloadSchema } from '@/lib/op-schemas/account'
 import { PersonPayloadSchema } from '@/lib/op-schemas/person'
 import { ExpenseSharePayloadSchema } from '@/lib/op-schemas/expense-share'
-import { planSettlement } from '@/lib/shares'
+import { suggestPayer } from '@/lib/people-match'
 
 // The demo must show what the real app would do with this data — so the seeded
 // alerts are checked against the actual matcher, not hand-maintained claims.
@@ -22,7 +22,7 @@ describe('demo seed — account auto-pick showcase', () => {
     for (const s of seeds.filter(x => x.kind === 'money')) expect(MoneyPayloadSchema.safeParse(s.payload).success).toBe(true)
   })
 
-  it('seeds one person with one outstanding half-rent share that "Arun paid me 10000" settles exactly', () => {
+  it('seeds one person with one outstanding half-rent share of ₹10,000 (what "Arun paid me 10000" settles)', () => {
     const people = seeds.filter(s => s.kind === 'person')
     const shares = seeds.filter(s => s.kind === 'expense_share')
     expect(people).toHaveLength(1)
@@ -30,7 +30,16 @@ describe('demo seed — account auto-pick showcase', () => {
     for (const s of shares) expect(ExpenseSharePayloadSchema.safeParse(s.payload).success).toBe(true)
     const rent = seeds.find(s => s.kind === 'money' && s.id === (shares[0].payload.money_entry_id as string))
     expect(rent?.payload.amount).toBe(2000000)
-    expect(planSettlement(shares.map(s => ({ shareId: s.id, amount: s.payload.amount as number })), 1000000)).toEqual([shares[0].id])
+    expect(shares.map(s => s.payload.amount)).toEqual([1000000])
+  })
+
+  it('seeds one untagged UPI credit whose sender is suggested as Arun paying back', () => {
+    const people = seeds.filter(s => s.kind === 'person').map(s => ({ id: s.id, name: s.payload.name as string }))
+    const credits = alerts.filter(a => a.payload.direction === 'in')
+    expect(credits).toHaveLength(1)
+    expect(credits[0].payload.category_id).toBeNull()
+    expect(credits[0].payload.settles_person_id).toBeUndefined()
+    expect(suggestPayer(credits[0].payload.merchant as string, people)).toEqual({ personId: 'demo-person-arun', via: 'name' })
   })
 
   it('every tagged alert carries exactly the account the matcher picks from its text', () => {

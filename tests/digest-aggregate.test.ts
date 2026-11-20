@@ -3,32 +3,38 @@ import { aggregateWeek } from '@/lib/digest-aggregate'
 import type { Kysely } from 'kysely'
 import type { DB } from '@/lib/db'
 
-// Chainable mock that handles any number of .where() calls
+// Chainable mock that handles any number of .where() calls, including the
+// expression form `.where(eb => eb.or([eb(col, op, val), ...]))`.
+type Leaf = { col: string; op: string; val: unknown }
+type Expr = Leaf | { or: Expr[] }
+function matches(r: Record<string, unknown>, e: Expr): boolean {
+  if ('or' in e) return e.or.some(x => matches(r, x))
+  const cell = r[e.col]
+  if (e.op === '>=') return (cell as string) >= (e.val as string)
+  if (e.op === '<') return (cell as string) < (e.val as string)
+  if (e.op === 'is') return e.val === null ? cell === null || cell === undefined : cell === e.val
+  if (e.op === 'is not') return e.val === null ? cell !== null && cell !== undefined : cell !== e.val
+  if (e.op === '=') return cell === e.val
+  throw new Error(`fake db: unsupported operator ${e.op}`)
+}
 function makeFakeDb(rowsByTable: Record<string, unknown[]>): Kysely<DB> {
   return {
     selectFrom: (table: string) => {
       const data = rowsByTable[table] ?? []
-      let filters: Array<{ col: string; op: string; val: unknown }> = []
+      let filters: Expr[] = []
 
       const chain = {
-        where: (col: string, op: string, val: unknown) => {
-          filters = [...filters, { col, op, val }]
+        where: (col: string | ((eb: unknown) => Expr), op?: string, val?: unknown) => {
+          if (typeof col === 'function') {
+            const eb = Object.assign((c: string, o: string, v: unknown): Leaf => ({ col: c, op: o, val: v }), { or: (xs: Expr[]) => ({ or: xs }) })
+            filters = [...filters, col(eb)]
+          } else {
+            filters = [...filters, { col, op: op!, val }]
+          }
           return chain
         },
         selectAll: () => ({
-          execute: async () => {
-            return data.filter((row) => {
-              const r = row as Record<string, unknown>
-              for (const { col, op, val } of filters) {
-                const cell = r[col]
-                if (op === '>=' && (cell as string) < (val as string)) return false
-                if (op === '<' && (cell as string) >= (val as string)) return false
-                if (op === 'is' && val === null && cell !== null) return false
-                if (op === '=' && cell !== val) return false
-              }
-              return true
-            })
-          },
+          execute: async () => data.filter(row => filters.every(f => matches(row as Record<string, unknown>, f))),
         }),
       }
       return chain
@@ -47,6 +53,16 @@ describe('aggregateWeek — shared expenses', () => {
     const m = await aggregateWeek(db, userId, bounds, 'INR')
     expect(m.spend_total).toBe(1000000)
     expect(m.owed_total).toBe(1000000)
+  })
+
+  it('a repayment (money in tagged to the person) is not income and lowers what they owe', async () => {
+    const repaid = { ...rent, id: 'm-back', amount: 300000, direction: 'in', description: 'ARUN KUMAR S', source: 'email', occurred_at: '2026-11-04T10:00:00.000Z', settles_person_id: 'p-arun' }
+    const salary = { ...rent, id: 'm-salary', amount: 5000000, direction: 'in', description: 'salary', occurred_at: '2026-11-03T10:00:00.000Z', settles_person_id: null }
+    const db = makeFakeDb({ money_entries: [rent, repaid, salary], expense_shares: [share], categories: [], tasks: [], learning_entries: [], note_entries: [] })
+    const m = await aggregateWeek(db, userId, bounds, 'INR')
+    expect(m.income_total).toBe(5000000)
+    expect(m.spend_total).toBe(1000000)
+    expect(m.owed_total).toBe(700000)
   })
 
   it('a settled share: spend unchanged, nothing owed, nothing counted as income', async () => {

@@ -113,6 +113,7 @@ export type MoneyEntryRow = {
   tags: string[]
   account_id: string | null
   split_group_id?: string | null   // optional: set on split parts; absent on ordinary entries (keeps fixtures lean)
+  settles_person_id?: string | null   // optional: set on repayments (see src/lib/shares.ts)
   field_hlcs: Record<string, string>
   deleted_at: string | null
   created_at: string
@@ -219,6 +220,7 @@ export type PersonRow = {
   user_id: string
   name: string
   is_archived?: number              // 0/1; optional like AccountRow so fixtures stay lean
+  match_names?: string | null       // JSON array of names their bank alerts use
   field_hlcs: Record<string, string>
   deleted_at: string | null
   created_at: string

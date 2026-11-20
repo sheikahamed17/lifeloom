@@ -46,3 +46,14 @@ describe('reviewQueue', () => {
     expect(q[0]).toMatchObject({ needsCategory: true, cardLast4: '5872' })
   })
 })
+
+describe('reviewQueue and repayments', () => {
+  it('a credit marked as someone’s repayment needs no category', () => {
+    expect(reviewQueue([row({ id: 'r', direction: 'in', category_id: null, settles_person_id: 'p-arun' })], 1)).toEqual([])
+  })
+
+  it('but still asks for its account when the card is unknown', () => {
+    const q = reviewQueue([row({ id: 'r', direction: 'in', category_id: null, settles_person_id: 'p-arun', account_id: null, raw_input: ALERT })], 1)
+    expect(q).toEqual([{ entry: expect.objectContaining({ id: 'r' }), needsCategory: false, cardLast4: '5872' }])
+  })
+})

@@ -15,13 +15,15 @@ export function buildSmsAgentSystemPrompt(defaultCurrency: string): string {
     '  When is_transaction is true you MUST return a numeric amount (never null or a string).',
     '- currency: ISO 4217 code (e.g. INR, USD). If not stated, use ' + defaultCurrency + '.',
     '- direction: "out" for money leaving (debited/spent/paid/purchase/withdrawn), "in" for money received (credited/refund/received).',
-    '- merchant: the counterparty / merchant / biller name if present, else null.',
+    '- merchant: the counterparty / merchant / biller name if present, else null. For money RECEIVED from a',
+    '  person (a UPI/IMPS/NEFT credit), this is the name of the sender exactly as the alert writes it.',
     'If is_transaction is false, you may omit the other fields.',
     'Examples (input -> output JSON):',
     '"Rs.475.00 spent on your HDFC Bank Credit Card ending 5872 at CRUNCHYROLL on 01-08-26" -> {"is_transaction":true,"amount":47500,"currency":"INR","direction":"out","merchant":"CRUNCHYROLL"}',
     '"Your Crunchyroll bill via E-mandate has been successfully paid using your HDFC Bank Credit Card ending 5872. Amount: INR 475.00" -> {"is_transaction":true,"amount":47500,"currency":"INR","direction":"out","merchant":"Crunchyroll"}',
     '"Sent Rs.500 From HDFC Bank A/C x1234 To AMAZON On 03-08 UPI Ref 401234567890" -> {"is_transaction":true,"amount":50000,"currency":"INR","direction":"out","merchant":"AMAZON"}',
     '"Rs.2,000.00 credited to your A/C XX1234 by salary" -> {"is_transaction":true,"amount":200000,"currency":"INR","direction":"in","merchant":null}',
+    '"Rs.3,000.00 credited to your A/c XX4821 by UPI from ARUN KUMAR S. UPI Ref 402345678901" -> {"is_transaction":true,"amount":300000,"currency":"INR","direction":"in","merchant":"ARUN KUMAR S"}',
     '"Your OTP for the transaction is 123456. Do not share it." -> {"is_transaction":false}',
   ].join('\n')
 }

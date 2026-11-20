@@ -18,7 +18,8 @@ export function reviewQueue(entries: MoneyEntryRow[], accountCount: number): Rev
   const items: ReviewItem[] = []
   for (const e of entries) {
     if (e.deleted_at || (e.source !== 'email' && e.source !== 'sms')) continue
-    const needsCategory = !e.category_id
+    // A repayment (money from or back to a person) is never income or spending, so it needs no category.
+    const needsCategory = !e.category_id && !e.settles_person_id
     const cardLast4 = accountCount > 0 && !e.account_id && e.raw_input ? extractAlertIdentifiers(e.raw_input)[0] ?? null : null
     if (needsCategory || cardLast4) items.push({ entry: e, needsCategory, cardLast4 })
   }

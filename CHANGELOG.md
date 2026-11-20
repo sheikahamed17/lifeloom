@@ -10,6 +10,12 @@ Each release is also published with notes on
 ## [Unreleased]
 
 ### Added
+- **Repayments from bank alerts, partial repayments, and money held for someone** (migration `0031`).
+  - **Bank credits:** when a UPI or bank credit arrives from someone who owes you, Needs you asks "Arun paying you back?". It suggests a person only when the sender matches their name or a bank name you confirmed before, and never converts on its own. Confirming counts the credit as a repayment, not income, and can remember the bank's wording ("ARUN KUMAR S") for next time.
+  - **Partial repayments:** any amount works. Arun owes ₹10,000, sends ₹3,000, and the People page shows "₹3,000 paid, ₹7,000 left".
+  - **Paid before you spent:** money from someone who owes you nothing shows as "you hold ₹X of theirs", and a later "I paid this for someone" uses it up. Money you hand back can be marked "I was giving back someone's money" in Needs you, or recorded on the People page.
+  - **Record a payment** on the People page picks the bank credit it arrived as, or records cash. Typed or spoken "Arun paid me 300" now records a repayment of any amount, not only an exact match. A bank alert for money you already recorded by hand is offered as the same payment, so it counts once.
+  - **How it's stored:** a repayment is a real money entry tagged with `settles_person_id`. Account balances include it; income, spending, budgets, analytics and the digest leave it out. People learn `match_names`.
 - **"I paid this for someone" in Needs you.** An imported bank or card spend can now be marked as paid on someone else's behalf right where you pick its category: choose the person (or add someone new) and how much they'll pay back, the whole amount by default. Their part leaves your spending and shows on the People page and the Owed widget until they pay; Undo removes it. When an entry is shared with one person, the edit card also has a one-tap "*Name* pays it all".
 - **Architecture diagrams in the README.** Three SVGs in `docs/architecture/` replace the ASCII sketch: how the pieces fit together, the capture / ask / import paths, and how op-log sync with per-field last-writer-wins converges. They follow the app's palette and switch to a dark version with your system theme.
 - **`SECURITY.md` and private vulnerability reporting.** Reports go through the repository's Security tab as a private advisory instead of a public issue; the policy lists what's in scope and response times.

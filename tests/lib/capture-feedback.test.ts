@@ -34,7 +34,7 @@ describe('savedLabel', () => {
     expect(savedLabel({ kind: 'note', title: null, body: 'Buy more coffee filters' })).toBe('Note saved: “Buy more coffee filters”')
     expect(savedLabel({ kind: 'learning' })).toBe('Saved to Learn')
     expect(savedLabel({ kind: 'budget', categoryName: 'Dining', amount: 500000, currency: 'INR' })).toBe('Budget set: Dining ₹5,000 a month')
-    expect(savedLabel({ kind: 'settle', personName: 'Arun', amount: 1000000, currency: 'INR' })).toBe('Arun paid ₹10,000 · marked settled')
+    expect(savedLabel({ kind: 'settle', personName: 'Arun', amount: 1000000, currency: 'INR' })).toBe('Arun paid ₹10,000 · counted as paying you back')
     expect(savedLabel({ kind: 'edit' })).toBe('Changes saved')
   })
 })

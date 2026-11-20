@@ -141,6 +141,7 @@ export interface MoneyEntryTable {
   tags: string | null             // JSON array
   account_id: string | null
   split_group_id: string | null
+  settles_person_id: string | null
   field_hlcs: string
   deleted_at: string | null
   created_at: string
@@ -214,6 +215,7 @@ export interface PeopleTable {
   user_id: string
   name: string
   is_archived: number
+  match_names: string | null
   field_hlcs: string
   deleted_at: string | null
   created_at: string

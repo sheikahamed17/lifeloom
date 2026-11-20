@@ -89,18 +89,21 @@ export async function aggregateWeek(
     }
   }
 
-  // "Owed to you": unsettled shares on live out-entries (any date), in primary currency.
+  // "Owed to you": unsettled shares on live out-entries (any date), less what
+  // people repaid (repayment entries, any direction), in primary currency. Only
+  // what's owed counts; money held for someone doesn't reduce it.
   let owedTotal = 0
   if (shares.some(s => !s.settled_at)) {
-    const outEntries = await db
+    const liveEntries = await db
       .selectFrom('money_entries')
       .where('user_id', '=', userId)
-      .where('direction', '=', 'out')
       .where('deleted_at', 'is', null)
+      .where(eb => eb.or([eb('direction', '=', 'out'), eb('settles_person_id', 'is not', null)]))
       .selectAll()
       .execute()
-    for (const row of owedByPerson(outEntries as unknown as Parameters<typeof owedByPerson>[0], shares, [])) {
+    for (const row of owedByPerson(liveEntries as unknown as Parameters<typeof owedByPerson>[0], shares, [])) {
       for (const [currency, amount] of Object.entries(row.byCurrency)) {
+        if (amount <= 0) continue
         if (currency === primaryCurrency) { owedTotal += amount; continue }
         const conv = await convertToPrimary(db, amount, currency, primaryCurrency, bounds.endsAt, fxOverrides)
         if (conv) owedTotal += conv.amount

@@ -53,7 +53,7 @@ import { db, type MoneyEntryRow, type TaskRow, type LearningRow, type NoteRow } 
 import { moneyRowToDraft, taskRowToDraft, learningRowToDraft, noteRowToDraft } from '@/lib/entry-to-draft'
 import type { ShareDraftRow } from '@/lib/share-edit'
 import { applyShareRows } from '@/lib/share-apply'
-import { owedByPerson, planSettlement } from '@/lib/shares'
+import { owedByPerson } from '@/lib/shares'
 import { usePeople } from '@/hooks/use-people'
 import { blankDraftForKind } from '@/lib/blank-draft'
 import { manualDraftFromText } from '@/lib/manual-draft'
@@ -468,9 +468,9 @@ function AppPageInner() {
     pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
   }
 
-  // "Arun paid me 10000": settle that person's outstanding shares, oldest first,
-  // only when they sum EXACTLY to the amount. Otherwise open the People page —
-  // never guess which debt it was.
+  // "Arun paid me 300": a repayment of any amount, recorded as a money-in entry
+  // tagged to Arun (never income). The chip shows what he owed and what is left.
+  // An unknown name opens the People page instead of inventing a person.
   async function startSettlement(p: SettleSharePayload) {
     if (!user) return
     const match = p.person_id ? people.find(x => x.id === p.person_id) : people.find(x => x.name.trim().toLocaleLowerCase() === p.person_name.trim().toLocaleLowerCase())
@@ -480,13 +480,9 @@ function AppPageInner() {
       db.expense_shares.where('[user_id+person_id]').equals([user.id, match.id]).toArray(),
     ])
     const row = owedByPerson(entries, shares, [match]).find(r => r.personId === match.id)
-    const candidates = (row?.shares ?? []).filter(s => s.currency === p.currency)
-    const ids = planSettlement(candidates, p.amount)
-    if (!ids) { router.push(`/settings/people#${match.id}`); return }
-    const chosen = candidates.filter(s => ids.includes(s.shareId))
     setDraft({
-      kind: 'settle', person_id: match.id, person_name: match.name, share_ids: ids, amount: p.amount, currency: p.currency,
-      summary: chosen.map(s => s.description || 'entry').join(', '),
+      kind: 'settle', person_id: match.id, person_name: match.name, amount: p.amount, currency: p.currency,
+      owed: row?.byCurrency[p.currency] ?? 0,
     })
   }
 
@@ -503,15 +499,19 @@ function AppPageInner() {
   ) {
     if (!user) return
     if (final.kind === 'settle') {
-      const settled_at = new Date().toISOString()
-      for (const id of final.share_ids) {
-        await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: id, op_type: 'update', payload: { settled_at, settled_account_id: final.account_id ?? null }, user_id: user.id }))
-      }
+      const entryId = crypto.randomUUID()
+      await applyLocalOp(await generateOp({
+        entity_kind: 'money', entity_id: entryId, op_type: 'create', user_id: user.id,
+        payload: {
+          amount: final.amount, currency: final.currency, direction: 'in', category_id: null,
+          description: `From ${final.person_name}`, occurred_at: new Date().toISOString(), source: 'voice',
+          receipt_key: null, raw_input: null, recurring_rule_id: null, merchant: null, tags: [],
+          account_id: final.account_id ?? null, settles_person_id: final.person_id,
+        },
+      }))
       setDraft(null); setEditId(null)
       announceSaved(savedLabel({ kind: 'settle', personName: final.person_name, amount: final.amount, currency: final.currency }), null, async () => {
-        for (const id of final.share_ids) {
-          await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: id, op_type: 'update', payload: { settled_at: null, settled_account_id: null }, user_id: user.id }))
-        }
+        await applyLocalOp(await generateOp({ entity_kind: 'money', entity_id: entryId, op_type: 'delete', payload: {}, user_id: user.id }))
       })
       pushPullOnce({ userId: user.id }).catch(err => console.error('sync', err))
       return

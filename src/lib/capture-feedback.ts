@@ -35,7 +35,7 @@ export function savedLabel(s: SavedInput): string {
     case 'note': return `Note saved: ${quote(s.title || s.body)}`
     case 'learning': return 'Saved to Learn'
     case 'budget': return `Budget set: ${s.categoryName} ${formatMinor(s.amount, s.currency, 0)} a month`
-    case 'settle': return `${s.personName} paid ${formatMinor(s.amount, s.currency)} · marked settled`
+    case 'settle': return `${s.personName} paid ${formatMinor(s.amount, s.currency)} · counted as paying you back`
     case 'edit': return 'Changes saved'
   }
 }

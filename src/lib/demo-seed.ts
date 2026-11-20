@@ -90,7 +90,7 @@ export function buildSeeds(): Seed[] {
   // --- Shared expense: rent paid in full, half owed by a flatmate ---
   // Spend counts ₹10,000 (your share); the bank balance dropped ₹20,000; the
   // People page / Owed-to-you widget show Arun owes ₹10,000. The canned
-  // "Arun paid me 10000" phrase settles exactly this share.
+  // "Arun paid me 10000" phrase records a repayment that settles exactly this.
   add('person', 'demo-person-arun', daysAgo(30), { name: 'Arun', is_archived: 0 })
   {
     const at = daysAgo(8)
@@ -114,6 +114,13 @@ export function buildSeeds(): Seed[] {
     const at = daysAgo(ago)
     add('money', `demo-alert-${i}`, at, { amount, currency: 'INR', direction: 'out', category_id, account_id, description: merchant, merchant, occurred_at: at, source, raw_input, tags: [] })
   })
+  // A UPI credit from the flatmate: Needs you asks "Arun paying you back?"
+  // (the sender ARUN KUMAR S matches Arun). Accepting it leaves ₹7,000 owed.
+  {
+    const at = daysAgo(2)
+    const raw_input = 'Rs.3,000.00 credited to your Everyday Bank A/c XX4821 by UPI from ARUN KUMAR S. UPI Ref 402345678901'
+    add('money', 'demo-alert-credit-arun', at, { amount: 300000, currency: 'INR', direction: 'in', category_id: null, account_id: 'demo-acct-bank', description: null, merchant: 'ARUN KUMAR S', occurred_at: at, source: 'email', raw_input, tags: [] })
+  }
 
   // --- Budgets (near / over / under) ---
   add('budget', 'demo-budget-groceries', daysAgo(30), { category_id: 'demo-cat-groceries', amount: 1000000, currency: 'INR' }) // ~60%

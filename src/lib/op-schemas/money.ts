@@ -18,6 +18,9 @@ export const MoneyPayloadSchema = z.object({
   tags: z.array(z.string().max(40)).max(20).optional(),
   account_id: z.string().min(1).nullable().optional(),
   split_group_id: z.string().min(1).nullable().optional(),
+  // Set → this entry is a repayment with that person (in: they paid you; out: you
+  // gave their money back). Never income or spending; offsets what they owe.
+  settles_person_id: z.string().min(1).nullable().optional(),
 })
 
 export type MoneyPayload = z.infer<typeof MoneyPayloadSchema>

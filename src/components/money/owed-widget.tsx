@@ -9,7 +9,7 @@ import { useAllPeople } from '@/hooks/use-all-people'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { useFxRates } from '@/hooks/use-fx-rates'
-import { owedByPerson, owedTotal } from '@/lib/shares'
+import { owedByPerson, owedTotal, owesAndHolds } from '@/lib/shares'
 import { convertViaRates } from '@/lib/fx'
 import { formatMinor } from '@/lib/currency'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
@@ -27,7 +27,11 @@ export function OwedWidget({ userId }: Props) {
   const { prefs } = useUserPrefs()
   const { rates } = useFxRates([...SUPPORTED_CURRENCIES])
 
-  const rows = useMemo(() => owedByPerson(entries, shares, people), [entries, shares, people])
+  // Only people who owe you; money you hold for someone lives on the People page.
+  const rows = useMemo(
+    () => owedByPerson(entries, shares, people).filter(r => owesAndHolds(r).owes.length > 0),
+    [entries, shares, people],
+  )
   const toPrimary = useMemo(
     () => (amount: number, currency: string) =>
       currency === prefs.primary_currency
@@ -70,7 +74,7 @@ export function OwedWidget({ userId }: Props) {
             >
               <IconTile name={r.name} size="sm" />
               <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
-              <span className="shrink-0 font-semibold tabular-nums">{Object.entries(r.byCurrency).map(([c, a]) => fmt(a, c)).join(' + ')}</span>
+              <span className="shrink-0 font-semibold tabular-nums">{owesAndHolds(r).owes.map(([c, a]) => fmt(a, c)).join(' + ')}</span>
             </Link>
           </li>
         ))}

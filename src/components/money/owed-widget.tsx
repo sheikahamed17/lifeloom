@@ -48,7 +48,7 @@ export function OwedWidget({ userId }: Props) {
     return (
       <section aria-labelledby={headingId} className="flex flex-col">
         <SectionHeading id={headingId}>Owed to you</SectionHeading>
-        <p className={EMPTY_NOTE}>Nobody owes you anything. Use “Share with…” when you add a spend to track who owes what.</p>
+        <p className={EMPTY_NOTE}>Nobody owes you anything. Paid for someone? Choose “I paid this for someone” in Needs you, or “Share with…” on the entry.</p>
       </section>
     )
   }

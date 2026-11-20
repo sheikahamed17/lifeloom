@@ -10,6 +10,7 @@ Each release is also published with notes on
 ## [Unreleased]
 
 ### Added
+- **"I paid this for someone" in Needs you.** An imported bank or card spend can now be marked as paid on someone else's behalf right where you pick its category: choose the person (or add someone new) and how much they'll pay back, the whole amount by default. Their part leaves your spending and shows on the People page and the Owed widget until they pay; Undo removes it. When an entry is shared with one person, the edit card also has a one-tap "*Name* pays it all".
 - **Architecture diagrams in the README.** Three SVGs in `docs/architecture/` replace the ASCII sketch: how the pieces fit together, the capture / ask / import paths, and how op-log sync with per-field last-writer-wins converges. They follow the app's palette and switch to a dark version with your system theme.
 - **`SECURITY.md` and private vulnerability reporting.** Reports go through the repository's Security tab as a private advisory instead of a public issue; the policy lists what's in scope and response times.
 - **Security audit workflow.** `.github/workflows/security-audit.yml` runs `pnpm audit` on every PR that changes dependencies and every Monday, and fails on any moderate or higher advisory. It never gates Deploy.

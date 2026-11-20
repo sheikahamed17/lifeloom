@@ -51,7 +51,8 @@ import { useTasks, type TaskFilter as TaskFilterValue } from '@/hooks/use-tasks'
 import { usePushSubscription } from '@/hooks/use-push-subscription'
 import { db, type MoneyEntryRow, type TaskRow, type LearningRow, type NoteRow } from '@/lib/dexie'
 import { moneyRowToDraft, taskRowToDraft, learningRowToDraft, noteRowToDraft } from '@/lib/entry-to-draft'
-import { planShareChanges, type ShareDraftRow } from '@/lib/share-edit'
+import type { ShareDraftRow } from '@/lib/share-edit'
+import { applyShareRows } from '@/lib/share-apply'
 import { owedByPerson, planSettlement } from '@/lib/shares'
 import { usePeople } from '@/hooks/use-people'
 import { blankDraftForKind } from '@/lib/blank-draft'
@@ -489,18 +490,10 @@ function AppPageInner() {
     })
   }
 
-  // "Shared with": people who owe part of an entry. Writes the person (when new)
-  // and expense_share ops the chip's rows imply; never touches the money payload.
+  // "Shared with": people who owe part of an entry (see applyShareRows).
   async function applyShareChanges(entryId: string, rows: ShareDraftRow[]) {
     if (!user) return
-    const existing = (await db.expense_shares.where('money_entry_id').equals(entryId).toArray())
-    if (rows.length === 0 && existing.every(s => s.deleted_at || s.settled_at)) return
-    const people = await db.people.where('user_id').equals(user.id).toArray()
-    const plan = planShareChanges({ entryId, existing, rows, people, newId: () => crypto.randomUUID() })
-    for (const p of plan.people) await applyLocalOp(await generateOp({ entity_kind: 'person', entity_id: p.entity_id, op_type: 'create', payload: p.payload, user_id: user.id }))
-    for (const c of plan.creates) await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: c.entity_id, op_type: 'create', payload: c.payload, user_id: user.id }))
-    for (const u of plan.updates) await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: u.entity_id, op_type: 'update', payload: u.payload, user_id: user.id }))
-    for (const id of plan.deletes) await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: id, op_type: 'delete', payload: {}, user_id: user.id }))
+    await applyShareRows(user.id, entryId, rows)
   }
 
   async function confirmEntry(

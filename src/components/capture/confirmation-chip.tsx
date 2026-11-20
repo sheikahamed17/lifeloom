@@ -157,6 +157,7 @@ function ConfirmationChipMoney({
   const sharesReady = shareRows.every(r => r.settled || (r.name.trim().length > 0 && (parseAmountInput(r.amountText) ?? 0) > 0)) && isSharesValid(d.amount, shareAmounts)
 
   const [focusShareKey, setFocusShareKey] = useState<number | null>(null)
+  const firstShareAmountRef = useRef<HTMLInputElement>(null)
   function addShareRow() {
     setEditingField(null)
     const key = shareKey.current++
@@ -405,6 +406,7 @@ function ConfirmationChipMoney({
                 />
               )}
               <Input
+                ref={i === 0 ? firstShareAmountRef : undefined}
                 inputMode="decimal"
                 value={row.amountText}
                 onChange={e => { const v = e.currentTarget.value; setShareRows(prev => prev.map((r, j) => (j === i ? { ...r, amountText: v } : r))) }}
@@ -430,10 +432,27 @@ function ConfirmationChipMoney({
           >
             <Plus className="size-3.5" aria-hidden /> Add person
           </Button>
-          <div className={cn('text-[13px] tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
-            {sharesTotalMinor <= d.amount
-              ? `Your share: ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-              : `Shares exceed the amount by ${symbol}${((sharesTotalMinor - d.amount) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+          <div className="flex flex-wrap items-center gap-x-3">
+            <div className={cn('text-[13px] tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
+              {sharesTotalMinor <= d.amount
+                ? `Your share: ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                : `Shares exceed the amount by ${symbol}${((sharesTotalMinor - d.amount) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+            </div>
+            {/* Paid on someone's behalf: one tap gives the one person the whole amount. */}
+            {shareRows.length === 1 && !shareRows[0].settled && yourShareMinor > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShareRows(prev => prev.map(r => ({ ...r, amountText: toAmountText(d.amount) })))
+                  // The link hides once your share is 0: keep focus on the amount it just set.
+                  requestAnimationFrame(() => firstShareAmountRef.current?.focus())
+                }}
+                className={cn(SUB_LINK, '-ml-2')}
+              >
+                {shareRows[0].name.trim() ? `${shareRows[0].name.trim()} pays it all` : 'They pay it all'}
+              </Button>
+            )}
           </div>
         </div>
       )}

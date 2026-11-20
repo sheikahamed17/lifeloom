@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { FieldLegend, FieldSet } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { AttentionRow } from '@/components/shared/attention-row'
@@ -13,15 +14,19 @@ import { FOOT_LINK, SectionHeading } from '@/components/money/section-heading'
 import { useMoneyEntries } from '@/hooks/use-money-entries'
 import { useMoneyRowActions } from '@/hooks/use-money-row-actions'
 import { useUserPrefs } from '@/hooks/use-user-prefs'
+import { usePeople } from '@/hooks/use-people'
+import { useExpenseShares } from '@/hooks/use-expense-shares'
+import { amountInputText, checkPaidFor, type PaidForProblem } from '@/lib/paid-for'
+import type { ShareDraftRow } from '@/lib/share-edit'
 import { reviewQueue, type ReviewItem } from '@/lib/review-queue'
-import { formatMinor } from '@/lib/currency'
+import { currencySymbol, formatMinor } from '@/lib/currency'
 import { formatLocalDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { AccountRow } from '@/lib/dexie'
 
 const SHOWN = 4
 
-type Pick = { category: { id: string; name: string } | null; account: AccountRow | null }
+type Pick = { category: { id: string; name: string } | null; account: AccountRow | null; paidFor: ShareDraftRow[] }
 
 /**
  * "Needs you": email and SMS imports that still want a category or an account,
@@ -31,8 +36,10 @@ type Pick = { category: { id: string; name: string } | null; account: AccountRow
  */
 export function ReviewQueue({ userId, focusId }: { userId: string; focusId?: string | null }) {
   const entries = useMoneyEntries(userId)
-  const { setCategory, linkCard, activeAccounts } = useMoneyRowActions(userId)
+  const { setCategory, linkCard, paidFor, activeAccounts } = useMoneyRowActions(userId)
   const items = useMemo(() => reviewQueue(entries, activeAccounts.length), [entries, activeAccounts.length])
+  const shares = useExpenseShares(userId)
+  const sharedEntryIds = useMemo(() => new Set(shares.map(s => s.money_entry_id)), [shares])
   const [open, setOpen] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [handledFocus, setHandledFocus] = useState<string | null>(null)
@@ -53,13 +60,18 @@ export function ReviewQueue({ userId, focusId }: { userId: string; focusId?: str
   const extra = items.slice(SHOWN)
 
   // Save what was chosen, then move on to the next entry in the queue (if any).
+  // An entry that still needs something (say, only "paid for" was saved and it
+  // has no category yet) stays open instead of being skipped past.
   async function save(item: ReviewItem, pick: Pick) {
     const index = items.findIndex(i => i.entry.id === item.entry.id)
     const next = items[index + 1]?.entry.id ?? null
-    setOpen(next)
-    if (next && index + 1 >= SHOWN) setShowAll(true)
+    if (resolves(item, pick)) {
+      setOpen(next)
+      if (next && index + 1 >= SHOWN) setShowAll(true)
+    }
     if (pick.category) await setCategory(item.entry, pick.category.id, pick.category.name)
     if (pick.account && item.cardLast4) await linkCard(item.entry, item.cardLast4, pick.account)
+    if (pick.paidFor.length > 0) await paidFor(item.entry, pick.paidFor)
   }
 
   const renderItem = (item: ReviewItem, index: number) => {
@@ -96,6 +108,7 @@ export function ReviewQueue({ userId, focusId }: { userId: string; focusId?: str
             item={item}
             accounts={activeAccounts}
             hasNext={index < items.length - 1}
+            canPayFor={e.direction === 'out' && !sharedEntryIds.has(e.id)}
             onSave={pick => void save(item, pick)}
             onClose={() => setOpen(null)}
           />
@@ -134,24 +147,76 @@ export function ReviewQueue({ userId, focusId }: { userId: string; focusId?: str
   )
 }
 
+const NEW_PERSON = '__new__'
+
+/** True when `pick` settles everything `item` was in the queue for. */
+function resolves(item: ReviewItem, pick: Pick): boolean {
+  return (!item.needsCategory || !!pick.category) && (!item.cardLast4 || !!pick.account)
+}
+
+/** The one line under "Paid for someone?" saying why Save is waiting. */
+function paidForHint(problem: PaidForProblem | 'who', spent: string): string {
+  switch (problem) {
+    case 'who': return 'Pick who will pay you back, or choose “Not for someone”.'
+    case 'name': return 'Type their name.'
+    case 'amount': return 'Type how much they’ll pay back.'
+    case 'too-much': return `That’s more than the ${spent} you spent.`
+  }
+}
 const LEGEND = 'mb-0 w-full border-b border-border pb-2.5 text-[17px] font-bold tracking-[-0.02em]'
 
 /**
  * Reviewing one imported entry: the facts, then a radio-style list for each thing it
  * still needs, one primary action and one text action. Nothing is saved until Save.
  */
-function ReviewEditor({ userId, item, accounts, hasNext, onSave, onClose }: {
+function ReviewEditor({ userId, item, accounts, hasNext, canPayFor, onSave, onClose }: {
   userId: string
   item: ReviewItem
   accounts: AccountRow[]
   hasNext: boolean
+  /** A spend with no shares yet: offer "Paid for someone?". */
+  canPayFor: boolean
   onSave: (pick: Pick) => void
   onClose: () => void
 }) {
   const { entry: e, needsCategory, cardLast4 } = item
   const { prefs } = useUserPrefs()
-  const [pick, setPick] = useState<Pick>({ category: null, account: null })
+  const [pick, setPick] = useState<Omit<Pick, 'paidFor'>>({ category: null, account: null })
   const account = e.account_id ? accounts.find(a => a.id === e.account_id) : undefined
+
+  // "Paid for someone?": closed by default. `who` is a person id, NEW_PERSON, or '' (not chosen yet).
+  const people = usePeople(userId)
+  const [payingFor, setPayingFor] = useState(false)
+  const [who, setWho] = useState('')
+  const [newName, setNewName] = useState('')
+  const [owedText, setOwedText] = useState(() => amountInputText(e.amount, e.currency))
+  const person = people.find(p => p.id === who)
+  // Only while the section is open (and the entry has no shares yet, so a save
+  // that kept this editor open can never write the share twice).
+  const asking = canPayFor && payingFor
+  const check = !asking ? null
+    : who === NEW_PERSON ? checkPaidFor(e.amount, e.currency, { personId: null, name: newName, amountText: owedText })
+    : person ? checkPaidFor(e.amount, e.currency, { personId: person.id, name: person.name, amountText: owedText })
+    : null
+  const problem: PaidForProblem | 'who' | null = !asking ? null : !check ? 'who' : check.ok ? null : check.problem
+  const paidFor = check?.ok ? check.rows : []
+  const canSave = problem === null && (!!pick.category || !!pick.account || paidFor.length > 0)
+  const advances = hasNext && resolves(item, { ...pick, paidFor })
+  const spent = formatMinor(e.amount, e.currency)
+  const openId = `paid-for-open-${e.id}`
+  const legendId = `paid-for-legend-${e.id}`
+  const hintId = `paid-for-hint-${e.id}`
+
+  // Focus follows the control that replaced the one just pressed (it unmounts).
+  function openPayingFor() {
+    setPayingFor(true)
+    if (people.length === 0) setWho(NEW_PERSON)
+    requestAnimationFrame(() => document.getElementById(legendId)?.focus())
+  }
+  function closePayingFor() {
+    setPayingFor(false); setWho(''); setNewName(''); setOwedText(amountInputText(e.amount, e.currency))
+    requestAnimationFrame(() => document.getElementById(openId)?.focus())
+  }
 
   return (
     <div id={`review-panel-${e.id}`} className="flex flex-col gap-6 px-4 pb-4">
@@ -212,9 +277,74 @@ function ReviewEditor({ userId, item, accounts, hasNext, onSave, onClose }: {
         </FieldSet>
       )}
 
+      {canPayFor && !payingFor && (
+        <Button id={openId} variant="link" onClick={openPayingFor} className="-mt-2 self-start px-0">
+          I paid this for someone
+        </Button>
+      )}
+
+      {canPayFor && payingFor && (
+        <FieldSet className="min-w-0 gap-0">
+          <FieldLegend id={legendId} tabIndex={-1} className={cn(LEGEND, 'outline-none')}>Who will pay you back?</FieldLegend>
+          <RadioGroup
+            aria-label="Who will pay you back"
+            value={who}
+            onValueChange={v => setWho(String(v))}
+            className="gap-0"
+          >
+            {[...people.map(p => ({ id: p.id, name: p.name })), { id: NEW_PERSON, name: 'Someone new' }].map(p => (
+              <Label
+                key={p.id}
+                className={cn(
+                  'min-h-13 gap-3 border-b border-border px-1 text-[15px] tracking-normal text-foreground',
+                  who === p.id ? 'font-semibold' : 'font-medium',
+                )}
+              >
+                <RadioGroupItem value={p.id} className="size-5 border-muted-foreground" />
+                {p.name}
+              </Label>
+            ))}
+          </RadioGroup>
+          {who === NEW_PERSON && (
+            <Input
+              value={newName}
+              maxLength={60}
+              // Only when there is nobody else to pick; arrowing onto "Someone new" keeps focus in the list.
+              autoFocus={people.length === 0}
+              aria-invalid={problem === 'name' || undefined}
+              onChange={ev => setNewName(ev.currentTarget.value)}
+              placeholder="Their name"
+              aria-label="Name of the person you paid for"
+              className="mt-3 max-w-xs bg-background"
+            />
+          )}
+          <div className="flex items-center gap-3 pt-3">
+            <Label htmlFor={`owed-${e.id}`} className="text-[15px] font-medium tracking-normal">They’ll pay back ({currencySymbol(e.currency)})</Label>
+            <Input
+              id={`owed-${e.id}`}
+              inputMode="decimal"
+              aria-describedby={hintId}
+              aria-invalid={problem === 'amount' || problem === 'too-much' || undefined}
+              value={owedText}
+              onChange={ev => setOwedText(ev.currentTarget.value)}
+              className="w-28 bg-background px-3 text-right"
+            />
+          </div>
+          <p id={hintId} className="pt-2.5 text-[13px] text-muted-foreground">
+            Starts at the whole {spent}; change it if they owe only part. Their part won’t count as your spending, and the People page tracks it until they pay.
+          </p>
+          <p className="pt-1.5 text-[13px] font-medium text-foreground" aria-live="polite">
+            {problem ? paidForHint(problem, spent) : ''}
+          </p>
+          <Button variant="link" onClick={closePayingFor} className="self-start px-0">
+            Not for someone
+          </Button>
+        </FieldSet>
+      )}
+
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
-        <Button size="lg" disabled={!pick.category && !pick.account} onClick={() => onSave(pick)}>
-          {hasNext ? 'Save and show the next one' : 'Save'}
+        <Button size="lg" disabled={!canSave} onClick={() => onSave({ ...pick, paidFor })}>
+          {advances ? 'Save and show the next one' : 'Save'}
         </Button>
         <Button variant="link" onClick={onClose}>Not now</Button>
       </div>

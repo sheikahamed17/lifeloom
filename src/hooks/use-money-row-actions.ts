@@ -8,11 +8,15 @@ import { useUndo } from '@/components/providers/undo-provider'
 import { accountTokens, addHintDigits, planAccountBackfill } from '@/lib/account-match'
 import { tagEntries, untagEntries } from '@/lib/account-autotag'
 import { db, type AccountRow, type MoneyEntryRow } from '@/lib/dexie'
+import { applyShareRows } from '@/lib/share-apply'
+import { formatMinor } from '@/lib/currency'
+import type { ShareDraftRow } from '@/lib/share-edit'
 
 /**
- * The two fixes an imported entry can need, shared by the Needs-you queue and
- * anything else that resolves one: set its category, or tie the card its alert
- * names to an account (learning the digits so the next alert tags itself).
+ * The fixes an imported entry can need, shared by the Needs-you queue and
+ * anything else that resolves one: set its category, tie the card its alert
+ * names to an account (learning the digits so the next alert tags itself), or
+ * record that it was paid for someone who will pay it back.
  */
 export function useMoneyRowActions(userId: string) {
   const entries = useMoneyEntries(userId)
@@ -83,5 +87,26 @@ export function useMoneyRowActions(userId: string) {
     }
   }, [userId, entries, activeAccounts, undo])
 
-  return { setCategory, linkCard, activeAccounts }
+  // "Paid for someone": the person (created when new) owes `rows[0].amount` of
+  // this entry. Undo removes the share it created; a new person stays (harmless,
+  // and the People page can archive them).
+  const paidFor = useCallback(async (e: MoneyEntryRow, rows: ShareDraftRow[]) => {
+    try {
+      const plan = await applyShareRows(userId, e.id, rows)
+      pushPullOnce({ userId }).catch(err => console.error('sync', err))
+      if (!plan || plan.creates.length === 0) return
+      const row = rows[0]
+      undo.push(`${row.name} owes you ${formatMinor(row.amount ?? 0, e.currency)}`, async () => {
+        for (const c of plan.creates) {
+          await applyLocalOp(await generateOp({ entity_kind: 'expense_share', entity_id: c.entity_id, op_type: 'delete', payload: {}, user_id: userId }))
+        }
+        pushPullOnce({ userId }).catch(err => console.error('sync', err))
+      })
+    } catch (err) {
+      console.error('paid for', err)
+      undo.push('Couldn’t save who owes you. Try again.')
+    }
+  }, [userId, undo])
+
+  return { setCategory, linkCard, paidFor, activeAccounts }
 }

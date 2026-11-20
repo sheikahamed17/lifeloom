@@ -12,14 +12,13 @@ import { useUserPrefs } from '@/hooks/use-user-prefs'
 import { useFxRates } from '@/hooks/use-fx-rates'
 import { generateOp, applyLocalOp, pushPullOnce } from '@/lib/sync-client'
 import { createdAsRepayment, owedByPerson, owedTotal, owesAndHolds, repaymentCandidates } from '@/lib/shares'
-import { parseAmountInput } from '@/lib/parse-amount'
 import { amountInputText } from '@/lib/paid-for'
 import { resurrectPayload } from '@/lib/undo-delete'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { FieldLegend, FieldSet } from '@/components/ui/field'
 import { pickDefaultAccountId } from '@/lib/default-account'
 import { convertViaRates } from '@/lib/fx'
-import { formatMinor } from '@/lib/currency'
+import { formatMinor, parseAmountFor } from '@/lib/currency'
 import { formatDay } from '@/lib/format'
 import { SUPPORTED_CURRENCIES } from '@/lib/op-schemas/money'
 import { cn } from '@/lib/utils'
@@ -579,9 +578,7 @@ function RecordPayment({ person, direction, balances, legendId, entries, account
   const [amountText, setAmountText] = useState(() => amountInputText(owes[0][1], owes[0][0]))
   const [accountId, setAccountId] = useState<string | null>(defaultAccountId)
 
-  // Typed amounts follow the chip's convention (×100), except JPY (whole yen).
-  const typed = parseAmountInput(amountText)
-  const cashAmount = typed === null ? 0 : currency === 'JPY' ? Math.round(typed / 100) : typed
+  const cashAmount = parseAmountFor(amountText, currency) ?? 0
   const picked = candidates.find(c => c.id === pickId)
   const choice: RecordChoice | null =
     picked ? { kind: 'existing', entryId: picked.id, amount: picked.amount, currency }

@@ -9,6 +9,9 @@ Each release is also published with notes on
 
 ## [Unreleased]
 
+### Fixed
+- **Yen amounts on the capture and edit card.** JPY has no minor unit, but the card treated every currency as having two decimals: a ¥1,500 entry showed as ¥15, and typing 1500 saved ¥150,000. The amount, split parts, shared-with amounts, "your share", "remaining" and the confirm button now all read and write whole yen. Amount text goes through new `amountText` / `parseAmountFor` / `formatMajor` helpers in `src/lib/currency.ts`, which "I paid this for someone" and "Record a payment" now share.
+
 ## [1.5.0] — 2026-11-20
 
 Shared expenses now follow the money where it actually moves: your bank

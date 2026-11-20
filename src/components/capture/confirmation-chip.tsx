@@ -16,9 +16,8 @@ import { PeriodPicker, type Period } from '@/components/shared/period-picker'
 import { ProjectPicker } from '@/components/tasks/project-picker'
 import { addTag } from '@/lib/task-org'
 import { cn } from '@/lib/utils'
-import { currencySymbol, formatMinor } from '@/lib/currency'
+import { amountText, currencySymbol, formatMajor, formatMinor, parseAmountFor } from '@/lib/currency'
 import { formatDay, formatLocalDateTime } from '@/lib/format'
-import { parseAmountInput } from '@/lib/parse-amount'
 import { type Allocation, isSplitValid, splitRemaining } from '@/lib/split-transaction'
 import { pickDefaultAccountId, resolveDraftAccountId } from '@/lib/default-account'
 import { equalShares, isSharesValid } from '@/lib/shares'
@@ -125,7 +124,7 @@ function ConfirmationChipMoney({
   // null amounts from a voice capture are resolved to an equal split here.
   const people = usePeople(userId)
   const shareKey = useRef(1_000_000)   // initial rows are keyed 0..n-1; new rows never collide
-  const [shareRows, setShareRows] = useState<ShareRow[]>(() => initialShareRows(draft.amount, draft.shared_with ?? []))
+  const [shareRows, setShareRows] = useState<ShareRow[]>(() => initialShareRows(draft.amount, draft.currency, draft.shared_with ?? []))
   const isEdit = mode === 'edit'
   // A new entry with no account starts on the ★ default (Settings → Accounts);
   // any pick in the dropdown — including "No account" — overrides it.
@@ -134,7 +133,9 @@ function ConfirmationChipMoney({
     draftAccountId: d.account_id, touched: accountTouched, isEdit, defaultId: pickDefaultAccountId(accounts),
   })
 
-  const major = (d.amount / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  // Amounts are minor units in d.currency (JPY whole yen); typed text converts through parseAmountFor.
+  const major = formatMajor(d.amount, d.currency)
+  const readAmount = (text: string) => parseAmountFor(text, d.currency) ?? 0
   const symbol = currencySymbol(d.currency)
   const cat = d.category_id ? categoryById.get(d.category_id) : undefined
 
@@ -147,15 +148,15 @@ function ConfirmationChipMoney({
     makeRecurring ? 'Repeats' : null,
   ].filter(Boolean).join(' · ')
 
-  const allocations: Allocation[] = splitRows.map(r => ({ category_id: r.category_id, amount: parseAmountInput(r.amountText) ?? 0 }))
+  const allocations: Allocation[] = splitRows.map(r => ({ category_id: r.category_id, amount: readAmount(r.amountText) }))
   const remaining = splitRemaining(d.amount, allocations)
   const splitReady = isSplitValid(d.amount, allocations)
 
   const sharesActive = d.direction === 'out' && !splitMode && shareRows.length > 0
-  const shareAmounts = shareRows.map(r => parseAmountInput(r.amountText) ?? 0)
+  const shareAmounts = shareRows.map(r => readAmount(r.amountText))
   const sharesTotalMinor = shareAmounts.reduce((n, a) => n + a, 0)
   const yourShareMinor = Math.max(0, d.amount - sharesTotalMinor)
-  const sharesReady = shareRows.every(r => r.settled || (r.name.trim().length > 0 && (parseAmountInput(r.amountText) ?? 0) > 0)) && isSharesValid(d.amount, shareAmounts)
+  const sharesReady = shareRows.every(r => r.settled || (r.name.trim().length > 0 && (readAmount(r.amountText)) > 0)) && isSharesValid(d.amount, shareAmounts)
 
   const [focusShareKey, setFocusShareKey] = useState<number | null>(null)
   const firstShareAmountRef = useRef<HTMLInputElement>(null)
@@ -163,12 +164,12 @@ function ConfirmationChipMoney({
     setEditingField(null)
     const key = shareKey.current++
     setFocusShareKey(key)
-    setShareRows(prev => equalizeShareRows(d.amount, [...prev, { key, personId: null as string | null, name: '', amountText: '', settled: false }]))
+    setShareRows(prev => equalizeShareRows(d.amount, d.currency, [...prev, { key, personId: null as string | null, name: '', amountText: '', settled: false }]))
   }
 
   function enterSplit() {
     setSplitRows([
-      { key: splitKey.current++, category_id: d.category_id ?? null, amountText: d.amount ? String(d.amount / 100) : '' },
+      { key: splitKey.current++, category_id: d.category_id ?? null, amountText: amountText(d.amount, d.currency) },
       { key: splitKey.current++, category_id: null, amountText: '' },
     ])
     setEditingField(null)
@@ -179,7 +180,7 @@ function ConfirmationChipMoney({
     setBusy(true)
     try {
       const shared_with: ShareDraftRow[] = sharesActive
-        ? shareRows.map(r => ({ share_id: r.shareId, person_id: r.personId, name: r.name.trim(), amount: parseAmountInput(r.amountText) ?? 0, settled: r.settled }))
+        ? shareRows.map(r => ({ share_id: r.shareId, person_id: r.personId, name: r.name.trim(), amount: readAmount(r.amountText), settled: r.settled }))
         : []
       const final = { ...d, account_id: accountId, shared_with }
       if (splitMode) await onConfirm(final, { enabled: false, period, intervalCount }, allocations)
@@ -218,7 +219,7 @@ function ConfirmationChipMoney({
           inputMode="decimal"
           defaultValue={d.amount === 0 ? '' : major}
           placeholder="0"
-          onChange={(e) => { const amt = parseAmountInput(e.currentTarget.value) ?? 0; setD(s => ({ ...s, amount: amt })) }}
+          onChange={(e) => { const amt = readAmount(e.currentTarget.value); setD(s => ({ ...s, amount: amt })) }}
           onBlur={() => setEditingField(null)}
           className="mb-3 h-16 text-3xl font-semibold tabular-nums md:text-3xl"
         />
@@ -354,7 +355,7 @@ function ConfirmationChipMoney({
             <Plus className="size-3.5" aria-hidden /> Add category
           </Button>
           <div className={cn('text-[13px] tabular-nums', remaining === 0 ? 'text-muted-foreground' : 'text-destructive')}>
-            Remaining: {symbol}{(remaining / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            Remaining: {symbol}{formatMajor(remaining, d.currency)}
           </div>
         </div>
       )}
@@ -372,7 +373,7 @@ function ConfirmationChipMoney({
           {shareRows.map((row, i) => row.settled ? (
             <div key={row.key} className="flex min-h-11 items-center justify-between gap-2 text-[13px] text-muted-foreground">
               <span>{row.name}</span>
-              <span className="tabular-nums">{symbol}{((parseAmountInput(row.amountText) ?? 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} · paid</span>
+              <span className="tabular-nums">{symbol}{formatMajor(readAmount(row.amountText), d.currency)} · paid</span>
             </div>
           ) : (
             <div key={row.key} className="flex items-center gap-2">
@@ -436,8 +437,8 @@ function ConfirmationChipMoney({
           <div className="flex flex-wrap items-center gap-x-3">
             <div className={cn('text-[13px] tabular-nums', sharesTotalMinor <= d.amount ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
               {sharesTotalMinor <= d.amount
-                ? `Your share: ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-                : `Shares exceed the amount by ${symbol}${((sharesTotalMinor - d.amount) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                ? `Your share: ${symbol}${formatMajor(yourShareMinor, d.currency)}`
+                : `Shares exceed the amount by ${symbol}${formatMajor(sharesTotalMinor - d.amount, d.currency)}`}
             </div>
             {/* Paid on someone's behalf: one tap gives the one person the whole amount. */}
             {shareRows.length === 1 && !shareRows[0].settled && yourShareMinor > 0 && (
@@ -445,7 +446,7 @@ function ConfirmationChipMoney({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setShareRows(prev => prev.map(r => ({ ...r, amountText: toAmountText(d.amount) })))
+                  setShareRows(prev => prev.map(r => ({ ...r, amountText: amountText(d.amount, d.currency) })))
                   // The link hides once your share is 0: keep focus on the amount it just set.
                   requestAnimationFrame(() => firstShareAmountRef.current?.focus())
                 }}
@@ -544,7 +545,7 @@ function ConfirmationChipMoney({
         <Button className="flex-[2]" onClick={handleConfirm} disabled={busy || d.amount === 0 || (splitMode && !splitReady) || (sharesActive && !sharesReady)}>
           {splitMode ? `${isEdit ? 'Save' : 'Confirm'} split (${splitRows.length})`
             : isEdit ? 'Save changes'
-            : sharesActive ? `Confirm ${symbol}${major} · you ${symbol}${(yourShareMinor / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+            : sharesActive ? `Confirm ${symbol}${major} · you ${symbol}${formatMajor(yourShareMinor, d.currency)}`
             : `Confirm ${symbol}${major}`}
         </Button>
       </div>
@@ -556,26 +557,22 @@ function ConfirmationChipMoney({
 type ShareRow = { key: number; shareId?: string; personId: string | null; name: string; amountText: string; settled: boolean }
 
 /** Rows from a draft: null amounts (voice "split with Arun") get an equal share of the entry. */
-function initialShareRows(amount: number, rows: ShareDraftRow[]): ShareRow[] {
+function initialShareRows(amount: number, currency: string, rows: ShareDraftRow[]): ShareRow[] {
   const open = rows.filter(r => r.amount === null).length
   const fixed = rows.reduce((n, r) => n + (r.amount ?? 0), 0)
   const each = open > 0 ? Math.max(0, Math.floor((amount - fixed) / (open + 1))) : 0
   return rows.map((r, i) => ({
     key: i, shareId: r.share_id, personId: r.person_id, name: r.name,
-    amountText: toAmountText(r.amount ?? each), settled: !!r.settled,
+    amountText: amountText(r.amount ?? each, currency), settled: !!r.settled,
   }))
 }
 
 /** Re-split the entry equally among you and the unsettled rows (settled rows keep their amount). */
-function equalizeShareRows(amount: number, rows: ShareRow[]): ShareRow[] {
-  const settled = rows.filter(r => r.settled).reduce((n, r) => n + (parseAmountInput(r.amountText) ?? 0), 0)
+function equalizeShareRows(amount: number, currency: string, rows: ShareRow[]): ShareRow[] {
+  const settled = rows.filter(r => r.settled).reduce((n, r) => n + (parseAmountFor(r.amountText, currency) ?? 0), 0)
   const open = rows.filter(r => !r.settled).length
   const [each] = equalShares(Math.max(0, amount - settled), open)
-  return rows.map(r => (r.settled ? r : { ...r, amountText: toAmountText(each ?? 0) }))
-}
-
-function toAmountText(minor: number): string {
-  return minor > 0 ? String(minor / 100) : ''
+  return rows.map(r => (r.settled ? r : { ...r, amountText: amountText(each ?? 0, currency) }))
 }
 
 function ConfirmationChipTask({

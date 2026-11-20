@@ -9,6 +9,18 @@ Each release is also published with notes on
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-11-20
+
+Shared expenses now follow the money where it actually moves: your bank
+alerts. Mark an imported spend as **paid for someone** right in Needs you, and
+when their UPI credit arrives, Needs you asks whether it's them **paying you
+back**. Partial repayments, money someone gives you before you've spent it,
+and money you hand back all net out per person on the People page, and none of
+it is ever counted as income or spending. The repository is also locked down:
+every Dependabot, code-scanning and secret-scanning alert is cleared, with a
+weekly audit, grouped Dependabot updates and private vulnerability reporting.
+Migration `0031` is applied automatically on deploy.
+
 ### Added
 - **Repayments from bank alerts, partial repayments, and money held for someone** (migration `0031`).
   - **Bank credits:** when a UPI or bank credit arrives from someone who owes you, Needs you asks "Arun paying you back?". It suggests a person only when the sender matches their name or a bank name you confirmed before, and never converts on its own. Confirming counts the credit as a repayment, not income, and can remember the bank's wording ("ARUN KUMAR S") for next time.
@@ -22,7 +34,16 @@ Each release is also published with notes on
 - **Security audit workflow.** `.github/workflows/security-audit.yml` runs `pnpm audit` on every PR that changes dependencies and every Monday, and fails on any moderate or higher advisory. It never gates Deploy.
 - **Dependabot version updates.** `.github/dependabot.yml` opens a few grouped PRs a week (dev and production minor/patch bumps, plus monthly GitHub Actions updates); majors of Next.js, React and Better Auth are left for planned upgrades. Never auto-merged, because merging deploys.
 
+### Changed
+- **"Arun paid me 300" records a repayment of any amount.** It used to settle only whole shares whose total matched exactly, and opened the People page otherwise. The card now says what's left, or what you'll hold for them.
+- **People page.** Each person shows "owes you" and/or "you hold … of theirs", part-paid debts show what's left, **Record a payment** and **Record money you gave back** sit on the card, and marked-paid shares and repayments share one **History** list. **Mark paid** stays for debts that no repayment is partly covering.
+- **Dependencies.** Next.js 16.4.6, React 19.3.1 and Better Auth 1.7.22 with the other production and dev tooling minor/patch updates; GitHub Actions move to `actions/checkout` and `actions/setup-node` v7, `pnpm/action-setup` v6 and `cloudflare/wrangler-action` v4.
+
+### Fixed
+- **A repayment from a bank alert no longer counts as income or twice in your balance.** A UPI credit from someone paying you back used to land as income, and marking their share paid on the People page then added the same money to the account a second time. The credit itself is now the repayment.
+
 ### Security
+- **Cleared every code-scanning alert from CodeQL's extended suite.** Third-party actions are pinned to commit SHAs (Dependabot updates the SHA and its version comment together), the demo-reset workflow's token has no permissions, and `pnpm dev:demo` creates `.dev.vars` in one step so it can never overwrite a file that appeared in between.
 - **Cleared the last three Dependabot alerts; `pnpm audit` reports no known vulnerabilities.**
   - `minimatch` 10.x (moderate, denial of service through glob-part amplification; fixed only in 11.x) is moved onto 11.0.3 by a major-scoped override. Its only 10.x users, typescript-eslint and ts-morph, call just `minimatch()`; 11 removed only the `AST` and `makeRe` exports.
   - `fast-xml-parser` (low, quadratic CPU on unterminated stop-node tags) moves to 5.12.1, in OpenNext's AWS SDK, through a version-scoped override.
@@ -140,7 +161,8 @@ See the [v1.1.0 release notes](https://github.com/sheikahamed17/lifeloom/release
 First stable release — the clean starting line.
 See the [v1.0.0 release notes](https://github.com/sheikahamed17/lifeloom/releases/tag/v1.0.0).
 
-[Unreleased]: https://github.com/sheikahamed17/lifeloom/compare/v1.4.0...main
+[Unreleased]: https://github.com/sheikahamed17/lifeloom/compare/v1.5.0...main
+[1.5.0]: https://github.com/sheikahamed17/lifeloom/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/sheikahamed17/lifeloom/releases/tag/v1.4.0
 [1.3.0]: https://github.com/sheikahamed17/lifeloom/releases/tag/v1.3.0
 [1.2.0]: https://github.com/sheikahamed17/lifeloom/releases/tag/v1.2.0
